@@ -95,6 +95,18 @@ export default function JurnalPage() {
               dbKks = Array.from(combinedMap.values())
             } catch (e) {}
           }
+          const allSaved = localStorage.getItem('custom_kks_all_store')
+          if (allSaved) {
+            try {
+              const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
+              const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId)
+              const combinedMap = new Map<string, KepalaKeluarga>()
+              dbKks.forEach(k => combinedMap.set(k.id, k))
+              matched.forEach(k => combinedMap.set(k.id, k))
+              dbKks = Array.from(combinedMap.values())
+            } catch (e) {}
+          }
+
           const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lingkunganName || 'Lingkungan', dbKks)
           setKkList(finalKks)
 
@@ -109,6 +121,19 @@ export default function JurnalPage() {
     }
 
     loadData()
+
+    const handleSync = () => {
+      loadData()
+    }
+    window.addEventListener('dafuDataUpdated', handleSync)
+    window.addEventListener('storage', handleSync)
+    window.addEventListener('lingkunganChanged', handleSync)
+
+    return () => {
+      window.removeEventListener('dafuDataUpdated', handleSync)
+      window.removeEventListener('storage', handleSync)
+      window.removeEventListener('lingkunganChanged', handleSync)
+    }
   }, [supabase])
 
   const fetchJournals = async (lId: string) => {

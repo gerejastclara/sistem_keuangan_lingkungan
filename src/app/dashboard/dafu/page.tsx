@@ -457,6 +457,12 @@ function DafuFormContent() {
         } catch (e) {}
         return next
       })
+
+      // Notify other tabs and components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('dafuDataUpdated'))
+        window.dispatchEvent(new Event('storage'))
+      }
     }
 
     setSubmitting(false)
@@ -489,6 +495,17 @@ function DafuFormContent() {
     setKkList(prev => {
       const updated = prev.filter(k => k.id !== id)
       if (lingkunganId) localStorage.setItem(`custom_kks_${lingkunganId}`, JSON.stringify(updated))
+      try {
+        const allSaved = localStorage.getItem('custom_kks_all_store')
+        if (allSaved) {
+          const list = JSON.parse(allSaved).filter((k: any) => k.id !== id)
+          localStorage.setItem('custom_kks_all_store', JSON.stringify(list))
+        }
+      } catch(e) {}
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('dafuDataUpdated'))
+        window.dispatchEvent(new Event('storage'))
+      }
       return updated
     })
   }
@@ -633,15 +650,12 @@ function DafuFormContent() {
             </div>
 
             {/* Bagian 2: Klasifikasi Golongan / Desil */}
-            <div className="bg-amber-50/40 p-5 rounded-xl border border-amber-200/80 space-y-4">
+            <div className="bg-slate-50/70 p-5 rounded-xl border border-slate-200 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-2 font-serif">
-                  <Sparkles className="w-4 h-4 text-amber-600" />
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2 font-serif">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
                   2. KLASIFIKASI GOLONGAN / DESIL (DITENTUKAN SEKRETARIS)
                 </div>
-                <span className="text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-semibold">
-                  Database Terpisah
-                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -651,10 +665,34 @@ function DafuFormContent() {
                     <SelectTrigger id="golongan" className="bg-white border-slate-300 text-slate-900 rounded-xl focus:ring-emerald-500 h-11 font-bold text-sm">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-slate-200 text-slate-900">
-                      <SelectItem value="MISKIN">🔴 MISKIN (Bawah / Butuh Bantuan Subsidi)</SelectItem>
-                      <SelectItem value="MENENGAH">🟡 MENENGAH (Standar / Mandiri)</SelectItem>
-                      <SelectItem value="ATAS">🟢 ATAS (Mampu / Potensial Donatur)</SelectItem>
+                    <SelectContent className="bg-white border-slate-200 text-slate-900 min-w-[340px] sm:min-w-[440px] shadow-lg rounded-xl p-1.5 z-50">
+                      <SelectItem value="MISKIN" className="cursor-pointer py-2.5 px-3 rounded-lg">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-base leading-none">🔴</span>
+                          <span className="font-bold text-slate-900">MISKIN</span>
+                          <span className="text-xs text-slate-500 font-normal">
+                            (Bawah / Butuh Bantuan Subsidi)
+                          </span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="MENENGAH" className="cursor-pointer py-2.5 px-3 rounded-lg">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-base leading-none">🟡</span>
+                          <span className="font-bold text-slate-900">MENENGAH</span>
+                          <span className="text-xs text-slate-500 font-normal">
+                            (Standar / Mandiri)
+                          </span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="ATAS" className="cursor-pointer py-2.5 px-3 rounded-lg">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-base leading-none">🟢</span>
+                          <span className="font-bold text-slate-900">ATAS</span>
+                          <span className="text-xs text-slate-500 font-normal">
+                            (Mampu / Potensial Donatur)
+                          </span>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

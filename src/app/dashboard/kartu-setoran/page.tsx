@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { CheckCircle2, CreditCard, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 
 export default function KartuSetoranPage() {
   const supabase = createClient()
@@ -62,7 +63,32 @@ export default function KartuSetoranPage() {
             .eq('lingkungan_id', targetLingkunganId)
             .order('nama_kk', { ascending: true })
 
-          if (kks) setKkList(kks)
+          let dbKks = kks || []
+          const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`)
+          if (localSaved) {
+            try {
+              const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
+              const combinedMap = new Map<string, KepalaKeluarga>()
+              dbKks.forEach(k => combinedMap.set(k.id, k))
+              parsed.forEach(k => combinedMap.set(k.id, k))
+              dbKks = Array.from(combinedMap.values())
+            } catch (e) {}
+          }
+
+          const allSaved = localStorage.getItem('custom_kks_all_store')
+          if (allSaved) {
+            try {
+              const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
+              const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId)
+              const combinedMap = new Map<string, KepalaKeluarga>()
+              dbKks.forEach(k => combinedMap.set(k.id, k))
+              matched.forEach(k => combinedMap.set(k.id, k))
+              dbKks = Array.from(combinedMap.values())
+            } catch (e) {}
+          }
+
+          const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lingkunganName || 'Lingkungan', dbKks)
+          setKkList(finalKks)
 
           // Fetch Journals
           const { data: journals } = await supabase
@@ -81,6 +107,19 @@ export default function KartuSetoranPage() {
     }
 
     loadData()
+
+    const handleSync = () => {
+      loadData()
+    }
+    window.addEventListener('dafuDataUpdated', handleSync)
+    window.addEventListener('storage', handleSync)
+    window.addEventListener('lingkunganChanged', handleSync)
+
+    return () => {
+      window.removeEventListener('dafuDataUpdated', handleSync)
+      window.removeEventListener('storage', handleSync)
+      window.removeEventListener('lingkunganChanged', handleSync)
+    }
   }, [supabase])
 
   const filteredKkList = kkList.filter(k =>

@@ -60,6 +60,10 @@ export function ClientDashboardShell({
 
     setSelectedLingkunganId(id)
     localStorage.setItem('selected_lingkungan_id', id)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('lingkunganChanged'))
+      window.dispatchEvent(new Event('storage'))
+    }
     router.refresh()
   }
 
