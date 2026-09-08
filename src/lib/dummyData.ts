@@ -4,15 +4,27 @@ import { KepalaKeluarga, AnggotaKeluarga, GolonganKeluarga, KategoriGolongan, Pe
 const CATHOLIC_FIRST_NAMES = [
   'Petrus', 'Maria', 'Antonius', 'Theresa', 'Yohanes',
   'Ignatius', 'Clara', 'Stephanus', 'Bernadette', 'FX',
-  'Agustinus', 'Elisabeth', 'Joseph', 'Cecilia', 'Pauluz',
-  'Anastasia', 'Dominikus', 'Veronica', 'Francisca', 'Benediktus'
+  'Agustinus', 'Elisabeth', 'Joseph', 'Cecilia', 'Paulus',
+  'Anastasia', 'Dominikus', 'Veronica', 'Francisca', 'Benediktus',
+  'Gregorius', 'Vincentius', 'Fransiskus', 'Thomas', 'Andreas',
+  'Matheus', 'Lukas', 'Markus', 'Bartolomeus', 'Theresia',
+  'Anna', 'Katarina', 'Agnes', 'Martha', 'Monika',
+  'Yuliana', 'Albertus', 'Mikael', 'Gabriel', 'Rafael',
+  'Stanislaus', 'Aloysius', 'Bernardus', 'Damianus', 'Leonardus',
+  'Raymond', 'Martinus', 'Laurentius', 'Sebastianus', 'Alfonsus', 'Herman'
 ]
 
 const LAST_NAMES = [
   'Sugeng', 'Francisca', 'Budi', 'Wati', 'Koko',
   'Rossi', 'Setiawati', 'Hartono', 'Tri', 'Bambang',
   'Santoso', 'Wijaya', 'Kusuma', 'Purnama', 'Sutrisno',
-  'Pratama', 'Hidayat', 'Gunawan', 'Laksana', 'Handoko'
+  'Pratama', 'Hidayat', 'Gunawan', 'Laksana', 'Handoko',
+  'Subroto', 'Siregar', 'Simanjuntak', 'Situmorang', 'Hutabarat',
+  'Tampubolon', 'Manurung', 'Sinaga', 'Nainggolan', 'Pasaribu',
+  'Tanudjaja', 'Widjaja', 'Surya', 'Halim', 'Salim',
+  'Wibowo', 'Kristianto', 'Nugroho', 'Saputra', 'Utomo',
+  'Danubroto', 'Setyawan', 'Wardhana', 'Prakoso', 'Baskoro',
+  'Suwandi', 'Darmanto', 'Hermawan', 'Tanoto', 'Tedjokusumo'
 ]
 
 export function getDummyKkListForLingkungan(lingkunganId: string, namaLingkungan: string): KepalaKeluarga[] {
@@ -20,10 +32,14 @@ export function getDummyKkListForLingkungan(lingkunganId: string, namaLingkungan
   const normalizedKey = cleanName.toLowerCase().trim()
   const slugKey = normalizedKey.replace(/[^a-z0-9]/g, '-')
   
-  // Hash function based strictly on normalized Lingkungan name for 100% consistency across all pages
-  let hash = 0
+  // Extract number if present (e.g. 1, 2, 3, 4)
+  const numMatch = normalizedKey.match(/\d+/)
+  const lingkunganNumber = numMatch ? parseInt(numMatch[0], 10) : 1
+  
+  // Hash function based strictly on normalized Lingkungan name and number
+  let hash = lingkunganNumber * 10007
   for (let i = 0; i < normalizedKey.length; i++) {
-    hash = (hash << 5) - hash + normalizedKey.charCodeAt(i)
+    hash = ((hash << 5) - hash) + normalizedKey.charCodeAt(i) * 31
     hash |= 0
   }
   const absHash = Math.abs(hash)
@@ -31,18 +47,20 @@ export function getDummyKkListForLingkungan(lingkunganId: string, namaLingkungan
   const result: KepalaKeluarga[] = []
   
   for (let i = 0; i < 5; i++) {
-    const fnIdx = (absHash + i * 3) % CATHOLIC_FIRST_NAMES.length
-    const lnIdx = (absHash + i * 7 + 2) % LAST_NAMES.length
+    const fnIdx = (absHash + i * 7 + lingkunganNumber * 13) % CATHOLIC_FIRST_NAMES.length
+    const lnIdx = (absHash + i * 11 + lingkunganNumber * 17 + 3) % LAST_NAMES.length
     const namaKK = `${CATHOLIC_FIRST_NAMES[fnIdx]} ${LAST_NAMES[lnIdx]}`
     
     // 4 out of 5 are BIDUK registered by default
-    const isBiduk = i !== 4
+    const isBiduk = (i + lingkunganNumber) % 5 !== 0
+    const blokLetter = ['A', 'B', 'C', 'D', 'E', 'F'][(absHash + i) % 6]
+    const houseNo = ((i + 1) * 3) + ((absHash + i * 5) % 27) + 1
     
     result.push({
       id: `dummy-kk-${slugKey}-${i + 1}`,
       lingkungan_id: lingkunganId,
       nama_kk: namaKK,
-      alamat: `Jl. ${cleanName} No. ${(i + 1) * 3 + (absHash % 5)}`,
+      alamat: `Jl. ${cleanName} Blok ${blokLetter} No. ${houseNo}`,
       is_biduk: isBiduk
     })
   }
@@ -134,22 +152,28 @@ export function getDummyAnggotaForKk(kk: KepalaKeluarga): AnggotaKeluarga[] {
 }
 
 export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
+  const idParts = kk.id.split('-')
+  const index = parseInt(idParts[idParts.length - 1], 10) || 1
+  
   let hash = 0
   for (let i = 0; i < kk.nama_kk.length; i++) {
-    hash = (hash << 5) - hash + kk.nama_kk.charCodeAt(i)
+    hash = ((hash << 5) - hash) + kk.nama_kk.charCodeAt(i)
     hash |= 0
   }
-  const mod = Math.abs(hash) % 5
+  const absHash = Math.abs(hash)
+
+  // Spread across 5 families in each lingkungan (usually 1 Miskin, 2 or 3 Menengah, 1 or 2 Atas)
+  const pattern = (index + (absHash % 3)) % 5
 
   let golongan: KategoriGolongan = 'MENENGAH'
-  let catatan = 'Keluarga mandiri berpenghasilan tetap bulanan standar.'
+  let catatan = 'Keluarga mandiri berpenghasilan tetap bulanan standar, aktif dalam paguyuban warga.'
 
-  if (mod === 0) {
+  if (pattern === 0) {
     golongan = 'MISKIN'
-    catatan = 'Keluarga pra-sejahtera, pekerja informal/harian lepas, lansia atau membutuhkan subsidi berkala.'
-  } else if (mod === 1 || mod === 4) {
+    catatan = 'Keluarga pra-sejahtera, pekerja informal / lansia, membutuhkan perhatian dan subsidi berkala lingkungan.'
+  } else if (pattern === 3 || pattern === 4) {
     golongan = 'ATAS'
-    catatan = 'Keluarga mampu / profesional mapan, potensial sebagai donatur sukarela kegiatan lingkungan.'
+    catatan = 'Keluarga mapan / profesional, berpotensi sebagai donatur sukarela aksi sosial lingkungan.'
   }
 
   return {

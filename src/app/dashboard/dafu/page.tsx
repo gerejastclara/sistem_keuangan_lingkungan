@@ -14,7 +14,7 @@ import {
   PeranKeluarga,
   Lingkungan
 } from '@/lib/types'
-import { MASTER_LINGKUNGAN_LIST, formatNamaLingkungan, getAllMasterLingkungan } from '@/lib/constants'
+import { MASTER_LINGKUNGAN_LIST, formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery } from '@/lib/constants'
 import {
   ensureDummyKksForLingkungan,
   getDummyAnggotaForKk,
@@ -123,26 +123,43 @@ function DafuFormContent() {
             return null
           }
 
-          if (cookies.includes('demo_user_role=BENDAHARA')) currentRole = 'BENDAHARA'
-          else if (cookies.includes('demo_user_role=PAROKI')) currentRole = 'PAROKI'
-          else if (cookies.includes('demo_user_role=SEKRETARIS')) currentRole = 'SEKRETARIS'
+          const demoEmail = getCookieVal('demo_user_email') || ''
+          const demoRole = getCookieVal('demo_user_role') || ''
+
+          if (demoRole === 'BENDAHARA' || demoEmail.includes('bendahara')) currentRole = 'BENDAHARA'
+          else if (demoRole === 'PAROKI' || demoEmail.includes('paroki')) currentRole = 'PAROKI'
+          else currentRole = 'SEKRETARIS'
 
           currentLingkunganId = getCookieVal('demo_user_lingkungan_id')
           currentLingkunganNama = getCookieVal('demo_user_lingkungan_nama')
 
           setUserProfile({
             id: 'demo-user',
-            email: `${currentRole.toLowerCase()}@example.com`,
+            email: demoEmail || `${currentRole.toLowerCase()}@example.com`,
             role: currentRole,
             lingkungan_id: currentRole === 'PAROKI' ? null : currentLingkunganId,
             lingkungan_nama: currentRole === 'PAROKI' ? undefined : (currentLingkunganNama || undefined),
           })
         }
 
+        const effectiveEmail = user?.email || (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() : '') || ''
+        
+        // Strictly match Lingkungan from user email if non-PAROKI
+        if (currentRole !== 'PAROKI' && effectiveEmail) {
+          const matchedByEmail = findLingkunganByQuery(effectiveEmail)
+          if (matchedByEmail) {
+            currentLingkunganId = matchedByEmail.id
+            currentLingkunganNama = matchedByEmail.nama_lingkungan
+          }
+        }
+
         // Target Lingkungan
         let targetLingkunganId: string | null = null
         if (currentRole !== 'PAROKI' && currentLingkunganId) {
           targetLingkunganId = currentLingkunganId
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('selected_lingkungan_id', currentLingkunganId)
+          }
         } else {
           targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
           if (!targetLingkunganId) {

@@ -27,7 +27,17 @@ export async function login(formData: FormData) {
 
   if (role !== 'PAROKI') {
     const all = getAllMasterLingkungan()
-    if (formLingkunganId) {
+
+    // 1. ALWAYS give TOP PRIORITY to the username entered by the user
+    // E.g. sekretaris_padrepio3 -> Padre Pio 3, sekretaris_pedro -> Padre Pio 1
+    const matchedFromUser = findLingkunganByQuery(usernameInput)
+    if (matchedFromUser) {
+      assignedLingkunganId = matchedFromUser.id
+      assignedLingkunganNama = matchedFromUser.nama_lingkungan
+    }
+
+    // 2. Only if username has NO specific lingkungan (e.g. generic "sekretaris" or "bendahara"), use formLingkunganId
+    if (!assignedLingkunganId && formLingkunganId) {
       const found = all.find(l => l.id === formLingkunganId)
       if (found) {
         assignedLingkunganId = found.id
@@ -35,23 +45,7 @@ export async function login(formData: FormData) {
       }
     }
 
-    if (!assignedLingkunganId) {
-      // Try to parse lingkungan from username (e.g. sekretaris_pedro, bendahara_petrus1, sekretaris-agnes)
-      const cleanUser = usernameInput.replace(/@(example\.com|stclara\.id|gmail\.com)/g, '')
-      const stripped = cleanUser
-        .replace(/^(sekretaris|bendahara)[_.\-]?/i, '')
-        .trim()
-
-      if (stripped) {
-        const matched = findLingkunganByQuery(stripped)
-        if (matched) {
-          assignedLingkunganId = matched.id
-          assignedLingkunganNama = matched.nama_lingkungan
-        }
-      }
-    }
-
-    // Default fallback to first lingkungan if not matched
+    // 3. Fallback default to first lingkungan
     if (!assignedLingkunganId && all.length > 0) {
       assignedLingkunganId = all[0].id
       assignedLingkunganNama = all[0].nama_lingkungan

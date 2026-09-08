@@ -75,6 +75,20 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     lingkunganList = getAllMasterLingkungan().map(m => ({ id: m.id, nama_lingkungan: m.nama_lingkungan }))
   }
 
+  // Enforce consistent lingkungan scoping for non-PAROKI roles based on email or assigned ID
+  if (profile && profile.role !== 'PAROKI') {
+    const { findLingkunganByQuery, getAllMasterLingkungan } = await import('@/lib/constants')
+    const matched = findLingkunganByQuery(profile.email)
+    if (matched) {
+      profile.lingkungan_id = matched.id
+      profile.lingkungan_nama = matched.nama_lingkungan
+    } else if (!profile.lingkungan_nama && profile.lingkungan_id) {
+      const allM = getAllMasterLingkungan()
+      const found = allM.find(l => l.id === profile?.lingkungan_id)
+      if (found) profile.lingkungan_nama = found.nama_lingkungan
+    }
+  }
+
   return (
     <ClientDashboardShell initialProfile={profile} lingkunganList={lingkunganList}>
       {children}

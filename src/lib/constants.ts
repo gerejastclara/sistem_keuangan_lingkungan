@@ -103,17 +103,30 @@ export function getAllMasterLingkungan(): Array<{ id: string; nama_lingkungan: s
 
 export function findLingkunganByQuery(query: string): { id: string; nama_lingkungan: string } | null {
   if (!query) return null;
-  const cleanQ = query.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const rawQ = query.toLowerCase().replace(/@(example\.com|stclara\.id|gmail\.com)/g, '');
+  const cleanQ = rawQ
+    .replace(/^(sekretaris|bendahara)[_.\-]?/i, '')
+    .replace(/[^a-z0-9]/g, '');
+
+  if (!cleanQ) return null;
 
   const all = getAllMasterLingkungan();
+
+  // 1. Special aliases: pedro / padrepio (e.g. padrepio3 -> Padre Pio 3, pedro -> Padre Pio 1)
+  if (cleanQ.includes('pedro') || cleanQ.includes('padrepio')) {
+    const num = cleanQ.match(/\d+/)?.[0] || '1';
+    const matched = all.find((l) => l.nama_lingkungan.toLowerCase().includes('padre pio') && l.nama_lingkungan.endsWith(num))
+      || all.find((l) => l.nama_lingkungan.toLowerCase().includes('padre pio'));
+    if (matched) return { id: matched.id, nama_lingkungan: matched.nama_lingkungan };
+  }
   
-  // 1. Exact slug match or clean match (with or without 'st' prefix)
+  // 2. Exact slug match or clean match (with or without 'st' prefix)
   const exact = all.find((l) => {
     const lClean = l.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '');
     const lCleanWithoutSt = lClean.replace(/^st/i, '');
     return (
-      l.slug === query.toLowerCase() ||
-      l.nama_lingkungan.toLowerCase() === query.toLowerCase() ||
+      l.slug === cleanQ ||
+      l.nama_lingkungan.toLowerCase() === rawQ ||
       lClean === cleanQ ||
       lCleanWithoutSt === cleanQ ||
       lClean === `st${cleanQ}`
@@ -121,18 +134,15 @@ export function findLingkunganByQuery(query: string): { id: string; nama_lingkun
   });
   if (exact) return { id: exact.id, nama_lingkungan: exact.nama_lingkungan };
 
-  // 2. Special aliases (e.g. pedro -> Padre Pio, petrus -> St. Petrus)
-  if (cleanQ.includes('pedro') || cleanQ.includes('padrepio')) {
-    const num = cleanQ.match(/\d+/)?.[0] || '1';
-    const matched = all.find((l) => l.nama_lingkungan.toLowerCase().includes('padre pio') && l.nama_lingkungan.includes(num))
-      || all.find((l) => l.nama_lingkungan.toLowerCase().includes('padre pio'));
-    if (matched) return { id: matched.id, nama_lingkungan: matched.nama_lingkungan };
-  }
-
-  // 3. Partial matching
+  // 3. Partial matching with numbers preserved
+  const queryNum = cleanQ.match(/\d+/)?.[0];
   const partial = all.find((l) => {
     const cleanName = l.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '');
-    return cleanName.includes(cleanQ) || cleanQ.includes(cleanName);
+    const nameNum = cleanName.match(/\d+/)?.[0];
+    if (queryNum && nameNum && queryNum !== nameNum) {
+      return false; // don't match Padre Pio 1 to Padre Pio 3
+    }
+    return cleanName.includes(cleanQ) || cleanQ.includes(cleanName.replace(/\d+/g, ''));
   });
   if (partial) return { id: partial.id, nama_lingkungan: partial.nama_lingkungan };
 

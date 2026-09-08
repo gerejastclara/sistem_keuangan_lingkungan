@@ -57,7 +57,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   }
 
   const currentLingkunganName =
-    lingkunganList.find((l) => l.id === selectedLingkunganId)?.nama_lingkungan || 'Semua Lingkungan'
+    userProfile?.lingkungan_nama ||
+    lingkunganList.find((l) => l.id === selectedLingkunganId)?.nama_lingkungan ||
+    'Lingkungan'
 
   return (
     <header className="bg-[#16233F] text-white border-b border-[#2C3E66] sticky top-0 z-30 shadow-md">

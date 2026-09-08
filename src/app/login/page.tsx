@@ -167,7 +167,7 @@ export default function LoginPage() {
             )}
 
             <form action={login} className="space-y-4">
-              <input type="hidden" name="lingkungan_id" value={selectedLingkunganId} />
+              <input type="hidden" name="lingkungan_id" value={isQuickMode ? selectedLingkunganId : ''} />
 
               <div className="space-y-1.5">
                 <Label htmlFor="username" className="text-xs font-semibold text-[#1B2130]">Username</Label>

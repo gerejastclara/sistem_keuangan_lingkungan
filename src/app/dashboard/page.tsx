@@ -19,7 +19,7 @@ import {
   getDummyGolonganForKk
 } from '@/lib/dummyData'
 import { formatRupiah, formatDateIndo } from '@/lib/utils'
-import { formatNamaLingkungan, getAllMasterLingkungan } from '@/lib/constants'
+import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery } from '@/lib/constants'
 import {
   TrendingUp,
   TrendingDown,
@@ -112,9 +112,12 @@ export default function DashboardOverviewPage() {
             return null
           }
 
-          if (cookies.includes('demo_user_role=SEKRETARIS') || cookies.includes('sekretaris')) {
+          const demoEmail = getCookieVal('demo_user_email') || ''
+          const demoRole = getCookieVal('demo_user_role') || ''
+
+          if (demoRole === 'SEKRETARIS' || demoEmail.includes('sekretaris')) {
             role = 'SEKRETARIS'
-          } else if (cookies.includes('demo_user_role=PAROKI') || cookies.includes('paroki')) {
+          } else if (demoRole === 'PAROKI' || demoEmail.includes('paroki')) {
             role = 'PAROKI'
           } else {
             role = 'BENDAHARA'
@@ -125,11 +128,22 @@ export default function DashboardOverviewPage() {
 
           setUserProfile({
             id: 'demo-user',
-            email: `${role.toLowerCase()}@example.com`,
+            email: demoEmail || `${role.toLowerCase()}@example.com`,
             role: role,
             lingkungan_id: role === 'PAROKI' ? null : currentLId,
             lingkungan_nama: role === 'PAROKI' ? undefined : (currentLNama || undefined),
           })
+        }
+
+        const effectiveEmail = user?.email || (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() : '') || ''
+        
+        // Strictly match Lingkungan from user email if non-PAROKI
+        if (role !== 'PAROKI' && effectiveEmail) {
+          const matchedByEmail = findLingkunganByQuery(effectiveEmail)
+          if (matchedByEmail) {
+            currentLId = matchedByEmail.id
+            currentLNama = matchedByEmail.nama_lingkungan
+          }
         }
 
         setUserRole(role)
@@ -138,6 +152,9 @@ export default function DashboardOverviewPage() {
         let targetLingkunganId: string | null = null
         if (role !== 'PAROKI' && currentLId) {
           targetLingkunganId = currentLId
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('selected_lingkungan_id', currentLId)
+          }
         } else {
           targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
           if (!targetLingkunganId) {

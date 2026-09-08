@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { UserRole, UserProfile, KepalaKeluarga, Lingkungan } from '@/lib/types'
-import { MASTER_LINGKUNGAN_LIST, formatNamaLingkungan } from '@/lib/constants'
+import { MASTER_LINGKUNGAN_LIST, formatNamaLingkungan, findLingkunganByQuery } from '@/lib/constants'
 import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -101,9 +101,12 @@ export default function DaftarIsianPage() {
             return null
           }
 
-          if (cookies.includes('demo_user_role=BENDAHARA') || cookies.includes('bendahara')) {
+          const demoEmail = getCookieVal('demo_user_email') || ''
+          const demoRole = getCookieVal('demo_user_role') || ''
+
+          if (demoRole === 'BENDAHARA' || demoEmail.includes('bendahara')) {
             currentRole = 'BENDAHARA'
-          } else if (cookies.includes('demo_user_role=PAROKI') || cookies.includes('paroki')) {
+          } else if (demoRole === 'PAROKI' || demoEmail.includes('paroki')) {
             currentRole = 'PAROKI'
           }
 
@@ -112,11 +115,20 @@ export default function DaftarIsianPage() {
 
           setUserProfile({
             id: 'demo-user',
-            email: `${currentRole.toLowerCase()}@example.com`,
+            email: demoEmail || `${currentRole.toLowerCase()}@example.com`,
             role: currentRole,
             lingkungan_id: currentRole === 'PAROKI' ? null : currentLingkunganId,
             lingkungan_nama: currentRole === 'PAROKI' ? undefined : (currentLingkunganNama || undefined),
           })
+        }
+
+        const effectiveEmail = user?.email || (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() : '') || ''
+        if (currentRole !== 'PAROKI' && effectiveEmail) {
+          const matched = findLingkunganByQuery(effectiveEmail)
+          if (matched) {
+            currentLingkunganId = matched.id
+            currentLingkunganNama = matched.nama_lingkungan
+          }
         }
 
         const { data: allL } = await supabase.from('lingkungan').select('id, nama_lingkungan').order('nama_lingkungan', { ascending: true })
@@ -128,6 +140,9 @@ export default function DaftarIsianPage() {
         // Enforce strict Lingkungan lock for non-Paroki
         if (currentRole !== 'PAROKI' && currentLingkunganId) {
           targetLingkunganId = currentLingkunganId
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('selected_lingkungan_id', currentLingkunganId)
+          }
         } else {
           targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
           if (!targetLingkunganId && masterList.length > 0) {

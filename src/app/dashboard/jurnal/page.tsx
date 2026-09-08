@@ -58,16 +58,43 @@ export default function JurnalPage() {
           if (uData) setUserProfile(uData)
         }
 
-        let targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
+        const effectiveEmail = user?.email || (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() : '') || ''
+        const effectiveRole = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_role=').pop()?.split(';').shift() : '') || ''
+
+        let targetLingkunganId: string | null = null
+        let targetLingkunganNama: string | null = null
+
+        if (effectiveRole !== 'PAROKI' && effectiveEmail) {
+          const { findLingkunganByQuery } = await import('@/lib/constants')
+          const matched = findLingkunganByQuery(effectiveEmail)
+          if (matched) {
+            targetLingkunganId = matched.id
+            targetLingkunganNama = matched.nama_lingkungan
+          }
+        }
+
+        if (!targetLingkunganId) {
+          targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
+        }
         if (!targetLingkunganId) {
           const { data: lData } = await supabase.from('lingkungan').select('id, nama_lingkungan').limit(1).maybeSingle()
           if (lData) {
             targetLingkunganId = lData.id
-            setLingkunganName(lData.nama_lingkungan)
+            targetLingkunganNama = lData.nama_lingkungan
           }
-        } else {
-          const { data: lData } = await supabase.from('lingkungan').select('nama_lingkungan').eq('id', targetLingkunganId).maybeSingle()
-          if (lData) setLingkunganName(lData.nama_lingkungan)
+        }
+
+        if (targetLingkunganNama) {
+          setLingkunganName(targetLingkunganNama)
+        } else if (targetLingkunganId) {
+          const { getAllMasterLingkungan } = await import('@/lib/constants')
+          const found = getAllMasterLingkungan().find(l => l.id === targetLingkunganId)
+          if (found) {
+            setLingkunganName(found.nama_lingkungan)
+          } else {
+            const { data: lData } = await supabase.from('lingkungan').select('nama_lingkungan').eq('id', targetLingkunganId).maybeSingle()
+            if (lData) setLingkunganName(lData.nama_lingkungan)
+          }
         }
 
         setLingkunganId(targetLingkunganId)
