@@ -37,7 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'Dashboard Overview',
       href: '/dashboard',
       icon: LayoutDashboard,
-      roles: ['BENDAHARA', 'PAROKI'],
+      roles: ['BENDAHARA', 'SEKRETARIS', 'PAROKI'],
     },
     {
       title: 'Daftar Isian',
@@ -46,7 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       roles: ['BENDAHARA', 'SEKRETARIS', 'PAROKI'],
     },
     {
-      title: 'DAFU (Daftar Umat)',
+      title: 'DAFU (Input Umat)',
       href: '/dashboard/dafu',
       icon: Users,
       roles: ['BENDAHARA', 'SEKRETARIS', 'PAROKI'],
@@ -84,10 +84,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ]
 
   // Filter items based on user role
-  // Sekretaris can access Daftar Isian & DAFU
+  // Sekretaris can access Dashboard Overview, Daftar Isian & DAFU
   const visibleNavItems = allNavItems.filter((item) => {
     if (userRole === 'SEKRETARIS') {
-      return item.href === '/dashboard/daftar-isian' || item.href === '/dashboard/dafu'
+      return (
+        item.href === '/dashboard' ||
+        item.href === '/dashboard/daftar-isian' ||
+        item.href === '/dashboard/dafu'
+      )
     }
     return true
   })

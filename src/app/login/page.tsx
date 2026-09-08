@@ -12,7 +12,7 @@ import { getAllMasterLingkungan, formatNamaLingkungan } from '@/lib/constants'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('password123')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -51,7 +51,6 @@ export default function LoginPage() {
       const slug = found ? found.slug.replace(/-/g, '') : 'lingkungan'
       setUsername(`${role.toLowerCase()}_${slug}`)
     }
-    setPassword('password123')
   }
 
   return (
