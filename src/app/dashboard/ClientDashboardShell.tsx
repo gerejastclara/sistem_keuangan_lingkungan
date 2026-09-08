@@ -21,7 +21,17 @@ export function ClientDashboardShell({
   const router = useRouter()
   const supabase = createClient()
   const [userProfile] = useState<UserProfile | null>(initialProfile)
+  const isParoki = userProfile?.role === 'PAROKI'
+
   const [selectedLingkunganId, setSelectedLingkunganId] = useState<string | null>(() => {
+    // If not PAROKI and user has an assigned lingkungan, strictly lock to it!
+    if (initialProfile?.role && initialProfile.role !== 'PAROKI' && initialProfile.lingkungan_id) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('selected_lingkungan_id', initialProfile.lingkungan_id)
+      }
+      return initialProfile.lingkungan_id
+    }
+
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('selected_lingkungan_id')
       if (saved) return saved
@@ -30,12 +40,24 @@ export function ClientDashboardShell({
   })
 
   useEffect(() => {
+    // If non-PAROKI, continuously ensure it stays locked to assigned Lingkungan
+    if (!isParoki && userProfile?.lingkungan_id) {
+      if (selectedLingkunganId !== userProfile.lingkungan_id) {
+        setSelectedLingkunganId(userProfile.lingkungan_id)
+      }
+      localStorage.setItem('selected_lingkungan_id', userProfile.lingkungan_id)
+      return
+    }
+
     if (selectedLingkunganId) {
       localStorage.setItem('selected_lingkungan_id', selectedLingkunganId)
     }
-  }, [selectedLingkunganId])
+  }, [selectedLingkunganId, isParoki, userProfile])
 
   const handleLingkunganChange = (id: string) => {
+    // Only PAROKI can switch between Lingkungan
+    if (!isParoki) return
+
     setSelectedLingkunganId(id)
     localStorage.setItem('selected_lingkungan_id', id)
     router.refresh()

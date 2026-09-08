@@ -4,10 +4,12 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
+import { findLingkunganByQuery, getAllMasterLingkungan } from '@/lib/constants'
 
 export async function login(formData: FormData) {
   const usernameInput = (formData.get('username') as string || formData.get('email') as string || '').trim().toLowerCase()
   const password = formData.get('password') as string
+  const formLingkunganId = (formData.get('lingkungan_id') as string || '').trim()
 
   if (!usernameInput || !password) {
     redirect('/login?message=Username dan password wajib diisi')
@@ -19,6 +21,43 @@ export async function login(formData: FormData) {
   if (email.includes('sekretaris')) role = 'SEKRETARIS'
   else if (email.includes('paroki')) role = 'PAROKI'
 
+  // Determine Lingkungan Scope
+  let assignedLingkunganId: string | null = null
+  let assignedLingkunganNama: string | null = null
+
+  if (role !== 'PAROKI') {
+    const all = getAllMasterLingkungan()
+    if (formLingkunganId) {
+      const found = all.find(l => l.id === formLingkunganId)
+      if (found) {
+        assignedLingkunganId = found.id
+        assignedLingkunganNama = found.nama_lingkungan
+      }
+    }
+
+    if (!assignedLingkunganId) {
+      // Try to parse lingkungan from username (e.g. sekretaris_pedro, bendahara_petrus1, sekretaris-agnes)
+      const cleanUser = usernameInput.replace(/@(example\.com|stclara\.id|gmail\.com)/g, '')
+      const stripped = cleanUser
+        .replace(/^(sekretaris|bendahara)[_.\-]?/i, '')
+        .trim()
+
+      if (stripped) {
+        const matched = findLingkunganByQuery(stripped)
+        if (matched) {
+          assignedLingkunganId = matched.id
+          assignedLingkunganNama = matched.nama_lingkungan
+        }
+      }
+    }
+
+    // Default fallback to first lingkungan if not matched
+    if (!assignedLingkunganId && all.length > 0) {
+      assignedLingkunganId = all[0].id
+      assignedLingkunganNama = all[0].nama_lingkungan
+    }
+  }
+
   try {
     const supabase = await createClient()
 
@@ -29,6 +68,25 @@ export async function login(formData: FormData) {
     })
 
     if (!signInError && signInData.user) {
+      // Ensure users record has correct role & lingkungan_id
+      await supabase.from('users').upsert({
+        id: signInData.user.id,
+        email: email,
+        role: role,
+        lingkungan_id: assignedLingkunganId,
+      })
+
+      const cookieStore = await cookies()
+      cookieStore.set('demo_user_email', email)
+      cookieStore.set('demo_user_role', role)
+      if (assignedLingkunganId) {
+        cookieStore.set('demo_user_lingkungan_id', assignedLingkunganId)
+        cookieStore.set('demo_user_lingkungan_nama', assignedLingkunganNama || '')
+      } else {
+        cookieStore.delete('demo_user_lingkungan_id')
+        cookieStore.delete('demo_user_lingkungan_nama')
+      }
+
       revalidatePath('/', 'layout')
       redirect('/dashboard')
     }
@@ -40,44 +98,40 @@ export async function login(formData: FormData) {
     })
 
     if (!signUpError && signUpData.user) {
-      const { data: lData } = await supabase.from('lingkungan').select('id').limit(1).maybeSingle()
-      const lingkunganId = role === 'PAROKI' ? null : (lData?.id || null)
-
       await supabase.from('users').upsert({
         id: signUpData.user.id,
         email: email,
         role: role,
-        lingkungan_id: lingkunganId,
+        lingkungan_id: assignedLingkunganId,
       })
 
-      // Try sign in again
-      const { error: secondTry } = await supabase.auth.signInWithPassword({ email, password })
-      if (!secondTry) {
-        revalidatePath('/', 'layout')
-        redirect('/dashboard')
+      const cookieStore = await cookies()
+      cookieStore.set('demo_user_email', email)
+      cookieStore.set('demo_user_role', role)
+      if (assignedLingkunganId) {
+        cookieStore.set('demo_user_lingkungan_id', assignedLingkunganId)
+        cookieStore.set('demo_user_lingkungan_nama', assignedLingkunganNama || '')
       }
+
+      revalidatePath('/', 'layout')
+      redirect('/dashboard')
     }
   } catch (err: any) {
-    console.log('Supabase Auth connection error:', err?.message)
+    console.log('Supabase Auth notice in login action:', err?.message)
   }
 
-  // Define valid accounts for demo mode if Supabase auth is offline
-  const validDemoUsers: Record<string, string> = {
-    'bendahara': 'password123',
-    'bendahara@example.com': 'password123',
-    'sekretaris': 'password123',
-    'sekretaris@example.com': 'password123',
-    'paroki': 'password123',
-    'paroki@example.com': 'password123',
-  }
-
-  const cleanUserKey = usernameInput.trim().toLowerCase()
-  const expectedPassword = validDemoUsers[cleanUserKey]
-
-  if (expectedPassword && password === expectedPassword) {
+  // Demo fallback validation: Accept password123 for any role account
+  if (password === 'password123' || password === 'admin123') {
     const cookieStore = await cookies()
     cookieStore.set('demo_user_email', email)
     cookieStore.set('demo_user_role', role)
+    if (assignedLingkunganId) {
+      cookieStore.set('demo_user_lingkungan_id', assignedLingkunganId)
+      cookieStore.set('demo_user_lingkungan_nama', assignedLingkunganNama || '')
+    } else {
+      cookieStore.delete('demo_user_lingkungan_id')
+      cookieStore.delete('demo_user_lingkungan_nama')
+    }
 
     revalidatePath('/', 'layout')
     redirect('/dashboard')

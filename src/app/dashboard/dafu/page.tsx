@@ -134,12 +134,27 @@ export default function DafuPage() {
         const { data } = await supabase.auth.getUser()
         const user = data?.user
 
+        let currentRole: UserRole = 'SEKRETARIS'
+        let currentLingkunganId: string | null = null
+        let currentLingkunganNama: string | null = null
+
         if (user) {
-          const { data: uData } = await supabase.from('users').select('*').eq('id', user.id).maybeSingle()
-          if (uData) setUserProfile(uData)
+          const { data: uData } = await supabase.from('users').select('*, lingkungan:lingkungan_id(nama_lingkungan)').eq('id', user.id).maybeSingle()
+          if (uData) {
+            setUserProfile(uData)
+            currentRole = uData.role
+            currentLingkunganId = uData.lingkungan_id
+            currentLingkunganNama = uData.lingkungan?.nama_lingkungan || null
+          }
         } else {
           const cookies = typeof document !== 'undefined' ? document.cookie : ''
-          let currentRole: UserRole = 'SEKRETARIS'
+          const getCookieVal = (name: string) => {
+            const v = `; ${cookies}`
+            const p = v.split(`; ${name}=`)
+            if (p.length === 2) return decodeURIComponent(p.pop()!.split(';').shift()!)
+            return null
+          }
+
           if (cookies.includes('demo_user_role=BENDAHARA')) {
             currentRole = 'BENDAHARA'
           } else if (cookies.includes('demo_user_role=PAROKI')) {
@@ -147,11 +162,16 @@ export default function DafuPage() {
           } else if (cookies.includes('demo_user_role=SEKRETARIS')) {
             currentRole = 'SEKRETARIS'
           }
+
+          currentLingkunganId = getCookieVal('demo_user_lingkungan_id')
+          currentLingkunganNama = getCookieVal('demo_user_lingkungan_nama')
+
           setUserProfile({
             id: 'demo-user',
             email: `${currentRole.toLowerCase()}@example.com`,
             role: currentRole,
-            lingkungan_id: null,
+            lingkungan_id: currentRole === 'PAROKI' ? null : currentLingkunganId,
+            lingkungan_nama: currentRole === 'PAROKI' ? undefined : (currentLingkunganNama || undefined),
           })
         }
 
@@ -159,16 +179,24 @@ export default function DafuPage() {
         const masterList = prepareMasterLingkunganList(allL || [])
         setLingkunganList(masterList)
 
-        let targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
-        if (!targetLingkunganId && masterList.length > 0) {
-          targetLingkunganId = masterList[0].id
+        let targetLingkunganId: string | null = null
+
+        // STRICT SCOPE: Non-PAROKI users are strictly locked to their own assigned Lingkungan!
+        if (currentRole !== 'PAROKI' && currentLingkunganId) {
+          targetLingkunganId = currentLingkunganId
+        } else {
+          targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
+          if (!targetLingkunganId && masterList.length > 0) {
+            targetLingkunganId = masterList[0].id
+          }
         }
 
         if (targetLingkunganId) {
           const matched = masterList.find(l => l.id === targetLingkunganId)
-          if (matched) setLingkunganName(matched.nama_lingkungan)
+          const lName = matched?.nama_lingkungan || currentLingkunganNama || ''
+          if (lName) setLingkunganName(lName)
           setLingkunganId(targetLingkunganId)
-          await loadKksAndProfil(targetLingkunganId, matched?.nama_lingkungan || '')
+          await loadKksAndProfil(targetLingkunganId, lName)
         }
       } catch (err) {
         console.error('Error loading dafu data:', err)
@@ -350,6 +378,9 @@ export default function DafuPage() {
   }
 
   const handleLingkunganChange = async (id: string) => {
+    // Only PAROKI can switch between Lingkungan
+    if (userProfile?.role !== 'PAROKI') return
+
     setLingkunganId(id)
     localStorage.setItem('selected_lingkungan_id', id)
     const selected = lingkunganList.find(l => l.id === id)
@@ -745,23 +776,33 @@ export default function DafuPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Lingkungan Quick Switcher */}
+          {/* Lingkungan Quick Switcher (Paroki only) or Locked Scope (Sekretaris & Bendahara) */}
           <div className="w-full sm:w-64">
-            <Select value={lingkunganId || ''} onValueChange={(val) => val && handleLingkunganChange(val)}>
-              <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl focus:ring-emerald-500 font-semibold h-11">
-                <Building className="w-4 h-4 text-emerald-600 mr-2 shrink-0" />
-                <SelectValue placeholder="— Pilih Lingkungan —">
-                  {lingkunganName ? formatNamaLingkungan(lingkunganName) : '— Pilih Lingkungan —'}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="max-h-60 overflow-y-auto bg-white border-slate-200 text-slate-900">
-                {lingkunganList.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {formatNamaLingkungan(l.nama_lingkungan)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {userRole === 'PAROKI' ? (
+              <Select value={lingkunganId || ''} onValueChange={(val) => val && handleLingkunganChange(val)}>
+                <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl focus:ring-emerald-500 font-semibold h-11">
+                  <Building className="w-4 h-4 text-emerald-600 mr-2 shrink-0" />
+                  <SelectValue placeholder="— Pilih Lingkungan —">
+                    {lingkunganName ? formatNamaLingkungan(lingkunganName) : '— Pilih Lingkungan —'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="max-h-60 overflow-y-auto bg-white border-slate-200 text-slate-900">
+                  {lingkunganList.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {formatNamaLingkungan(l.nama_lingkungan)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="bg-slate-100/90 border border-slate-300 text-slate-800 rounded-xl px-3 py-2 flex items-center gap-2 font-bold text-xs h-11 shrink-0 shadow-2xs">
+                <Building className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="truncate">{lingkunganName ? formatNamaLingkungan(lingkunganName) : 'Lingkungan Anda'}</span>
+                <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-mono ml-auto shrink-0 flex items-center gap-1">
+                  <Lock className="w-2.5 h-2.5" /> Terkunci
+                </span>
+              </div>
+            )}
           </div>
 
           {canEdit ? (

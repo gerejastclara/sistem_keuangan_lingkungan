@@ -53,17 +53,26 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   if (!profile) {
     const demoEmail = cookieStore.get('demo_user_email')?.value
     const demoRole = cookieStore.get('demo_user_role')?.value as any
+    const demoLingkunganId = cookieStore.get('demo_user_lingkungan_id')?.value || null
+    const demoLingkunganNama = cookieStore.get('demo_user_lingkungan_nama')?.value || null
 
     if (demoEmail) {
       profile = {
         id: 'demo-user-id',
         email: demoEmail,
         role: demoRole || (demoEmail.includes('sekretaris') ? 'SEKRETARIS' : demoEmail.includes('paroki') ? 'PAROKI' : 'BENDAHARA'),
-        lingkungan_id: null,
+        lingkungan_id: demoRole === 'PAROKI' ? null : demoLingkunganId,
+        lingkungan_nama: demoRole === 'PAROKI' ? undefined : (demoLingkunganNama || undefined),
       }
     } else {
       redirect('/login')
     }
+  }
+
+  // If lingkunganList is empty from database, populate from master list
+  if (lingkunganList.length === 0) {
+    const { getAllMasterLingkungan } = await import('@/lib/constants')
+    lingkunganList = getAllMasterLingkungan().map(m => ({ id: m.id, nama_lingkungan: m.nama_lingkungan }))
   }
 
   return (

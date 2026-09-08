@@ -80,22 +80,42 @@ export default function DaftarIsianPage() {
         const { data } = await supabase.auth.getUser()
         const user = data?.user
 
+        let currentRole: UserRole = 'SEKRETARIS'
+        let currentLingkunganId: string | null = null
+        let currentLingkunganNama: string | null = null
+
         if (user) {
-          const { data: uData } = await supabase.from('users').select('*').eq('id', user.id).maybeSingle()
-          if (uData) setUserProfile(uData)
+          const { data: uData } = await supabase.from('users').select('*, lingkungan:lingkungan_id(nama_lingkungan)').eq('id', user.id).maybeSingle()
+          if (uData) {
+            setUserProfile(uData)
+            currentRole = uData.role
+            currentLingkunganId = uData.lingkungan_id
+            currentLingkunganNama = uData.lingkungan?.nama_lingkungan || null
+          }
         } else {
-          const cookies = document.cookie
-          let currentRole: UserRole = 'SEKRETARIS'
+          const cookies = typeof document !== 'undefined' ? document.cookie : ''
+          const getCookieVal = (name: string) => {
+            const v = `; ${cookies}`
+            const p = v.split(`; ${name}=`)
+            if (p.length === 2) return decodeURIComponent(p.pop()!.split(';').shift()!)
+            return null
+          }
+
           if (cookies.includes('demo_user_role=BENDAHARA') || cookies.includes('bendahara')) {
             currentRole = 'BENDAHARA'
           } else if (cookies.includes('demo_user_role=PAROKI') || cookies.includes('paroki')) {
             currentRole = 'PAROKI'
           }
+
+          currentLingkunganId = getCookieVal('demo_user_lingkungan_id')
+          currentLingkunganNama = getCookieVal('demo_user_lingkungan_nama')
+
           setUserProfile({
             id: 'demo-user',
             email: `${currentRole.toLowerCase()}@example.com`,
             role: currentRole,
-            lingkungan_id: null,
+            lingkungan_id: currentRole === 'PAROKI' ? null : currentLingkunganId,
+            lingkungan_nama: currentRole === 'PAROKI' ? undefined : (currentLingkunganNama || undefined),
           })
         }
 
@@ -103,14 +123,22 @@ export default function DaftarIsianPage() {
         const masterList = prepareMasterLingkunganList(allL || [])
         setLingkunganList(masterList)
 
-        let targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
-        if (!targetLingkunganId && masterList.length > 0) {
-          targetLingkunganId = masterList[0].id
+        let targetLingkunganId: string | null = null
+
+        // Enforce strict Lingkungan lock for non-Paroki
+        if (currentRole !== 'PAROKI' && currentLingkunganId) {
+          targetLingkunganId = currentLingkunganId
+        } else {
+          targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
+          if (!targetLingkunganId && masterList.length > 0) {
+            targetLingkunganId = masterList[0].id
+          }
         }
 
         if (targetLingkunganId) {
           const matched = masterList.find(l => l.id === targetLingkunganId)
-          if (matched) setNamaLingkungan(matched.nama_lingkungan)
+          const lName = matched?.nama_lingkungan || currentLingkunganNama || ''
+          if (lName) setNamaLingkungan(lName)
 
           setLingkunganId(targetLingkunganId)
           await loadKkAndProfil(targetLingkunganId)
@@ -224,6 +252,9 @@ export default function DaftarIsianPage() {
   }
 
   const handleLingkunganSelect = async (id: string) => {
+    // Only PAROKI can switch between Lingkungan
+    if (userProfile?.role !== 'PAROKI') return
+
     setLingkunganId(id)
     localStorage.setItem('selected_lingkungan_id', id)
     const selected = lingkunganList.find(l => l.id === id)
@@ -369,25 +400,36 @@ export default function DaftarIsianPage() {
             {/* Lingkungan Selection Dropdown (69 CSV Lingkungan) */}
             <div className="space-y-1.5">
               <Label htmlFor="nama_lingkungan" className="text-xs font-semibold text-slate-700">Nama Lingkungan *</Label>
-              <Select
-                value={lingkunganId || ''}
-                onValueChange={(val) => val && handleLingkunganSelect(val)}
-                disabled={!isSekretarisEditable}
-              >
-                <SelectTrigger id="nama_lingkungan" className="bg-white border-slate-300 text-slate-900 rounded-xl focus:ring-emerald-500 font-semibold h-11">
-                  <SelectValue placeholder="— Pilih lingkungan —">
-                    {namaLingkungan ? formatNamaLingkungan(namaLingkungan) : '— Pilih lingkungan —'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="max-h-60 overflow-y-auto bg-white border-slate-200 text-slate-900">
-                  {lingkunganList.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {formatNamaLingkungan(l.nama_lingkungan)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-slate-400">Pilih nama lingkungan sesuai wilayah Anda (Total 69 Lingkungan Paroki)</p>
+              {userRole === 'PAROKI' ? (
+                <Select
+                  value={lingkunganId || ''}
+                  onValueChange={(val) => val && handleLingkunganSelect(val)}
+                >
+                  <SelectTrigger id="nama_lingkungan" className="bg-white border-slate-300 text-slate-900 rounded-xl focus:ring-emerald-500 font-semibold h-11">
+                    <SelectValue placeholder="— Pilih lingkungan —">
+                      {namaLingkungan ? formatNamaLingkungan(namaLingkungan) : '— Pilih lingkungan —'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 overflow-y-auto bg-white border-slate-200 text-slate-900">
+                    {lingkunganList.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {formatNamaLingkungan(l.nama_lingkungan)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="bg-slate-100 border border-slate-300 text-slate-900 rounded-xl px-4 py-3 flex items-center gap-2 font-bold text-sm">
+                  <Building className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{namaLingkungan ? formatNamaLingkungan(namaLingkungan) : 'Lingkungan Anda'}</span>
+                  <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-mono ml-auto flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> Terkunci (Wilayah Anda)
+                  </span>
+                </div>
+              )}
+              <p className="text-[11px] text-slate-400">
+                {userRole === 'PAROKI' ? 'Pilih nama lingkungan yang ingin dipantau (Total 69 Lingkungan Paroki)' : 'Wilayah tugas Anda terkunci sesuai akun lingkungan Anda.'}
+              </p>
             </div>
 
             {/* Stat Cards dari DAFU */}

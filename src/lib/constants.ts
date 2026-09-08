@@ -78,3 +78,58 @@ export function formatNamaLingkungan(nama: string): string {
   }
   return `Lingkungan ${trimmed}`;
 }
+
+export function getLingkunganSlug(nama: string): string {
+  if (!nama) return '';
+  return nama
+    .toLowerCase()
+    .replace(/^lingkungan\s+/i, '')
+    .replace(/st\.\s*/gi, 'st-')
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+export function getAllMasterLingkungan(): Array<{ id: string; nama_lingkungan: string; slug: string }> {
+  return MASTER_LINGKUNGAN_LIST.map((name) => {
+    const slug = getLingkunganSlug(name);
+    return {
+      id: `csv-${slug}`,
+      nama_lingkungan: name,
+      slug,
+    };
+  });
+}
+
+export function findLingkunganByQuery(query: string): { id: string; nama_lingkungan: string } | null {
+  if (!query) return null;
+  const cleanQ = query.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const all = getAllMasterLingkungan();
+  
+  // 1. Exact slug match or clean match
+  const exact = all.find(
+    (l) =>
+      l.slug === query.toLowerCase() ||
+      l.nama_lingkungan.toLowerCase() === query.toLowerCase() ||
+      l.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanQ
+  );
+  if (exact) return { id: exact.id, nama_lingkungan: exact.nama_lingkungan };
+
+  // 2. Special aliases (e.g. pedro -> Padre Pio, petrus -> St. Petrus)
+  if (cleanQ.includes('pedro') || cleanQ.includes('padrepio')) {
+    const num = cleanQ.match(/\d+/)?.[0] || '1';
+    const matched = all.find((l) => l.nama_lingkungan.toLowerCase().includes('padre pio') && l.nama_lingkungan.includes(num))
+      || all.find((l) => l.nama_lingkungan.toLowerCase().includes('padre pio'));
+    if (matched) return { id: matched.id, nama_lingkungan: matched.nama_lingkungan };
+  }
+
+  // 3. Partial matching
+  const partial = all.find((l) => {
+    const cleanName = l.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return cleanName.includes(cleanQ) || cleanQ.includes(cleanName);
+  });
+  if (partial) return { id: partial.id, nama_lingkungan: partial.nama_lingkungan };
+
+  return null;
+}
