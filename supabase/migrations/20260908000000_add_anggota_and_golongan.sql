@@ -1,0 +1,42 @@
+-- Migration: Add ANGGOTA_KELUARGA and GOLONGAN_KELUARGA tables
+-- Enables detailed member management and economic desil/golongan classification per family
+
+-- 1. ANGGOTA_KELUARGA TABLE
+CREATE TABLE IF NOT EXISTS ANGGOTA_KELUARGA (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    kk_id UUID NOT NULL REFERENCES KEPALA_KELUARGA(id) ON DELETE CASCADE,
+    nama VARCHAR(255) NOT NULL,
+    peran VARCHAR(50) NOT NULL DEFAULT 'Anak', -- 'Kepala Keluarga', 'Suami', 'Istri', 'Anak', 'Orang Tua', 'Famili Lain'
+    is_kaj BOOLEAN DEFAULT TRUE,
+    keterangan TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 2. GOLONGAN_KELUARGA TABLE (Sistem Desil / Klasifikasi Ekonomi oleh Sekretaris)
+CREATE TABLE IF NOT EXISTS GOLONGAN_KELUARGA (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    kk_id UUID NOT NULL UNIQUE REFERENCES KEPALA_KELUARGA(id) ON DELETE CASCADE,
+    lingkungan_id UUID NOT NULL REFERENCES LINGKUNGAN(id) ON DELETE CASCADE,
+    golongan VARCHAR(50) NOT NULL DEFAULT 'MENENGAH', -- 'MISKIN', 'MENENGAH', 'ATAS'
+    kriteria_catatan TEXT,
+    updated_by_role VARCHAR(50) DEFAULT 'SEKRETARIS',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexing for high-performance querying
+CREATE INDEX IF NOT EXISTS idx_anggota_kk_id ON ANGGOTA_KELUARGA(kk_id);
+CREATE INDEX IF NOT EXISTS idx_golongan_kk_id ON GOLONGAN_KELUARGA(kk_id);
+CREATE INDEX IF NOT EXISTS idx_golongan_lingkungan_id ON GOLONGAN_KELUARGA(lingkungan_id);
+
+-- ROW LEVEL SECURITY (RLS)
+ALTER TABLE ANGGOTA_KELUARGA ENABLE ROW LEVEL SECURITY;
+ALTER TABLE GOLONGAN_KELUARGA ENABLE ROW LEVEL SECURITY;
+
+-- Allow open access or RBAC matching existing policies
+DROP POLICY IF EXISTS "Enable all access for ANGGOTA_KELUARGA" ON ANGGOTA_KELUARGA;
+CREATE POLICY "Enable all access for ANGGOTA_KELUARGA" ON ANGGOTA_KELUARGA
+FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Enable all access for GOLONGAN_KELUARGA" ON GOLONGAN_KELUARGA;
+CREATE POLICY "Enable all access for GOLONGAN_KELUARGA" ON GOLONGAN_KELUARGA
+FOR ALL USING (true) WITH CHECK (true);

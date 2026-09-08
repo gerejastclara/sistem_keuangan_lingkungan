@@ -21,6 +21,33 @@ export interface KepalaKeluarga {
   is_biduk: boolean;
 }
 
+export type PeranKeluarga = 'Kepala Keluarga' | 'Suami' | 'Istri' | 'Anak' | 'Orang Tua' | 'Famili Lain';
+export type KategoriGolongan = 'MISKIN' | 'MENENGAH' | 'ATAS';
+
+export interface AnggotaKeluarga {
+  id: string;
+  kk_id: string;
+  nama: string;
+  peran: PeranKeluarga;
+  is_kaj: boolean;
+  keterangan?: string | null;
+}
+
+export interface GolonganKeluarga {
+  id: string;
+  kk_id: string;
+  lingkungan_id: string;
+  golongan: KategoriGolongan;
+  kriteria_catatan?: string | null;
+  updated_by_role?: string;
+  updated_at?: string;
+}
+
+export interface KepalaKeluargaWithDetails extends KepalaKeluarga {
+  anggota?: AnggotaKeluarga[];
+  golongan_info?: GolonganKeluarga;
+}
+
 export interface ProfilLingkungan {
   id: string;
   lingkungan_id: string;
