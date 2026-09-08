@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { UserProfile, Lingkungan } from '@/lib/types'
-import { LogOut, Building2, User, ChevronDown } from 'lucide-react'
+import { LogOut, Building2, User, ChevronDown, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -12,6 +12,8 @@ interface NavbarProps {
   selectedLingkunganId: string | null
   onLingkunganChange: (id: string) => void
   onLogout: () => void
+  isSidebarOpen?: boolean
+  onToggleSidebar?: () => void
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,6 +22,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   selectedLingkunganId,
   onLingkunganChange,
   onLogout,
+  isSidebarOpen = true,
+  onToggleSidebar,
 }) => {
   const [showProfileMenu, setShowProfileMenu] = React.useState(false)
 
@@ -58,8 +62,19 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="bg-[#16233F] text-white border-b border-[#2C3E66] sticky top-0 z-30 shadow-md">
       <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
-        {/* Text-only Title (Logo removed from Topbar per instructions) */}
+        {/* Sidebar Toggle + Text-only Title */}
         <div className="flex items-center gap-3 min-w-0">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="p-2 rounded-[8px] bg-[#22335A] hover:bg-[#2C3E66] text-[#A9834F] hover:text-white border border-[#2C3E66] transition cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
+              title={isSidebarOpen ? "Tutup Bar Samping" : "Buka Bar Samping"}
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          )}
+
           <div className="min-w-0">
             <h1 className="font-bold text-sm sm:text-base tracking-tight text-white flex items-center gap-2 truncate font-serif">
               Sistem Keuangan Lingkungan

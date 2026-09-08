@@ -15,14 +15,21 @@ import {
   Lock,
   Building2,
   ShieldCheck,
+  ChevronLeft,
 } from 'lucide-react'
 import { UserRole } from '@/lib/types'
 
 interface SidebarProps {
   userRole?: UserRole
+  isOpen?: boolean
+  onToggle?: () => void
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ userRole = 'BENDAHARA' }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  userRole = 'BENDAHARA',
+  isOpen = true,
+  onToggle,
+}) => {
   const pathname = usePathname()
 
   const allNavItems = [
@@ -85,20 +92,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole = 'BENDAHARA' }) => {
     return true
   })
 
+  if (!isOpen) return null
+
   return (
-    <aside className="w-64 bg-[#16233F] text-[#8A90A3] p-4 border-r border-[#2C3E66] shrink-0 flex flex-col justify-between h-full shadow-2xl">
+    <aside className="w-64 bg-[#16233F] text-[#8A90A3] p-4 border-r border-[#2C3E66] shrink-0 flex flex-col justify-between h-full shadow-2xl transition-all duration-200">
       <div className="flex flex-col gap-4 overflow-y-auto no-scrollbar">
-        {/* Single Official Logo in Top-Left Sidebar */}
-        <div className="flex items-center gap-3 px-1 py-1">
-          <img
-            src="/logo-st-clara.jpg"
-            alt="Logo Gereja Santa Clara"
-            className="w-10 h-10 rounded-full object-cover border border-[#2C3E66] bg-white shrink-0 shadow-sm"
-          />
-          <div className="min-w-0">
-            <div className="text-base font-extrabold text-white tracking-wide truncate uppercase font-serif">SICLAR</div>
-            <div className="text-[11px] text-[#8A90A3] font-medium truncate">Keuangan Lingkungan</div>
+        {/* Single Official Logo in Top-Left Sidebar + Close Toggle */}
+        <div className="flex items-center justify-between gap-2 px-1 py-1">
+          <div className="flex items-center gap-3 min-w-0">
+            <img
+              src="/logo-st-clara.jpg"
+              alt="Logo Gereja Santa Clara"
+              className="w-10 h-10 rounded-full object-cover border border-[#2C3E66] bg-white shrink-0 shadow-sm"
+            />
+            <div className="min-w-0">
+              <div className="text-base font-extrabold text-white tracking-wide truncate uppercase font-serif">SICLAR</div>
+              <div className="text-[11px] text-[#8A90A3] font-medium truncate">Keuangan Lingkungan</div>
+            </div>
           </div>
+          {onToggle && (
+            <button
+              type="button"
+              onClick={onToggle}
+              className="p-1.5 rounded-lg text-[#8A90A3] hover:text-white hover:bg-white/10 transition cursor-pointer shrink-0"
+              title="Tutup Bar Samping"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Role & Access Info Card */}

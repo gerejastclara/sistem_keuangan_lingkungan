@@ -107,13 +107,18 @@ export function findLingkunganByQuery(query: string): { id: string; nama_lingkun
 
   const all = getAllMasterLingkungan();
   
-  // 1. Exact slug match or clean match
-  const exact = all.find(
-    (l) =>
+  // 1. Exact slug match or clean match (with or without 'st' prefix)
+  const exact = all.find((l) => {
+    const lClean = l.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const lCleanWithoutSt = lClean.replace(/^st/i, '');
+    return (
       l.slug === query.toLowerCase() ||
       l.nama_lingkungan.toLowerCase() === query.toLowerCase() ||
-      l.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanQ
-  );
+      lClean === cleanQ ||
+      lCleanWithoutSt === cleanQ ||
+      lClean === `st${cleanQ}`
+    );
+  });
   if (exact) return { id: exact.id, nama_lingkungan: exact.nama_lingkungan };
 
   // 2. Special aliases (e.g. pedro -> Padre Pio, petrus -> St. Petrus)

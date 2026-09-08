@@ -178,13 +178,10 @@ export default function LoginPage() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Contoh: sekretaris_pedro, bendahara_pedro"
+                  placeholder="Masukkan Username"
                   required
                   className="h-11 bg-white border-[#D3D7E0] text-[#1B2130] rounded-lg focus:ring-[#A9834F] focus:border-[#A9834F] text-sm font-medium"
                 />
-                <span className="text-[10px] text-slate-400 block">
-                  Format per lingkungan: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">sekretaris_pedro</code> / <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">bendahara_pedro</code>
-                </span>
               </div>
 
               <div className="space-y-1.5">
