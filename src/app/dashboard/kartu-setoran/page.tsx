@@ -4,13 +4,35 @@ import React, { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { KepalaKeluarga, JurnalTransaksi } from '@/lib/types'
 import { formatRupiah, MONTH_NAMES } from '@/lib/utils'
+import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery } from '@/lib/constants'
+import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { CheckCircle2, CreditCard, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
+import { Button } from '@/components/ui/button'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  CreditCard,
+  Download,
+  Search,
+  CheckCircle2,
+  FileSpreadsheet,
+  ClipboardList
+} from 'lucide-react'
+
+const JENIS_KARTU_OPTIONS = [
+  { code: '4100', name: 'Kas Lingkungan (KL) — COA 4100', labelShort: 'Kas Lingkungan' },
+  { code: '4120', name: 'Sumbangan Dahar Romo — COA 4120', labelShort: 'Dahar Romo' },
+  { code: '4200', name: 'Sumbangan ASAK — COA 4200', labelShort: 'ASAK' },
+  { code: '4300', name: 'Iuran Dana Kematian / St. Yusuf — COA 4300', labelShort: 'Dana Kematian / St. Yusuf' },
+  { code: '4500', name: 'Sumbangan Umat — COA 4500', labelShort: 'Sumbangan Umat' },
+  { code: '4700', name: 'Dana APP — COA 4700', labelShort: 'Dana APP' },
+  { code: '4800', name: 'Dana Aksi Natal — COA 4800', labelShort: 'Aksi Natal' },
+  { code: '4900', name: 'Penerimaan Lainnya — COA 4900', labelShort: 'Penerimaan Lainnya' }
+]
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
 
 export default function KartuSetoranPage() {
   const supabase = createClient()
@@ -22,15 +44,9 @@ export default function KartuSetoranPage() {
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
   const [searchQuery, setSearchQuery] = useState('')
 
-  const [selectedCoa, setSelectedCoa] = useState<string>('4100') // 4100 Kas, 4200 ASAK, 4300 St Yusuf, 4120 Dahar Romo
+  // Filter State (Persis Screenshot)
+  const [selectedCoa, setSelectedCoa] = useState<string>('4100')
   const [selectedYear, setSelectedYear] = useState<number>(2026)
-
-  const coaOptions = [
-    { code: '4100', name: '4100 - Iuran Kas Lingkungan' },
-    { code: '4200', name: '4200 - Sumbangan ASAK' },
-    { code: '4300', name: '4300 - St. Yusuf / Kematian' },
-    { code: '4120', name: '4120 - Sumbangan Dahar Romo' },
-  ]
 
   useEffect(() => {
     async function loadData() {
@@ -39,12 +55,11 @@ export default function KartuSetoranPage() {
         const { data: { user } } = await supabase.auth.getUser()
         const effectiveEmail = user?.email || (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() : '') || ''
         const effectiveRole = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_role=').pop()?.split(';').shift() : '') || ''
-        
+
         let targetLingkunganId: string | null = null
         let targetLingkunganNama: string | null = null
 
         if (effectiveRole !== 'PAROKI' && effectiveEmail) {
-          const { findLingkunganByQuery } = await import('@/lib/constants')
           const matched = findLingkunganByQuery(effectiveEmail)
           if (matched) {
             targetLingkunganId = matched.id
@@ -56,27 +71,25 @@ export default function KartuSetoranPage() {
           targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
         }
         if (!targetLingkunganId) {
-          const { data: uData } = await supabase.from('users').select('lingkungan_id').limit(1).maybeSingle()
-          targetLingkunganId = uData?.lingkungan_id || null
+          const { data: lData } = await supabase.from('lingkungan').select('id, nama_lingkungan').limit(1).maybeSingle()
+          if (lData) {
+            targetLingkunganId = lData.id
+            targetLingkunganNama = lData.nama_lingkungan
+          }
         }
 
         if (targetLingkunganNama) {
           setLingkunganName(targetLingkunganNama)
         } else if (targetLingkunganId) {
-          const { getAllMasterLingkungan } = await import('@/lib/constants')
-          const found = getAllMasterLingkungan().find(l => l.id === targetLingkunganId)
-          if (found) {
-            setLingkunganName(found.nama_lingkungan)
-          } else {
-            const { data: lData } = await supabase.from('lingkungan').select('nama_lingkungan').eq('id', targetLingkunganId).maybeSingle()
-            if (lData) setLingkunganName(lData.nama_lingkungan)
-          }
+          const allM = getAllMasterLingkungan()
+          const found = allM.find(l => l.id === targetLingkunganId)
+          if (found) setLingkunganName(found.nama_lingkungan)
         }
 
         setLingkunganId(targetLingkunganId)
 
         if (targetLingkunganId) {
-          // Fetch KK list
+          // Fetch KK List from DB + localStorage
           const { data: kks } = await supabase
             .from('kepala_keluarga')
             .select('*')
@@ -107,17 +120,34 @@ export default function KartuSetoranPage() {
             } catch (e) {}
           }
 
-          const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lingkunganName || 'Lingkungan', dbKks)
+          const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, targetLingkunganNama || 'Lingkungan', dbKks)
           setKkList(finalKks)
 
-          // Fetch Journals
-          const { data: journals } = await supabase
-            .from('jurnal_transaksi')
-            .select('*')
-            .eq('lingkungan_id', targetLingkunganId)
-            .eq('tipe_arus', 'MASUK')
+          // Load Journals for this lingkungan
+          let list: JurnalTransaksi[] = []
+          try {
+            const { data: journals } = await supabase
+              .from('jurnal_transaksi')
+              .select('*, kepala_keluarga:kk_id(nama_kk)')
+              .eq('lingkungan_id', targetLingkunganId)
+              .eq('tipe_arus', 'MASUK')
 
-          if (journals) setJurnalList(journals)
+            if (journals) list = journals
+          } catch (e) {}
+
+          const raw = localStorage.getItem(`custom_journals_${targetLingkunganId}`)
+          if (raw) {
+            try {
+              const localList: JurnalTransaksi[] = JSON.parse(raw)
+              const filtered = localList.filter(j => j.tipe_arus === 'MASUK')
+              const map = new Map<string, JurnalTransaksi>()
+              list.forEach(j => map.set(j.id, j))
+              filtered.forEach(j => map.set(j.id, j))
+              list = Array.from(map.values())
+            } catch (e) {}
+          }
+
+          setJurnalList(list)
         }
       } catch (err) {
         console.error('Error loading kartu setoran:', err)
@@ -131,167 +161,315 @@ export default function KartuSetoranPage() {
     const handleSync = () => {
       loadData()
     }
-    window.addEventListener('dafuDataUpdated', handleSync)
     window.addEventListener('storage', handleSync)
     window.addEventListener('lingkunganChanged', handleSync)
 
     return () => {
-      window.removeEventListener('dafuDataUpdated', handleSync)
       window.removeEventListener('storage', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
     }
   }, [supabase])
 
+  // Filter journals for selected COA and Year
+  const yearJournals = jurnalList.filter((j) => {
+    const d = new Date(j.tanggal)
+    const matchesYear = d.getFullYear() === selectedYear
+    const matchesCoa = j.coa_kredit === selectedCoa || j.coa_debit === selectedCoa
+    return matchesYear && matchesCoa
+  })
+
+  // Calculate setoran map: KK_ID -> Month (1..12) -> total nominal
+  const setoranMap = new Map<string, Record<number, number>>()
+  const uniqueKkIdsWithSetoran = new Set<string>()
+  let grandTotalSetoran = 0
+
+  yearJournals.forEach((j) => {
+    const d = new Date(j.tanggal)
+    const month = d.getMonth() + 1 // 1..12
+    const kkId = j.kk_id || 'umum'
+    const nom = Number(j.nominal) || 0
+
+    if (!setoranMap.has(kkId)) {
+      setoranMap.set(kkId, {})
+    }
+    const kkMonths = setoranMap.get(kkId)!
+    kkMonths[month] = (kkMonths[month] || 0) + nom
+
+    if (kkId !== 'umum') {
+      uniqueKkIdsWithSetoran.add(kkId)
+    }
+    grandTotalSetoran += nom
+  })
+
+  const selectedCoaObj = JENIS_KARTU_OPTIONS.find(c => c.code === selectedCoa) || JENIS_KARTU_OPTIONS[0]
+  const totalKkCount = uniqueKkIdsWithSetoran.size
+
+  // Export to Excel
+  const handleExportExcel = () => {
+    const headers = ['No', 'Nama Kepala Keluarga', ...SHORT_MONTHS, 'Total Setoran (Rp)']
+    const rows = kkList.map((kk, idx) => {
+      const months = setoranMap.get(kk.id) || {}
+      let totalKk = 0
+      const monthCols = Array.from({ length: 12 }, (_, i) => {
+        const val = months[i + 1] || 0
+        totalKk += val
+        return val
+      })
+      return [idx + 1, `"${kk.nama_kk}"`, ...monthCols, totalKk]
+    })
+
+    // Also include 'Umum / Kolektif' row if any
+    const umumMonths = setoranMap.get('umum')
+    if (umumMonths) {
+      let totalUmum = 0
+      const monthCols = Array.from({ length: 12 }, (_, i) => {
+        const val = umumMonths[i + 1] || 0
+        totalUmum += val
+        return val
+      })
+      rows.push(['-', '"Umum / Kolektif"', ...monthCols, totalUmum])
+    }
+
+    const titleRows = [
+      ['GEREJA ST CLARA - PAROKI BEKASI UTARA'],
+      [`REKAP KARTU SETORAN: ${selectedCoaObj.name}`],
+      [`Tahun: ${selectedYear} — Lingkungan: ${formatNamaLingkungan(lingkunganName)}`],
+      ['']
+    ]
+
+    const csvContent = 'data:text/csv;charset=utf-8,' +
+      titleRows.map(r => r.join(',')).join('\n') + '\n' +
+      headers.join(',') + '\n' +
+      rows.map(r => r.join(',')).join('\n')
+
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `Kartu_Setoran_${selectedCoaObj.labelShort.replace(/\s+/g, '_')}_${selectedYear}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // Filtered KK for display in matrix table
   const filteredKkList = kkList.filter(k =>
     k.nama_kk.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (k.alamat && k.alamat.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
-  // Compute setoran matrix: KK ID -> month (1-12) -> total nominal
-  const getMatrixNominal = (kkId: string, month: number) => {
-    return jurnalList
-      .filter(j => {
-        if (j.kk_id !== kkId) return false
-        if (j.coa_debit !== selectedCoa && j.coa_kredit !== selectedCoa) return false
-        const d = new Date(j.tanggal)
-        return d.getMonth() + 1 === month && d.getFullYear() === selectedYear
-      })
-      .reduce((acc, curr) => acc + Number(curr.nominal), 0)
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#18539E]"></div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1B2130] tracking-tight font-serif">Kartu Setoran 12 Bulan per KK</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Matriks Rekapitulasi Iuran Wajib, Sukarela, Pembangunan, atau Dana Kematian per KK Lingkungan <span className="text-emerald-700 font-semibold">{lingkunganName}</span>.
+    <div className="space-y-6 max-w-5xl mx-auto pb-16">
+      {/* 1. TOP INSTRUCTION BANNER (Persis Screenshot) */}
+      <div className="bg-[#EEF5FF] border border-[#D5E6FC] rounded-2xl p-5 text-slate-800 space-y-1.5 shadow-2xs">
+        <h2 className="text-sm font-bold text-[#18539E]">
+          Kartu Setoran Per KK
+        </h2>
+        <p className="text-xs text-slate-700 leading-relaxed">
+          Rekap setoran per nama KK per bulan. Data otomatis dari <span className="font-bold text-slate-900">Jurnal Transaksi</span>. Pilih jenis kartu dan tahun, lalu lihat rekapnya.
         </p>
       </div>
 
-      {/* Filter & Toolbar */}
-      <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
-        <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="w-64">
-              <Label className="text-xs font-semibold text-slate-700 mb-1 block">Jenis Iuran / Pos Penerimaan</Label>
-              <Select value={selectedCoa} onValueChange={(val) => val && setSelectedCoa(val)}>
-                <SelectTrigger className="h-9 bg-white border-slate-300 text-slate-900 rounded-xl focus:ring-emerald-500">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 text-slate-900">
-                  {coaOptions.map((opt) => (
-                    <SelectItem key={opt.code} value={opt.code}>
-                      [{opt.code}] {opt.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="w-28">
-              <Label className="text-xs font-semibold text-slate-700 mb-1 block">Tahun</Label>
-              <Select value={selectedYear.toString()} onValueChange={(v) => v && setSelectedYear(parseInt(v))}>
-                <SelectTrigger className="h-9 bg-white border-slate-300 text-slate-900 rounded-xl focus:ring-emerald-500">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 text-slate-900">
-                  <SelectItem value="2026">2026</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2024">2024</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      {/* 2. FILTER CARD (Persis Screenshot: Jenis Kartu, Tahun, Ekspor Excel) */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          {/* Field 1: Jenis Kartu */}
+          <div className="md:col-span-7 space-y-1.5">
+            <Label className="text-xs font-bold text-slate-700">Jenis Kartu</Label>
+            <Select value={selectedCoa} onValueChange={(val) => setSelectedCoa(val || '4100')}>
+              <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium">
+                <SelectValue placeholder="Pilih Jenis Kartu" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-60">
+                {JENIS_KARTU_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.code} value={opt.code}>
+                    {opt.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="relative w-full md:w-64">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+          {/* Field 2: Tahun */}
+          <div className="md:col-span-2 space-y-1.5">
+            <Label className="text-xs font-bold text-slate-700">Tahun</Label>
             <Input
-              placeholder="Cari nama KK..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9 text-sm bg-white border-slate-300 text-slate-900 rounded-xl focus:ring-emerald-500"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value, 10) || 2026)}
+              className="bg-white border-slate-300 text-slate-900 font-bold rounded-xl h-11 text-sm text-center"
             />
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Matrix Table View */}
-      <Card className="bg-white border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-        <CardHeader className="bg-slate-50/80 border-b border-slate-100 py-3">
-          <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-emerald-600" />
-            Rekap Setoran [{selectedCoa}] {coaOptions.find(c => c.code === selectedCoa)?.name.split('-')[1]} Tahun {selectedYear}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          <Table className="text-xs border-collapse">
-            <TableHeader className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-              <TableRow>
-                <TableHead className="w-10 text-center sticky left-0 bg-slate-100 z-10 border-r border-slate-200 text-slate-700 font-bold">No</TableHead>
-                <TableHead className="w-48 sticky left-10 bg-slate-100 z-10 border-r border-slate-200 font-bold text-slate-900">
-                  Nama Kepala Keluarga
-                </TableHead>
-                {MONTH_NAMES.map((m, idx) => (
-                  <TableHead key={idx} className="w-20 text-center font-bold border-r border-slate-200 text-slate-700">
-                    {m.slice(0, 3)}
-                  </TableHead>
-                ))}
-                <TableHead className="w-28 text-right font-extrabold text-emerald-950 bg-emerald-50/80">Total Setor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="divide-y divide-slate-100">
-              {filteredKkList.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={15} className="text-center py-8 text-slate-400">
-                    Tidak ada data Kepala Keluarga terdaftar.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredKkList.map((kk, idx) => {
-                  let kkTotalYear = 0
-                  return (
-                    <TableRow key={kk.id} className="hover:bg-slate-50 transition">
-                      <TableCell className="text-center font-mono text-xs text-slate-500 sticky left-0 bg-white border-r border-slate-200">
-                        {idx + 1}
+          {/* Field 3: Tombol Ekspor Excel */}
+          <div className="md:col-span-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportExcel}
+              className="w-full bg-white border-slate-300 hover:bg-slate-50 text-slate-800 font-bold rounded-xl h-11 text-xs shadow-2xs cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4 text-slate-600" />
+              Ekspor Excel
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. DUA KARTU RINGKASAN METRIK (Persis Screenshot) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Card 1: Jumlah KK yang Setor (Biru Langit Lembut) */}
+        <div className="bg-[#F0F6FE]/70 border border-[#BAE0FD] rounded-2xl p-5 shadow-2xs">
+          <div className="text-xs font-semibold text-slate-600">Jumlah KK yang Setor</div>
+          <div className="text-2xl font-black text-[#18539E] mt-1.5">{totalKkCount}</div>
+        </div>
+
+        {/* Card 2: Total Setoran Tahun Ini (Hijau Mint Lembut) */}
+        <div className="bg-[#EAF7EE] border border-[#B7E4C7] rounded-2xl p-5 shadow-2xs">
+          <div className="text-xs font-semibold text-slate-600">Total Setoran Tahun Ini</div>
+          <div className="text-2xl font-black text-[#0D6539] mt-1.5">{formatRupiah(grandTotalSetoran)}</div>
+        </div>
+      </div>
+
+      {/* 4. KOTAK REKAP SETORAN (Persis Screenshot: Ikon Kartu, Judul, State Kosong / Tabel) */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+        {/* Header Kotak Rekap */}
+        <div className="p-5 border-b border-slate-100 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#F0F6FE] text-[#18539E] flex items-center justify-center shrink-0">
+            <CreditCard className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">
+              Rekap Setoran {selectedCoaObj.labelShort}
+            </h3>
+            <p className="text-xs text-slate-400">
+              {grandTotalSetoran === 0
+                ? `Belum ada setoran di tahun ${selectedYear}`
+                : `${totalKkCount} KK telah menyetor di tahun ${selectedYear}`}
+            </p>
+          </div>
+        </div>
+
+        {/* Isi Kotak: State Kosong (Persis Screenshot) atau Tabel Matriks */}
+        {grandTotalSetoran === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
+            {/* Ikon Clipboard Kartu */}
+            <div className="text-5xl">📋</div>
+            <div className="text-sm font-bold text-slate-800">
+              Belum ada setoran di tahun ini
+            </div>
+            <div className="text-xs text-slate-400 max-w-sm">
+              Transaksi penerimaan kas yang dicatat di modul Jurnal Transaksi dengan COA {selectedCoa} akan otomatis terakumulasi di sini.
+            </div>
+          </div>
+        ) : (
+          <div className="p-5 space-y-4">
+            {/* Search Input for KK */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari nama Kepala Keluarga..."
+                  className="pl-9 bg-slate-50 border-slate-200 text-xs rounded-xl h-9 text-slate-900"
+                />
+              </div>
+              <div className="text-xs text-slate-500 font-medium">
+                Menampilkan <span className="font-bold text-slate-800">{filteredKkList.length}</span> KK
+              </div>
+            </div>
+
+            {/* Matriks 12 Bulan Kartu Setoran */}
+            <div className="border border-slate-200 rounded-xl overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50 text-[11px] font-bold text-slate-700 border-b border-slate-200">
+                  <TableRow>
+                    <TableHead className="w-10 text-center font-bold text-slate-800">No</TableHead>
+                    <TableHead className="min-w-[180px] font-bold text-slate-800">Kepala Keluarga</TableHead>
+                    {SHORT_MONTHS.map((m) => (
+                      <TableHead key={m} className="w-16 text-center font-bold text-slate-700 p-2">
+                        {m}
+                      </TableHead>
+                    ))}
+                    <TableHead className="w-28 text-right font-bold text-slate-800 pr-3">Total (Rp)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100 text-xs">
+                  {filteredKkList.map((kk, idx) => {
+                    const months = setoranMap.get(kk.id) || {}
+                    let totalKk = 0
+
+                    return (
+                      <TableRow key={kk.id} className="hover:bg-slate-50/70 transition">
+                        <TableCell className="text-center font-mono text-slate-400 text-[11px]">
+                          {idx + 1}
+                        </TableCell>
+                        <TableCell className="font-bold text-slate-900">
+                          {kk.nama_kk}
+                        </TableCell>
+                        {Array.from({ length: 12 }, (_, i) => {
+                          const mNum = i + 1
+                          const val = months[mNum] || 0
+                          totalKk += val
+                          return (
+                            <TableCell key={mNum} className="text-center p-1.5 font-mono text-[11px]">
+                              {val > 0 ? (
+                                <span className="inline-block bg-[#EAF7EE] text-[#0D6539] border border-[#B7E4C7] px-1.5 py-0.5 rounded font-bold">
+                                  {val >= 1000 ? `${val / 1000}k` : val}
+                                </span>
+                              ) : (
+                                <span className="text-slate-300 font-extralight">—</span>
+                              )}
+                            </TableCell>
+                          )
+                        })}
+                        <TableCell className="text-right font-mono font-bold text-slate-900 pr-3">
+                          {totalKk > 0 ? totalKk.toLocaleString('id-ID') : <span className="text-slate-300 font-normal">—</span>}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+
+                  {/* Baris Setoran Umum / Kolektif jika ada */}
+                  {setoranMap.has('umum') && (
+                    <TableRow className="bg-slate-50/60 hover:bg-slate-50 transition border-t border-slate-200">
+                      <TableCell className="text-center font-mono text-slate-400 text-[11px]">-</TableCell>
+                      <TableCell className="font-bold text-slate-700 italic">
+                        Umum / Kolektif Lingkungan
                       </TableCell>
-                      <TableCell className="font-semibold text-slate-900 sticky left-10 bg-white border-r border-slate-200 truncate">
-                        {kk.nama_kk}
-                      </TableCell>
-                      {MONTH_NAMES.map((_, mIdx) => {
-                        const amount = getMatrixNominal(kk.id, mIdx + 1)
-                        kkTotalYear += amount
+                      {Array.from({ length: 12 }, (_, i) => {
+                        const mNum = i + 1
+                        const val = setoranMap.get('umum')?.[mNum] || 0
                         return (
-                          <TableCell key={mIdx} className="text-center border-r border-slate-200/80 p-1">
-                            {amount > 0 ? (
-                              <span className="inline-block bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold px-1.5 py-0.5 rounded text-[10px]" title={formatRupiah(amount)}>
-                                ✓ {amount >= 1000 ? `${amount / 1000}k` : amount}
+                          <TableCell key={mNum} className="text-center p-1.5 font-mono text-[11px]">
+                            {val > 0 ? (
+                              <span className="inline-block bg-[#EAF7EE] text-[#0D6539] border border-[#B7E4C7] px-1.5 py-0.5 rounded font-bold">
+                                {val >= 1000 ? `${val / 1000}k` : val}
                               </span>
                             ) : (
-                              <span className="text-slate-400 font-mono text-[10px]">-</span>
+                              <span className="text-slate-300 font-extralight">—</span>
                             )}
                           </TableCell>
                         )
                       })}
-                      <TableCell className="text-right font-mono font-extrabold text-emerald-700 bg-emerald-50/40 px-3">
-                        {formatRupiah(kkTotalYear)}
+                      <TableCell className="text-right font-mono font-bold text-slate-900 pr-3">
+                        {Object.values(setoranMap.get('umum') || {}).reduce((a, b) => a + b, 0).toLocaleString('id-ID')}
                       </TableCell>
                     </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
-
