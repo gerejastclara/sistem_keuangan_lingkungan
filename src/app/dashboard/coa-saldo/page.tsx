@@ -356,16 +356,18 @@ export default function CoaSaldoPage() {
               </div>
             </div>
 
-            {/* Tombol Simpan Saldo Awal (Warna Gold #A9834F) */}
+            {/* Tombol Simpan Saldo Awal (Di Pojok Kanan) */}
             {!isLocked && (
-              <Button
-                type="submit"
-                disabled={saving}
-                className="w-full bg-[#A9834F] hover:bg-[#967443] text-white font-bold h-12 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
-              >
-                <span>✓</span>
-                {saving ? 'Menyimpan Saldo Awal...' : 'Simpan Saldo Awal'}
-              </Button>
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="bg-[#A9834F] hover:bg-[#967443] text-white font-bold h-11 px-6 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
+                >
+                  <span>✓</span>
+                  {saving ? 'Menyimpan Saldo Awal...' : 'Simpan Saldo Awal'}
+                </Button>
+              </div>
             )}
           </form>
         </div>

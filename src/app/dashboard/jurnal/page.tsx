@@ -807,14 +807,16 @@ export default function JurnalPage() {
                 </div>
               </div>
 
-              {/* Tombol Simpan Transaksi (Warna Gold #A9834F) */}
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-[#A9834F] hover:bg-[#967443] text-white font-bold h-12 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
-              >
-                {submitting ? 'Menyimpan Transaksi...' : 'Simpan Transaksi'}
-              </Button>
+              {/* Tombol Simpan Transaksi (Di Pojok Kanan) */}
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="bg-[#A9834F] hover:bg-[#967443] text-white font-bold h-11 px-6 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
+                >
+                  {submitting ? 'Menyimpan Transaksi...' : 'Simpan Transaksi'}
+                </Button>
+              </div>
             </div>
           )}
         </form>
