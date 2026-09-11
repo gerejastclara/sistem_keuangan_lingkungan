@@ -267,17 +267,7 @@ export default function KartuSetoranPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16">
-      {/* 1. TOP INSTRUCTION BANNER (Persis Screenshot) */}
-      <div className="bg-[#EEF5FF] border border-[#D5E6FC] rounded-2xl p-5 text-slate-800 space-y-1.5 shadow-2xs">
-        <h2 className="text-sm font-bold text-[#18539E]">
-          Kartu Setoran Per KK
-        </h2>
-        <p className="text-xs text-slate-700 leading-relaxed">
-          Rekap setoran per nama KK per bulan. Data otomatis dari <span className="font-bold text-slate-900">Jurnal Transaksi</span>. Pilih jenis kartu dan tahun, lalu lihat rekapnya.
-        </p>
-      </div>
-
-      {/* 2. FILTER CARD (Persis Screenshot: Jenis Kartu, Tahun, Ekspor Excel) */}
+      {/* 1. FILTER CARD: Jenis Kartu, Tahun, Ekspor Excel */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
           {/* Field 1: Jenis Kartu */}
@@ -322,26 +312,26 @@ export default function KartuSetoranPage() {
         </div>
       </div>
 
-      {/* 3. DUA KARTU RINGKASAN METRIK (Persis Screenshot) */}
+      {/* 2. DUA KARTU RINGKASAN METRIK (Bersih & Estetik Tanpa Warna Neon) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Card 1: Jumlah KK yang Setor (Biru Langit Lembut) */}
-        <div className="bg-[#F0F6FE]/70 border border-[#BAE0FD] rounded-2xl p-5 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-600">Jumlah KK yang Setor</div>
-          <div className="text-2xl font-black text-[#18539E] mt-1.5">{totalKkCount}</div>
+        {/* Card 1: Jumlah KK yang Setor */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+          <div className="text-xs font-medium text-slate-500">Jumlah KK yang Setor</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5">{totalKkCount}</div>
         </div>
 
-        {/* Card 2: Total Setoran Tahun Ini (Hijau Mint Lembut) */}
-        <div className="bg-[#EAF7EE] border border-[#B7E4C7] rounded-2xl p-5 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-600">Total Setoran Tahun Ini</div>
-          <div className="text-2xl font-black text-[#0D6539] mt-1.5">{formatRupiah(grandTotalSetoran)}</div>
+        {/* Card 2: Total Setoran Tahun Ini */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+          <div className="text-xs font-medium text-slate-500">Total Setoran Tahun Ini</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5">{formatRupiah(grandTotalSetoran)}</div>
         </div>
       </div>
 
-      {/* 4. KOTAK REKAP SETORAN (Persis Screenshot: Ikon Kartu, Judul, State Kosong / Tabel) */}
+      {/* 3. KOTAK REKAP SETORAN */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
         {/* Header Kotak Rekap */}
         <div className="p-5 border-b border-slate-100 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#F0F6FE] text-[#18539E] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
             <CreditCard className="w-5 h-5" />
           </div>
           <div>
