@@ -423,7 +423,7 @@ export default function LaporanPage() {
           <Button
             type="button"
             onClick={handleExportExcel}
-            className="bg-[#18539E] hover:bg-[#123E75] text-white font-bold h-11 rounded-xl text-xs flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
+            className="bg-slate-900 hover:bg-slate-800 text-white font-bold h-11 rounded-xl text-xs flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
           >
             <Download className="w-4 h-4" />
             Ekspor Excel

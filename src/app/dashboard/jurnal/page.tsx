@@ -811,7 +811,7 @@ export default function JurnalPage() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-[#18539E] hover:bg-[#123E75] text-white font-bold h-12 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2"
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-12 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2"
               >
                 {submitting ? 'Menyimpan Transaksi...' : 'Simpan Transaksi'}
               </Button>
@@ -825,7 +825,7 @@ export default function JurnalPage() {
         {/* Header Daftar Transaksi */}
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
               <Receipt className="w-4 h-4" />
             </div>
             <div>
@@ -841,7 +841,7 @@ export default function JurnalPage() {
               variant={filterArusView === 'ALL' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setFilterArusView('ALL')}
-              className={`rounded-lg text-xs h-8 font-bold ${filterArusView === 'ALL' ? 'bg-slate-800 text-white' : 'border-slate-300 text-slate-700'}`}
+              className={`rounded-lg text-xs h-8 font-bold ${filterArusView === 'ALL' ? 'bg-slate-900 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
             >
               Semua
             </Button>
@@ -850,7 +850,7 @@ export default function JurnalPage() {
               variant={filterArusView === 'MASUK' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setFilterArusView('MASUK')}
-              className={`rounded-lg text-xs h-8 font-bold ${filterArusView === 'MASUK' ? 'bg-emerald-700 text-white' : 'border-slate-300 text-slate-700'}`}
+              className={`rounded-lg text-xs h-8 font-bold ${filterArusView === 'MASUK' ? 'bg-slate-900 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
             >
               Uang Masuk
             </Button>
@@ -859,7 +859,7 @@ export default function JurnalPage() {
               variant={filterArusView === 'KELUAR' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setFilterArusView('KELUAR')}
-              className={`rounded-lg text-xs h-8 font-bold ${filterArusView === 'KELUAR' ? 'bg-rose-700 text-white' : 'border-slate-300 text-slate-700'}`}
+              className={`rounded-lg text-xs h-8 font-bold ${filterArusView === 'KELUAR' ? 'bg-slate-900 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
             >
               Uang Keluar
             </Button>

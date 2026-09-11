@@ -361,7 +361,7 @@ export default function CoaSaldoPage() {
               <Button
                 type="submit"
                 disabled={saving}
-                className="w-full bg-[#18539E] hover:bg-[#133F77] text-white font-bold h-12 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2"
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-12 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>✓</span>
                 {saving ? 'Menyimpan Saldo Awal...' : 'Simpan Saldo Awal'}
@@ -412,7 +412,7 @@ export default function CoaSaldoPage() {
               type="button"
               variant={filterKategori === 'ALL' ? 'default' : 'outline'}
               onClick={() => setFilterKategori('ALL')}
-              className={`text-xs h-9 rounded-xl font-bold ${filterKategori === 'ALL' ? 'bg-slate-800 text-white' : 'border-slate-200 text-slate-700'}`}
+              className={`text-xs h-9 rounded-xl font-bold ${filterKategori === 'ALL' ? 'bg-slate-900 text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
             >
               Semua
             </Button>
@@ -420,7 +420,7 @@ export default function CoaSaldoPage() {
               type="button"
               variant={filterKategori === 'KAS' ? 'default' : 'outline'}
               onClick={() => setFilterKategori('KAS')}
-              className={`text-xs h-9 rounded-xl font-bold ${filterKategori === 'KAS' ? 'bg-blue-700 text-white' : 'border-slate-200 text-slate-700'}`}
+              className={`text-xs h-9 rounded-xl font-bold ${filterKategori === 'KAS' ? 'bg-slate-900 text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
             >
               Kas & Bank
             </Button>
@@ -428,7 +428,7 @@ export default function CoaSaldoPage() {
               type="button"
               variant={filterKategori === 'PENERIMAAN' ? 'default' : 'outline'}
               onClick={() => setFilterKategori('PENERIMAAN')}
-              className={`text-xs h-9 rounded-xl font-bold ${filterKategori === 'PENERIMAAN' ? 'bg-emerald-700 text-white' : 'border-slate-200 text-slate-700'}`}
+              className={`text-xs h-9 rounded-xl font-bold ${filterKategori === 'PENERIMAAN' ? 'bg-slate-900 text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
             >
               Penerimaan (4xxx)
             </Button>
@@ -436,7 +436,7 @@ export default function CoaSaldoPage() {
               type="button"
               variant={filterKategori === 'PENGELUARAN' ? 'default' : 'outline'}
               onClick={() => setFilterKategori('PENGELUARAN')}
-              className={`text-xs h-9 rounded-xl font-bold ${filterKategori === 'PENGELUARAN' ? 'bg-rose-700 text-white' : 'border-slate-200 text-slate-700'}`}
+              className={`text-xs h-9 rounded-xl font-bold ${filterKategori === 'PENGELUARAN' ? 'bg-slate-900 text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
             >
               Pengeluaran (5xxx)
             </Button>
