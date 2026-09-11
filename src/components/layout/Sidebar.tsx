@@ -40,16 +40,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       roles: ['BENDAHARA', 'SEKRETARIS', 'PAROKI'],
     },
     {
-      title: 'Daftar Isian',
-      href: '/dashboard/daftar-isian',
-      icon: ClipboardEdit,
-      roles: ['BENDAHARA', 'SEKRETARIS', 'PAROKI'],
-    },
-    {
       title: 'DAFU (Input Umat)',
       href: '/dashboard/dafu',
       icon: Users,
-      roles: ['BENDAHARA', 'SEKRETARIS', 'PAROKI'],
+      roles: ['SEKRETARIS', 'PAROKI'],
     },
     {
       title: 'COA & Saldo Awal',
@@ -84,14 +78,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ]
 
   // Filter items based on user role
-  // Sekretaris can access Dashboard Overview, Daftar Isian & DAFU
+  // Sekretaris: Dashboard Overview & DAFU
+  // Bendahara: Dashboard Overview, COA & Saldo Awal, Jurnal Transaksi, Laporan, Aset, Kartu Setoran
+  // Paroki: All available modules
   const visibleNavItems = allNavItems.filter((item) => {
     if (userRole === 'SEKRETARIS') {
-      return (
-        item.href === '/dashboard' ||
-        item.href === '/dashboard/daftar-isian' ||
-        item.href === '/dashboard/dafu'
-      )
+      return item.href === '/dashboard' || item.href === '/dashboard/dafu'
+    }
+    if (userRole === 'BENDAHARA') {
+      return item.href !== '/dashboard/dafu'
     }
     return true
   })

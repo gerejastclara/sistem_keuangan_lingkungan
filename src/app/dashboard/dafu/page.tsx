@@ -154,6 +154,11 @@ function DafuFormContent() {
         }
 
         // Target Lingkungan
+        if (currentRole === 'BENDAHARA') {
+          router.replace('/dashboard')
+          return
+        }
+
         let targetLingkunganId: string | null = null
         if (currentRole !== 'PAROKI' && currentLingkunganId) {
           targetLingkunganId = currentLingkunganId

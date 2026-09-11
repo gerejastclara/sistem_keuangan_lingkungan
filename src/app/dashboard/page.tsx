@@ -20,6 +20,7 @@ import {
 } from '@/lib/dummyData'
 import { formatRupiah, formatDateIndo } from '@/lib/utils'
 import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery } from '@/lib/constants'
+import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import {
   TrendingUp,
   TrendingDown,
@@ -43,7 +44,10 @@ import {
   Trash2,
   Eye,
   Search,
-  ShieldCheck
+  ShieldCheck,
+  UserCheck,
+  Phone,
+  Calendar
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -59,6 +63,18 @@ export default function DashboardOverviewPage() {
   const [userRole, setUserRole] = useState<UserRole>('BENDAHARA')
   const [lingkunganId, setLingkunganId] = useState<string | null>(null)
   const [lingkunganName, setLingkunganName] = useState<string>('')
+
+  // Pengurus State (Ketua Lingkungan, Bendahara, Sekretaris)
+  const [pengurus, setPengurus] = useState<PengurusLingkungan>({
+    ketua_nama: 'FX Wisnu Ardianto',
+    ketua_kontak: '0812-8921-3341',
+    bendahara_nama: 'Maria Bernadette Wijaya',
+    bendahara_kontak: '0813-1456-7890',
+    sekretaris_nama: 'Ignatius Stefanus Sugeng',
+    sekretaris_kontak: '0815-9988-2234',
+    periode: '2024 - 2026',
+    status: 'Aktif'
+  })
 
   // Financial State (for Bendahara & Paroki)
   const [totalKasMasuk, setTotalKasMasuk] = useState(0)
@@ -208,14 +224,18 @@ export default function DashboardOverviewPage() {
           // Load Anggota & Golongan
           await loadAnggotaAndGolongan(finalKks, targetLingkunganId)
 
+          // Load Profil & Pengurus Lingkungan
+          const { data: profil } = await supabase
+            .from('profil_lingkungan')
+            .select('*')
+            .eq('lingkungan_id', targetLingkunganId)
+            .maybeSingle()
+
+          const pInfo = getPengurusForLingkungan(targetLingkunganId, lName, profil)
+          setPengurus(pInfo)
+
           // 4. If Bendahara or Paroki, also load financial data
           if (role !== 'SEKRETARIS') {
-            const { data: profil } = await supabase
-              .from('profil_lingkungan')
-              .select('saldo_awal')
-              .eq('lingkungan_id', targetLingkunganId)
-              .maybeSingle()
-
             const sa = Number(profil?.saldo_awal || 0)
             setSaldoAwal(sa)
 
@@ -952,7 +972,7 @@ export default function DashboardOverviewPage() {
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-800 mt-1 tracking-tight">Ringkasan Keuangan Lingkungan</h1>
             <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
-              Pantau arus kas, posisi saldo bank, data umat (DAFU), dan inventaris aset secara akurat.
+              Pantau arus kas, posisi saldo bank, data umat (DAFU), dan pengurus lingkungan secara akurat.
             </p>
           </div>
         </div>
@@ -970,6 +990,69 @@ export default function DashboardOverviewPage() {
               Laporan
             </Button>
           </Link>
+        </div>
+      </div>
+
+      {/* STRUKTUR PENGURUS LINGKUNGAN (Ketua, Bendahara, Sekretaris) */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-blue-50 text-blue-700 rounded-lg">
+              <UserCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Susunan Pengurus {formatNamaLingkungan(lingkunganName)}</h3>
+              <p className="text-xs text-slate-500">Masa Bakti: {pengurus.periode} • Paroki Bekasi Utara</p>
+            </div>
+          </div>
+          <span className="text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold px-3 py-1 rounded-full w-fit flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            Status: {pengurus.status}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {/* Ketua Lingkungan */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-100 text-amber-900 shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ketua Lingkungan</div>
+              <div className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{pengurus.ketua_nama}</div>
+              <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                <span>📞</span> {pengurus.ketua_kontak}
+              </div>
+            </div>
+          </div>
+
+          {/* Bendahara Lingkungan */}
+          <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200/80 flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-900 shrink-0">
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Bendahara Lingkungan</div>
+              <div className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{pengurus.bendahara_nama}</div>
+              <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                <span>📞</span> {pengurus.bendahara_kontak}
+              </div>
+            </div>
+          </div>
+
+          {/* Sekretaris Lingkungan */}
+          <div className="p-3.5 rounded-xl bg-blue-50/50 border border-blue-200/80 flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-blue-100 text-blue-900 shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Sekretaris Lingkungan</div>
+              <div className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{pengurus.sekretaris_nama}</div>
+              <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                <span>📞</span> {pengurus.sekretaris_kontak}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1090,30 +1173,30 @@ export default function DashboardOverviewPage() {
         <div className="space-y-4">
           <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
             <CardHeader className="pb-3 border-b border-slate-100">
-              <CardTitle className="text-sm font-bold text-slate-800">Akses Modul Cepat</CardTitle>
+              <CardTitle className="text-sm font-bold text-slate-800">Akses Cepat Bendahara</CardTitle>
             </CardHeader>
             <CardContent className="p-3 space-y-1">
-              <Link href="/dashboard/dafu" className="p-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50 transition text-slate-700 group">
+              <Link href="/dashboard/coa-saldo" className="p-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50 transition text-slate-700 group">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-50 text-purple-700">
-                    <Users className="w-4 h-4" />
+                  <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700">
+                    <Wallet className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-800 group-hover:text-emerald-700">Input Data Umat (DAFU)</div>
-                    <div className="text-[11px] text-slate-400">Kelola KK & klasifikasi desil</div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-emerald-700">COA & Saldo Awal</div>
+                    <div className="text-[11px] text-slate-400">Pengaturan saldo awal & bagan akun</div>
                   </div>
                 </div>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-emerald-700" />
               </Link>
 
-              <Link href="/dashboard/daftar-isian" className="p-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50 transition text-slate-700 group">
+              <Link href="/dashboard/jurnal" className="p-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50 transition text-slate-700 group">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-blue-50 text-blue-700">
-                    <ClipboardEdit className="w-4 h-4" />
+                    <Receipt className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-800 group-hover:text-emerald-700">Daftar Isian Lingkungan</div>
-                    <div className="text-[11px] text-slate-400">Profil pengurus & rekening bank</div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-emerald-700">Jurnal Transaksi</div>
+                    <div className="text-[11px] text-slate-400">Catat penerimaan & pengeluaran kas</div>
                   </div>
                 </div>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-emerald-700" />
@@ -1121,7 +1204,7 @@ export default function DashboardOverviewPage() {
 
               <Link href="/dashboard/laporan" className="p-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50 transition text-slate-700 group">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700">
+                  <div className="p-2 rounded-lg bg-purple-50 text-purple-700">
                     <FileSpreadsheet className="w-4 h-4" />
                   </div>
                   <div>
@@ -1156,12 +1239,10 @@ export default function DashboardOverviewPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link href="/dashboard/dafu">
-              <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold rounded-xl h-10 cursor-pointer">
-                <Users className="w-4 h-4 mr-1.5 text-emerald-600" />
-                Buka Modul DAFU Lengkap
-              </Button>
-            </Link>
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              Data DAFU Disinkronkan Sekretaris
+            </div>
           </div>
         </div>
 
