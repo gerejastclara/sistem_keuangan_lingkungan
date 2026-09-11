@@ -591,8 +591,8 @@ export default function JurnalPage() {
               POSTED — Bulan ini telah dikunci
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full font-semibold">
-              <span className="font-extrabold">DRAFT</span> Transaksi masih bisa ditambah/dihapus
+            <span className="inline-flex items-center gap-1.5 text-xs bg-[#EAF7EE] text-[#137333] border border-[#B7E4C7] px-3.5 py-1 rounded-full font-medium">
+              <span className="font-extrabold text-[#0D6539]">DRAFT</span> Transaksi masih bisa ditambah/dihapus
             </span>
           )}
         </div>
@@ -601,7 +601,7 @@ export default function JurnalPage() {
       {/* FORM: CATAT TRANSAKSI BARU (Persis Gambar 2, 3, 4) */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
         <div className="p-5 pb-4 border-b border-slate-100 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-extrabold text-base shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-[#F0F5FD] text-[#18539E] flex items-center justify-center font-extrabold text-base shrink-0">
             +
           </div>
           <div>
@@ -626,7 +626,7 @@ export default function JurnalPage() {
                 }}
                 className={`py-3.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
                   step1Arus === 'MASUK'
-                    ? 'border-2 border-emerald-600 bg-emerald-50/70 text-emerald-950 shadow-2xs'
+                    ? 'border-2 border-[#137333] bg-[#EAF7EE] text-[#0D6539] shadow-2xs'
                     : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                 }`}
               >
@@ -642,7 +642,7 @@ export default function JurnalPage() {
                 }}
                 className={`py-3.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
                   step1Arus === 'KELUAR'
-                    ? 'border-2 border-rose-600 bg-rose-50/70 text-rose-950 shadow-2xs'
+                    ? 'border-2 border-[#C5221F] bg-[#FDF0ED] text-[#A51D24] shadow-2xs'
                     : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                 }`}
               >
