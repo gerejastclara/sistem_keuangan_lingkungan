@@ -384,13 +384,13 @@ export default function CoaSaldoPage() {
             </p>
           </div>
 
-          {/* Tombol Tambahkan COA Baru */}
+          {/* Tombol Tambahkan COA Baru (Contoh Font --gold-dark: #5A4423) */}
           <Button
             type="button"
             onClick={() => setIsAddCoaOpen(true)}
-            className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            className="bg-[#F6EFE2] hover:bg-[#EDE3D0] text-[#5A4423] border border-[#5A4423]/40 text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 cursor-pointer flex items-center gap-1.5 shadow-2xs"
           >
-            <Plus className="w-4 h-4 text-emerald-400" />
+            <Plus className="w-4 h-4 text-[#5A4423]" />
             + Tambah COA Baru
           </Button>
         </div>
