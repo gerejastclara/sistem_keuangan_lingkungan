@@ -919,23 +919,19 @@ function DafuFormContent() {
                         <div className="text-[11px] text-slate-400">{kk.alamat || '-'}</div>
                       </TableCell>
                       <TableCell>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          gol === 'MISKIN' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
-                          gol === 'ATAS' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                          'bg-amber-50 text-amber-800 border border-amber-200'
-                        }`}>
+                        <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200">
                           {gol}
                         </span>
                       </TableCell>
                       <TableCell>{members.length} Jiwa</TableCell>
                       <TableCell className="text-center">
                         {kk.is_biduk ? (
-                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                            BIDUK
+                          <span className="text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md">
+                            KAJ
                           </span>
                         ) : (
-                          <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                            Belum
+                          <span className="text-xs font-medium bg-slate-50 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-md">
+                            Non-KAJ
                           </span>
                         )}
                       </TableCell>

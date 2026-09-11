@@ -13,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import {
-  AlertTriangle,
   CheckCircle2,
   Lock,
   Plus,
@@ -290,14 +289,6 @@ export default function CoaSaldoPage() {
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Warning Banner (Kuning Sesuai Gambar 1) */}
-          <div className="bg-[#FEF7E0] border border-[#FEEFC3] rounded-xl p-4 text-xs text-[#7A4B04] flex items-start gap-3">
-            <AlertTriangle className="w-4 h-4 text-[#D9381E] shrink-0 mt-0.5" />
-            <div className="leading-relaxed">
-              Saldo awal <span className="font-extrabold text-[#5B3702]">hanya diisi sekali</span> pada saat pertama kali mulai pembukuan. Setelah bulan tersebut di-Posting, saldo awal <span className="font-extrabold text-[#5B3702]">terkunci otomatis</span> dan tidak dapat diubah.
-            </div>
-          </div>
-
           {/* Form Fields */}
           <form onSubmit={handleSaveSaldoAwal} className="space-y-5">
             {/* Row 1: Tahun Buku & Bulan Saldo Awal */}
@@ -480,29 +471,23 @@ export default function CoaSaldoPage() {
                     </TableCell>
                     <TableCell>
                       {c.kategori === 'KAS' && (
-                        <span className="bg-blue-100 text-blue-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-blue-200">
+                        <span className="bg-slate-100 text-slate-700 text-xs font-medium px-2.5 py-0.5 rounded-md border border-slate-200">
                           Kas & Bank
                         </span>
                       )}
                       {c.kategori === 'PENERIMAAN' && (
-                        <span className="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        <span className="bg-slate-100 text-slate-700 text-xs font-medium px-2.5 py-0.5 rounded-md border border-slate-200">
                           Penerimaan
                         </span>
                       )}
                       {c.kategori === 'PENGELUARAN' && (
-                        <span className="bg-rose-100 text-rose-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-rose-200">
+                        <span className="bg-slate-100 text-slate-700 text-xs font-medium px-2.5 py-0.5 rounded-md border border-slate-200">
                           Pengeluaran
                         </span>
                       )}
                     </TableCell>
                     <TableCell className="text-center">
-                      <span
-                        className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
-                          c.tipe === 'DEBIT'
-                            ? 'bg-blue-50 text-blue-800 border-blue-200'
-                            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                        }`}
-                      >
+                      <span className="text-xs font-mono font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-2.5 py-0.5 rounded-md">
                         {c.tipe}
                       </span>
                     </TableCell>

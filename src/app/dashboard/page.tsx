@@ -438,9 +438,9 @@ export default function DashboardOverviewPage() {
         return (
           <span
             title={note || 'Golongan Bawah / Pra-sejahtera'}
-            className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold"
+            className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-md text-xs font-medium"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
             Miskin (Bawah)
           </span>
         )
@@ -448,9 +448,9 @@ export default function DashboardOverviewPage() {
         return (
           <span
             title={note || 'Golongan Atas / Mampu'}
-            className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold"
+            className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-md text-xs font-medium"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
             Mampu (Atas)
           </span>
         )
@@ -459,9 +459,9 @@ export default function DashboardOverviewPage() {
         return (
           <span
             title={note || 'Golongan Menengah'}
-            className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full text-xs font-bold"
+            className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-md text-xs font-medium"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
             Menengah
           </span>
         )
@@ -521,12 +521,12 @@ export default function DashboardOverviewPage() {
                       </div>
                       <div>
                         {m.is_kaj ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                            <CheckCircle2 className="w-3 h-3" /> Terdaftar KAJ
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                            <CheckCircle2 className="w-3 h-3 text-slate-600" /> Terdaftar KAJ
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
-                            <XCircle className="w-3 h-3" /> Non-KAJ
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md">
+                            <XCircle className="w-3 h-3 text-slate-400" /> Non-KAJ
                           </span>
                         )}
                       </div>
@@ -822,12 +822,12 @@ export default function DashboardOverviewPage() {
                           {/* KAJ Status */}
                           <TableCell className="text-center">
                             {kk.is_biduk ? (
-                              <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold px-2.5 py-0.5 rounded-full">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Terdaftar KAJ
+                              <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold px-2.5 py-0.5 rounded-md">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-slate-600" /> KAJ
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                <XCircle className="w-3.5 h-3.5" /> Belum KAJ
+                              <span className="inline-flex items-center gap-1 bg-slate-50 text-slate-500 border border-slate-200 text-xs font-medium px-2.5 py-0.5 rounded-md">
+                                <XCircle className="w-3.5 h-3.5 text-slate-400" /> Non-KAJ
                               </span>
                             )}
                           </TableCell>
@@ -911,11 +911,11 @@ export default function DashboardOverviewPage() {
                                             </div>
                                           </div>
                                           {m.is_kaj ? (
-                                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-md shrink-0">
+                                            <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 font-semibold px-1.5 py-0.5 rounded-md shrink-0">
                                               KAJ
                                             </span>
                                           ) : (
-                                            <span className="text-[10px] bg-slate-200 text-slate-600 font-medium px-1.5 py-0.5 rounded-md shrink-0">
+                                            <span className="text-[10px] bg-slate-50 text-slate-500 border border-slate-200 font-medium px-1.5 py-0.5 rounded-md shrink-0">
                                               Non-KAJ
                                             </span>
                                           )}
@@ -1005,8 +1005,8 @@ export default function DashboardOverviewPage() {
               <p className="text-xs text-slate-500">Masa Bakti: {pengurus.periode} • Paroki Bekasi Utara</p>
             </div>
           </div>
-          <span className="text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold px-3 py-1 rounded-full w-fit flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span className="text-[11px] bg-slate-100 text-slate-700 border border-slate-200 font-bold px-3 py-1 rounded-full w-fit flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
             Status: {pengurus.status}
           </span>
         </div>
@@ -1026,13 +1026,13 @@ export default function DashboardOverviewPage() {
             </div>
           </div>
 
-          {/* Bendahara Lingkungan */}
-          <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200/80 flex items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-900 shrink-0">
+          {/* Bendahara Lingkungan (Warna sama persis dengan Ketua Lingkungan) */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-100 text-amber-900 shrink-0">
               <Wallet className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Bendahara Lingkungan</div>
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bendahara Lingkungan</div>
               <div className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{pengurus.bendahara_nama}</div>
               <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
                 <span>📞</span> {pengurus.bendahara_kontak}
@@ -1040,13 +1040,13 @@ export default function DashboardOverviewPage() {
             </div>
           </div>
 
-          {/* Sekretaris Lingkungan */}
-          <div className="p-3.5 rounded-xl bg-blue-50/50 border border-blue-200/80 flex items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-100 text-blue-900 shrink-0">
+          {/* Sekretaris Lingkungan (Warna sama persis dengan Ketua Lingkungan) */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-100 text-amber-900 shrink-0">
               <Users className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Sekretaris Lingkungan</div>
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Sekretaris Lingkungan</div>
               <div className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{pengurus.sekretaris_nama}</div>
               <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
                 <span>📞</span> {pengurus.sekretaris_kontak}
@@ -1361,12 +1361,12 @@ export default function DashboardOverviewPage() {
                         <TableCell className="text-xs text-slate-600">{k.alamat || '-'}</TableCell>
                         <TableCell>
                           {k.is_biduk ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                              <CheckCircle2 className="w-3 h-3" /> KAJ
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-slate-600" /> KAJ
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
-                              <XCircle className="w-3 h-3" /> Non-KAJ
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md">
+                              <XCircle className="w-3.5 h-3.5 text-slate-400" /> Non-KAJ
                             </span>
                           )}
                         </TableCell>

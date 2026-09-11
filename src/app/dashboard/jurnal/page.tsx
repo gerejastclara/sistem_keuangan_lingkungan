@@ -501,43 +501,30 @@ export default function JurnalPage() {
         </div>
       )}
 
-      {/* TOP INSTRUCTION BANNER (Persis Gambar 2) */}
-      <div className="bg-[#EEF5FF] border border-[#D5E6FC] rounded-2xl p-5 text-slate-800 space-y-1.5 shadow-2xs">
-        <h2 className="text-sm font-bold text-[#18539E] flex items-center gap-2">
-          <span>Cara Mencatat Transaksi</span>
-        </h2>
-        <p className="text-xs text-slate-700 leading-relaxed">
-          Pilih <span className="font-bold">bulan</span> → Pilih <span className="font-bold">Uang Masuk/Keluar</span> → Pilih <span className="font-bold">jenis transaksi</span> → Isi <span className="font-bold">nominal</span> → Klik <span className="font-bold">Simpan</span>.
-        </p>
-        <p className="text-xs text-slate-500">
-          Jurnal Debit/Kredit dibuat <span className="font-semibold text-slate-700">otomatis</span>. Klik <span className="font-semibold text-slate-700">Posting</span> untuk mengunci bulan yang sudah selesai.
-        </p>
-      </div>
-
-      {/* 4 SUMMARY METRIC BOXES (Persis Gambar 2) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Box 1: Saldo Awal (A) - Kuning */}
-        <div className="bg-[#FFFDF0] border border-[#FFE8A3] rounded-2xl p-4 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-600">Saldo Awal (A)</div>
-          <div className="text-xl font-bold text-slate-900 mt-1">{formatRupiah(saldoAwalBank)}</div>
+      {/* 4 SUMMARY METRIC BOXES (Estetik & Bersih Tanpa Warna Neon) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Box 1: Saldo Awal (A) */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+          <div className="text-xs font-medium text-slate-500">Saldo Awal (A)</div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{formatRupiah(saldoAwalBank)}</div>
         </div>
 
-        {/* Box 2: Total Uang Masuk (B) - Biru */}
-        <div className="bg-[#F0F7FF] border border-[#BAE0FD] rounded-2xl p-4 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-600">Total Uang Masuk (B)</div>
-          <div className="text-xl font-bold text-slate-900 mt-1">{formatRupiah(totalBulanMasuk)}</div>
+        {/* Box 2: Total Uang Masuk (B) */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+          <div className="text-xs font-medium text-slate-500">Total Uang Masuk (B)</div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{formatRupiah(totalBulanMasuk)}</div>
         </div>
 
-        {/* Box 3: Total Uang Keluar (C) - Merah Muda */}
-        <div className="bg-[#FFF1F1] border border-[#FFD0D0] rounded-2xl p-4 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-600">Total Uang Keluar (C)</div>
-          <div className="text-xl font-bold text-slate-900 mt-1">{formatRupiah(totalBulanKeluar)}</div>
+        {/* Box 3: Total Uang Keluar (C) */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+          <div className="text-xs font-medium text-slate-500">Total Uang Keluar (C)</div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{formatRupiah(totalBulanKeluar)}</div>
         </div>
 
-        {/* Box 4: Saldo Akhir (A+B-C) - Hijau / Cyan */}
-        <div className="bg-[#F0FAFA] border border-[#B2EBF2] rounded-2xl p-4 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-600">Saldo Akhir (A+B-C)</div>
-          <div className="text-xl font-bold text-slate-900 mt-1">{formatRupiah(saldoBulanAkhir)}</div>
+        {/* Box 4: Saldo Akhir (A+B-C) */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+          <div className="text-xs font-medium text-slate-500">Saldo Akhir (A+B-C)</div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{formatRupiah(saldoBulanAkhir)}</div>
         </div>
       </div>
 
