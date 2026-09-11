@@ -302,9 +302,9 @@ export default function KartuSetoranPage() {
             <Button
               type="button"
               onClick={handleExportExcel}
-              className="w-full bg-[#F6EFE2] hover:bg-[#EDE3D0] text-[#5A4423] border border-[#5A4423]/40 font-bold rounded-xl h-11 text-xs shadow-2xs cursor-pointer flex items-center justify-center gap-2 transition-all"
+              className="w-full bg-[#A9834F] hover:bg-[#967443] text-white font-bold rounded-xl h-11 text-xs shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
             >
-              <Download className="w-4 h-4 text-[#5A4423]" />
+              <Download className="w-4 h-4 text-white" />
               Ekspor Excel
             </Button>
           </div>

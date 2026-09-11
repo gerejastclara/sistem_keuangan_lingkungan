@@ -356,12 +356,12 @@ export default function CoaSaldoPage() {
               </div>
             </div>
 
-            {/* Tombol Simpan Saldo Awal */}
+            {/* Tombol Simpan Saldo Awal (Warna Gold #A9834F) */}
             {!isLocked && (
               <Button
                 type="submit"
                 disabled={saving}
-                className="w-full bg-[#F6EFE2] hover:bg-[#EDE3D0] text-[#5A4423] border border-[#5A4423]/40 font-bold h-12 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
+                className="w-full bg-[#A9834F] hover:bg-[#967443] text-white font-bold h-12 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
               >
                 <span>✓</span>
                 {saving ? 'Menyimpan Saldo Awal...' : 'Simpan Saldo Awal'}
@@ -384,13 +384,13 @@ export default function CoaSaldoPage() {
             </p>
           </div>
 
-          {/* Tombol Tambahkan COA Baru (Opsi A: bg-[#F6EFE2] text-[#5A4423] border, 1 plus icon) */}
+          {/* Tombol Tambahkan COA Baru (Warna Gold #A9834F, 1 plus icon) */}
           <Button
             type="button"
             onClick={() => setIsAddCoaOpen(true)}
-            className="bg-[#F6EFE2] hover:bg-[#EDE3D0] text-[#5A4423] border border-[#5A4423]/40 text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 cursor-pointer flex items-center gap-1.5 shadow-2xs transition-all"
+            className="bg-[#A9834F] hover:bg-[#967443] text-white text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 cursor-pointer flex items-center gap-1.5 shadow-xs transition-all"
           >
-            <Plus className="w-4 h-4 text-[#5A4423]" />
+            <Plus className="w-4 h-4 text-white" />
             Tambah COA Baru
           </Button>
         </div>
@@ -597,7 +597,7 @@ export default function CoaSaldoPage() {
               </Button>
               <Button
                 type="submit"
-                className="bg-[#F6EFE2] hover:bg-[#EDE3D0] text-[#5A4423] border border-[#5A4423]/40 font-bold rounded-xl px-5 h-10 cursor-pointer transition-all"
+                className="bg-[#A9834F] hover:bg-[#967443] text-white font-bold rounded-xl px-5 h-10 cursor-pointer transition-all"
               >
                 Simpan COA Baru
               </Button>
