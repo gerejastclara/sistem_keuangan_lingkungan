@@ -979,8 +979,8 @@ export default function DashboardOverviewPage() {
 
         <div className="flex gap-2.5 shrink-0">
           <Link href="/dashboard/jurnal">
-            <Button className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl shadow-xs cursor-pointer">
-              <Receipt className="w-4 h-4 mr-2 text-emerald-400" />
+            <Button className="bg-[#F6EFE2] hover:bg-[#EDE3D0] text-[#5A4423] border border-[#5A4423]/40 font-bold px-4 py-2.5 rounded-xl shadow-xs cursor-pointer transition-all">
+              <Receipt className="w-4 h-4 mr-2 text-[#5A4423]" />
               Input Jurnal
             </Button>
           </Link>

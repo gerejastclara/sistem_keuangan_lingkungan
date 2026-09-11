@@ -301,11 +301,10 @@ export default function KartuSetoranPage() {
           <div className="md:col-span-3">
             <Button
               type="button"
-              variant="outline"
               onClick={handleExportExcel}
-              className="w-full bg-white border-slate-300 hover:bg-slate-50 text-slate-800 font-bold rounded-xl h-11 text-xs shadow-2xs cursor-pointer flex items-center justify-center gap-2"
+              className="w-full bg-[#F6EFE2] hover:bg-[#EDE3D0] text-[#5A4423] border border-[#5A4423]/40 font-bold rounded-xl h-11 text-xs shadow-2xs cursor-pointer flex items-center justify-center gap-2 transition-all"
             >
-              <Download className="w-4 h-4 text-slate-600" />
+              <Download className="w-4 h-4 text-[#5A4423]" />
               Ekspor Excel
             </Button>
           </div>

@@ -361,7 +361,7 @@ export default function CoaSaldoPage() {
               <Button
                 type="submit"
                 disabled={saving}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-12 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2"
+                className="w-full bg-[#F6EFE2] hover:bg-[#EDE3D0] text-[#5A4423] border border-[#5A4423]/40 font-bold h-12 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
               >
                 <span>✓</span>
                 {saving ? 'Menyimpan Saldo Awal...' : 'Simpan Saldo Awal'}
@@ -384,14 +384,14 @@ export default function CoaSaldoPage() {
             </p>
           </div>
 
-          {/* Tombol Tambahkan COA Baru (Opsi B: Solid --gold-dark: #5A4423) */}
+          {/* Tombol Tambahkan COA Baru (Opsi A: bg-[#F6EFE2] text-[#5A4423] border, 1 plus icon) */}
           <Button
             type="button"
             onClick={() => setIsAddCoaOpen(true)}
-            className="bg-[#5A4423] hover:bg-[#47361B] text-white text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 cursor-pointer flex items-center gap-1.5 shadow-xs transition-all"
+            className="bg-[#F6EFE2] hover:bg-[#EDE3D0] text-[#5A4423] border border-[#5A4423]/40 text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 cursor-pointer flex items-center gap-1.5 shadow-2xs transition-all"
           >
-            <Plus className="w-4 h-4 text-amber-200" />
-            + Tambah COA Baru
+            <Plus className="w-4 h-4 text-[#5A4423]" />
+            Tambah COA Baru
           </Button>
         </div>
 
@@ -597,7 +597,7 @@ export default function CoaSaldoPage() {
               </Button>
               <Button
                 type="submit"
-                className="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl cursor-pointer"
+                className="bg-[#F6EFE2] hover:bg-[#EDE3D0] text-[#5A4423] border border-[#5A4423]/40 font-bold rounded-xl px-5 h-10 cursor-pointer transition-all"
               >
                 Simpan COA Baru
               </Button>
