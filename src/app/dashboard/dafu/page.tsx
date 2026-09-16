@@ -14,7 +14,7 @@ import {
   PeranKeluarga,
   Lingkungan
 } from '@/lib/types'
-import { MASTER_LINGKUNGAN_LIST, formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery } from '@/lib/constants'
+import { MASTER_LINGKUNGAN_LIST, formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getWilayahForLingkungan } from '@/lib/constants'
 import {
   ensureDummyKksForLingkungan,
   getDummyAnggotaForKk,
@@ -41,7 +41,8 @@ import {
   Save,
   RotateCcw,
   Pencil,
-  AlertCircle
+  AlertCircle,
+  Search
 } from 'lucide-react'
 
 const ROLE_OPTIONS: PeranKeluarga[] = [
@@ -94,6 +95,17 @@ function DafuFormContent() {
   ])
   const [submitting, setSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredKkList = kkList.filter(k => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase().trim()
+    return (
+      k.nama_kk.toLowerCase().includes(q) ||
+      (k.no_kk && k.no_kk.toLowerCase().includes(q)) ||
+      (k.alamat && k.alamat.toLowerCase().includes(q))
+    )
+  })
 
   useEffect(() => {
     async function loadData() {
@@ -564,6 +576,9 @@ function DafuFormContent() {
           <div className="bg-slate-100/90 border border-slate-300 text-slate-800 rounded-xl px-3.5 py-2 flex items-center gap-2 font-bold text-xs h-11 shrink-0 shadow-2xs">
             <Building className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="truncate">{formatNamaLingkungan(lingkunganName)}</span>
+            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">
+              Wilayah {getWilayahForLingkungan(lingkunganName)}
+            </span>
             <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-mono ml-auto shrink-0 flex items-center gap-1">
               <Lock className="w-2.5 h-2.5" /> Terkunci
             </span>
@@ -872,13 +887,18 @@ function DafuFormContent() {
 
       {/* RECENT FAMILIES LIST BELOW THE FORM */}
       <Card className="bg-white border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-        <CardHeader className="bg-slate-50/70 border-b border-slate-100 p-4 flex flex-row items-center justify-between">
+        <CardHeader className="bg-slate-50/70 border-b border-slate-100 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <CardTitle className="text-sm font-bold text-slate-800">
-              Daftar Keluarga di {formatNamaLingkungan(lingkunganName)} ({kkList.length} KK)
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-400">
-              Klik &ldquo;Edit&rdquo; untuk memuat data ke formulir di atas
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-bold text-slate-800">
+                Daftar Keluarga di {formatNamaLingkungan(lingkunganName)} ({kkList.length} KK)
+              </CardTitle>
+              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
+                Wilayah {getWilayahForLingkungan(lingkunganName)}
+              </span>
+            </div>
+            <CardDescription className="text-xs text-slate-400 mt-0.5">
+              Data riil umat Paroki Santa Clara. Klik &ldquo;Edit&rdquo; untuk mengubah susunan anggota keluarga
             </CardDescription>
           </div>
           <Link href="/dashboard">
@@ -887,27 +907,44 @@ function DafuFormContent() {
             </Button>
           </Link>
         </CardHeader>
+
+        {/* Search Bar */}
+        <div className="p-3 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari nama KK, no KK, atau alamat..."
+              className="pl-9 bg-white border-slate-200 text-xs h-9 rounded-xl focus:ring-emerald-500"
+            />
+          </div>
+          <div className="text-xs text-slate-500 font-medium">
+            Menampilkan <span className="font-bold text-slate-800">{filteredKkList.length}</span> dari {kkList.length} Keluarga
+          </div>
+        </div>
+
         <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader className="bg-slate-50 text-slate-700 font-bold text-xs border-b border-slate-200">
               <TableRow>
                 <TableHead className="w-10 text-center">No</TableHead>
-                <TableHead>Nama Kepala Keluarga</TableHead>
+                <TableHead>Nama Kepala Keluarga & Alamat</TableHead>
                 <TableHead>Golongan</TableHead>
-                <TableHead>Jumlah Jiwa</TableHead>
+                <TableHead>Susunan Jiwa</TableHead>
                 <TableHead className="text-center">Status KAJ</TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100 text-xs">
-              {kkList.length === 0 ? (
+              {filteredKkList.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-slate-400">
-                    Belum ada data keluarga di lingkungan ini. Silakan input pada formulir di atas.
+                    {searchQuery ? 'Tidak ada keluarga yang cocok dengan kata kunci pencarian.' : 'Belum ada data keluarga di lingkungan ini.'}
                   </TableCell>
                 </TableRow>
               ) : (
-                kkList.map((kk, idx) => {
+                filteredKkList.map((kk, idx) => {
                   const members = anggotaMap[kk.id] || []
                   const gol = golonganMap[kk.id]?.golongan || 'MENENGAH'
 
@@ -915,15 +952,33 @@ function DafuFormContent() {
                     <TableRow key={kk.id} className="hover:bg-slate-50">
                       <TableCell className="text-center font-mono text-slate-400">{idx + 1}</TableCell>
                       <TableCell>
-                        <div className="font-bold text-slate-900">{kk.nama_kk}</div>
-                        <div className="text-[11px] text-slate-400">{kk.alamat || '-'}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{kk.nama_kk}</span>
+                          {kk.no_kk && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                              {kk.no_kk}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">{kk.alamat || '-'}</div>
                       </TableCell>
                       <TableCell>
                         <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200">
                           {gol}
                         </span>
                       </TableCell>
-                      <TableCell>{members.length} Jiwa</TableCell>
+                      <TableCell>
+                        <div className="font-semibold text-slate-800">{members.length} Jiwa</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5 flex flex-wrap gap-1">
+                          {members.map(m => m.peran).reduce((acc: string[], role) => {
+                            const count = members.filter(m => m.peran === role).length
+                            const label = count > 1 ? `${count} ${role}` : role
+                            if (!acc.includes(label)) acc.push(label)
+                            return acc
+                          }, []).slice(0, 3).join(', ')}
+                          {members.length > 3 ? '...' : ''}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-center">
                         {kk.is_biduk ? (
                           <span className="text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md">

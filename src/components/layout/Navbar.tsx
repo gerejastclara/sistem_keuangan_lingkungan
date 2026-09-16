@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { UserProfile, Lingkungan } from '@/lib/types'
+import { getWilayahForLingkungan } from '@/lib/constants'
 import { LogOut, Building2, User, ChevronDown, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -103,15 +104,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <SelectContent className="max-h-60 overflow-y-auto bg-[#16233F] border-[#2C3E66] text-slate-100">
                   {lingkunganList.map((l) => (
                     <SelectItem key={l.id} value={l.id} className="hover:bg-[#22335A] focus:bg-[#22335A] focus:text-white">
-                      {l.nama_lingkungan}
+                      <div className="flex items-center justify-between w-full gap-3">
+                        <span>{l.nama_lingkungan}</span>
+                        <span className="text-[10px] bg-[#22335A] text-[#A9834F] px-1.5 py-0.5 rounded border border-[#2C3E66]">
+                          {getWilayahForLingkungan(l.nama_lingkungan)}
+                        </span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             ) : (
-              <span className="font-bold text-white truncate max-w-[140px] sm:max-w-[200px]">
-                {currentLingkunganName}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-white truncate max-w-[140px] sm:max-w-[200px]">
+                  {currentLingkunganName}
+                </span>
+                <span className="text-[10px] bg-[#16233F] text-[#A9834F] font-semibold px-1.5 py-0.5 rounded border border-[#2C3E66] hidden sm:inline-block">
+                  {getWilayahForLingkungan(currentLingkunganName)}
+                </span>
+              </div>
             )}
           </div>
 

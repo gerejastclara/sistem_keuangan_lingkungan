@@ -19,7 +19,7 @@ import {
   getDummyGolonganForKk
 } from '@/lib/dummyData'
 import { formatRupiah, formatDateIndo } from '@/lib/utils'
-import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery } from '@/lib/constants'
+import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getWilayahForLingkungan } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import {
   TrendingUp,
@@ -487,7 +487,14 @@ export default function DashboardOverviewPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs text-slate-500 font-medium">Nama Kepala Keluarga:</span>
-                    <div className="text-base font-bold text-slate-900">{viewingKk.nama_kk}</div>
+                    <div className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <span>{viewingKk.nama_kk}</span>
+                      {viewingKk.no_kk && (
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                          {viewingKk.no_kk}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div>
                     {getGolonganBadge(
@@ -496,9 +503,21 @@ export default function DashboardOverviewPage() {
                     )}
                   </div>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs py-1 border-t border-slate-200/60">
+                  <div>
+                    <span className="text-slate-500 font-medium">Wilayah:</span>
+                    <div className="font-semibold text-slate-800">{viewingKk.wilayah || getWilayahForLingkungan(lingkunganName || '')}</div>
+                  </div>
+                  {viewingKk.telepon && (
+                    <div>
+                      <span className="text-slate-500 font-medium">Kontak / Telepon:</span>
+                      <div className="font-semibold text-slate-800">{viewingKk.telepon}</div>
+                    </div>
+                  )}
+                </div>
                 <div>
                   <span className="text-xs text-slate-500 font-medium">Alamat Rumah:</span>
-                  <div className="text-slate-700">{viewingKk.alamat || '-'}</div>
+                  <div className="text-slate-700 text-xs mt-0.5">{viewingKk.alamat || '-'}</div>
                 </div>
                 {golonganMap[viewingKk.id]?.kriteria_catatan && (
                   <div className="pt-1 border-t border-slate-200/80 text-xs text-slate-600">
@@ -787,7 +806,14 @@ export default function DashboardOverviewPage() {
                           {/* Name + Address */}
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
-                              <span className="font-bold text-slate-900">{kk.nama_kk}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-900">{kk.nama_kk}</span>
+                                {kk.no_kk && (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                    {kk.no_kk}
+                                  </span>
+                                )}
+                              </div>
                               <span className="text-xs text-slate-500">{kk.alamat || 'Alamat belum diisi'}</span>
                             </div>
                           </TableCell>
