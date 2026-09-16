@@ -21,7 +21,6 @@ export interface KepalaKeluarga {
   is_biduk: boolean;
   wilayah?: string;
   nama_lingkungan?: string;
-  no_kk?: string;
   telepon?: string;
   jumlah_anggota?: number;
 }
@@ -36,7 +35,6 @@ export interface AnggotaKeluarga {
   peran: PeranKeluarga;
   is_kaj: boolean;
   keterangan?: string | null;
-  no_anggota?: string;
 }
 
 export interface GolonganKeluarga {

@@ -98,11 +98,11 @@ function DafuFormContent() {
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredKkList = kkList.filter(k => {
+    if (!k || k.id.startsWith('dummy-') || k.id.includes('dummy')) return false
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase().trim()
     return (
       k.nama_kk.toLowerCase().includes(q) ||
-      (k.no_kk && k.no_kk.toLowerCase().includes(q)) ||
       (k.alamat && k.alamat.toLowerCase().includes(q))
     )
   })
@@ -211,14 +211,36 @@ function DafuFormContent() {
       .eq('lingkungan_id', targetLingkunganId)
       .order('nama_kk', { ascending: true })
 
-    let dbKks = kks || []
+    // Purge any legacy dummy entries from localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const keysToClean = ['custom_kks_all_store', 'custom_anggota_all_store', 'custom_golongan_all_store']
+        keysToClean.forEach(k => {
+          const raw = localStorage.getItem(k)
+          if (raw && (raw.includes('dummy-') || raw.includes('Anastasia Gunawan') || raw.includes('Petrus Sugeng'))) {
+            localStorage.removeItem(k)
+          }
+        })
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i)
+          if (k && (k.startsWith('custom_kks_') || k.startsWith('custom_anggota_') || k.startsWith('custom_golongan_'))) {
+            const val = localStorage.getItem(k)
+            if (val && (val.includes('dummy-') || val.includes('Anastasia Gunawan') || val.includes('Petrus Sugeng'))) {
+              localStorage.removeItem(k)
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    let dbKks = (kks || []).filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
     const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`)
     if (localSaved) {
       try {
         const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
         const combinedMap = new Map<string, KepalaKeluarga>()
         dbKks.forEach(k => combinedMap.set(k.id, k))
-        parsed.forEach(k => combinedMap.set(k.id, k))
+        parsed.filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy')).forEach(k => combinedMap.set(k.id, k))
         dbKks = Array.from(combinedMap.values())
       } catch (e) {}
     }
@@ -227,7 +249,7 @@ function DafuFormContent() {
     if (allSaved) {
       try {
         const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
-        const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId)
+        const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
         const combinedMap = new Map<string, KepalaKeluarga>()
         dbKks.forEach(k => combinedMap.set(k.id, k))
         matched.forEach(k => combinedMap.set(k.id, k))
@@ -915,7 +937,7 @@ function DafuFormContent() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama KK, no KK, atau alamat..."
+              placeholder="Cari nama KK atau alamat..."
               className="pl-9 bg-white border-slate-200 text-xs h-9 rounded-xl focus:ring-emerald-500"
             />
           </div>
@@ -952,14 +974,7 @@ function DafuFormContent() {
                     <TableRow key={kk.id} className="hover:bg-slate-50">
                       <TableCell className="text-center font-mono text-slate-400">{idx + 1}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900">{kk.nama_kk}</span>
-                          {kk.no_kk && (
-                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                              {kk.no_kk}
-                            </span>
-                          )}
-                        </div>
+                        <div className="font-bold text-slate-900">{kk.nama_kk}</div>
                         <div className="text-[11px] text-slate-500 mt-0.5">{kk.alamat || '-'}</div>
                       </TableCell>
                       <TableCell>

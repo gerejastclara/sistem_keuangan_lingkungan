@@ -22,6 +22,28 @@ function normalizeLookupKey(key: string): string {
     .replace(/[^a-z0-9]/g, '')
 }
 
+// Auto-purge any legacy testing dummy data stored in browser localStorage
+if (typeof window !== 'undefined') {
+  try {
+    const keysToPurge = ['custom_kks_all_store', 'custom_anggota_all_store', 'custom_golongan_all_store']
+    keysToPurge.forEach(k => {
+      const raw = localStorage.getItem(k)
+      if (raw && (raw.includes('dummy-') || raw.includes('Anastasia Gunawan') || raw.includes('Petrus Sugeng'))) {
+        localStorage.removeItem(k)
+      }
+    })
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && (key.startsWith('custom_kks_') || key.startsWith('custom_anggota_') || key.startsWith('custom_golongan_'))) {
+        const val = localStorage.getItem(key)
+        if (val && (val.includes('dummy-') || val.includes('Anastasia Gunawan') || val.includes('Petrus Sugeng'))) {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+  } catch (e) {}
+}
+
 /**
  * Returns the real Santa Clara parish families for a given Lingkungan ID or name.
  */
@@ -68,10 +90,10 @@ export function ensureDummyKksForLingkungan(
   // Load real parishioners first
   realList.forEach(k => combinedMap.set(k.id, k))
 
-  // Merge any locally saved / custom user entries (from Supabase or localStorage)
+  // Merge any locally saved / custom user entries (from Supabase or localStorage), strictly ignoring any legacy dummy IDs
   if (existingList && existingList.length > 0) {
     existingList.forEach(k => {
-      if (k && k.id) {
+      if (k && k.id && !k.id.startsWith('dummy-') && !k.id.includes('dummy')) {
         combinedMap.set(k.id, k)
       }
     })

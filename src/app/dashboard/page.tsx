@@ -194,32 +194,32 @@ export default function DashboardOverviewPage() {
             .eq('lingkungan_id', targetLingkunganId)
             .order('nama_kk', { ascending: true })
 
-          let dbKks = kks || []
-          const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`)
-          if (localSaved) {
-            try {
-              const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
-              const combinedMap = new Map<string, KepalaKeluarga>()
-              dbKks.forEach(k => combinedMap.set(k.id, k))
-              parsed.forEach(k => combinedMap.set(k.id, k))
-              dbKks = Array.from(combinedMap.values())
-            } catch (e) {}
-          }
+            let dbKks = (kks || []).filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
+            const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`)
+            if (localSaved) {
+              try {
+                const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
+                const combinedMap = new Map<string, KepalaKeluarga>()
+                dbKks.forEach(k => combinedMap.set(k.id, k))
+                parsed.filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy')).forEach(k => combinedMap.set(k.id, k))
+                dbKks = Array.from(combinedMap.values())
+              } catch (e) {}
+            }
 
-          const allSaved = localStorage.getItem('custom_kks_all_store')
-          if (allSaved) {
-            try {
-              const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
-              const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId)
-              const combinedMap = new Map<string, KepalaKeluarga>()
-              dbKks.forEach(k => combinedMap.set(k.id, k))
-              matched.forEach(k => combinedMap.set(k.id, k))
-              dbKks = Array.from(combinedMap.values())
-            } catch (e) {}
-          }
+            const allSaved = localStorage.getItem('custom_kks_all_store')
+            if (allSaved) {
+              try {
+                const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
+                const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
+                const combinedMap = new Map<string, KepalaKeluarga>()
+                dbKks.forEach(k => combinedMap.set(k.id, k))
+                matched.forEach(k => combinedMap.set(k.id, k))
+                dbKks = Array.from(combinedMap.values())
+              } catch (e) {}
+            }
 
-          const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lName, dbKks)
-          setKkList(finalKks)
+            const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lName, dbKks)
+            setKkList(finalKks)
 
           // Load Anggota & Golongan
           await loadAnggotaAndGolongan(finalKks, targetLingkunganId)
@@ -392,6 +392,7 @@ export default function DashboardOverviewPage() {
 
   // Filtered KK list for table
   const filteredKkList = kkList.filter(k => {
+    if (!k || k.id.startsWith('dummy-') || k.id.includes('dummy')) return false
     const members = anggotaMap[k.id] || []
     const gol = golonganMap[k.id]?.golongan || 'MENENGAH'
 
@@ -487,14 +488,7 @@ export default function DashboardOverviewPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs text-slate-500 font-medium">Nama Kepala Keluarga:</span>
-                    <div className="text-base font-bold text-slate-900 flex items-center gap-2">
-                      <span>{viewingKk.nama_kk}</span>
-                      {viewingKk.no_kk && (
-                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                          {viewingKk.no_kk}
-                        </span>
-                      )}
-                    </div>
+                    <div className="text-base font-bold text-slate-900">{viewingKk.nama_kk}</div>
                   </div>
                   <div>
                     {getGolonganBadge(
@@ -806,14 +800,7 @@ export default function DashboardOverviewPage() {
                           {/* Name + Address */}
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-900">{kk.nama_kk}</span>
-                                {kk.no_kk && (
-                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                                    {kk.no_kk}
-                                  </span>
-                                )}
-                              </div>
+                              <span className="font-bold text-slate-900">{kk.nama_kk}</span>
                               <span className="text-xs text-slate-500">{kk.alamat || 'Alamat belum diisi'}</span>
                             </div>
                           </TableCell>
