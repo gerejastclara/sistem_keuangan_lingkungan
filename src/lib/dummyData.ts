@@ -137,8 +137,8 @@ export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
       id: 'default-gol',
       kk_id: 'unknown',
       lingkungan_id: 'unknown',
-      golongan: 'MENENGAH',
-      kriteria_catatan: 'Keluarga mandiri warga lingkungan',
+      golongan: 'Sejahtera',
+      kriteria_catatan: 'Keluarga Sejahtera',
       updated_by_role: 'SEKRETARIS',
       updated_at: new Date().toISOString()
     }
@@ -154,8 +154,8 @@ export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
     id: `gol-${kk.id}`,
     kk_id: kk.id,
     lingkungan_id: kk.lingkungan_id,
-    golongan: 'MENENGAH',
-    kriteria_catatan: 'Keluarga mandiri aktif dalam paguyuban warga',
+    golongan: 'Sejahtera',
+    kriteria_catatan: 'Keluarga Sejahtera',
     updated_by_role: 'SEKRETARIS',
     updated_at: new Date().toISOString()
   }

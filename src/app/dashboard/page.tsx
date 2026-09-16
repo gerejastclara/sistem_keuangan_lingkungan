@@ -415,9 +415,9 @@ export default function DashboardOverviewPage() {
   let totalJiwa = 0
   let totalJiwaKaj = 0
   let totalJiwaNonKaj = 0
-  let countMiskin = 0
-  let countMenengah = 0
-  let countAtas = 0
+  let countRentan = 0
+  let countTerduga = 0
+  let countSejahtera = 0
 
   kkList.forEach(k => {
     const members = anggotaMap[k.id] || []
@@ -427,43 +427,43 @@ export default function DashboardOverviewPage() {
       else totalJiwaNonKaj++
     })
 
-    const gol = golonganMap[k.id]?.golongan || 'MENENGAH'
-    if (gol === 'MISKIN') countMiskin++
-    else if (gol === 'ATAS') countAtas++
-    else countMenengah++
+    const gol = (golonganMap[k.id]?.golongan || 'Sejahtera') as KategoriGolongan
+    if (gol === 'Rentan Tidak Mampu') countRentan++
+    else if (gol === 'Terduga Prasejahtera') countTerduga++
+    else countSejahtera++
   })
 
-  const getGolonganBadge = (gol: KategoriGolongan = 'MENENGAH', note?: string | null) => {
+  const getGolonganBadge = (gol: KategoriGolongan = 'Sejahtera', note?: string | null) => {
     switch (gol) {
-      case 'MISKIN':
+      case 'Rentan Tidak Mampu':
         return (
           <span
-            title={note || 'Golongan Bawah / Pra-sejahtera'}
-            className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-md text-xs font-medium"
+            title={note || 'Keluarga Rentan Tidak Mampu'}
+            className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-md text-xs font-semibold"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-            Miskin (Bawah)
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+            Rentan Tidak Mampu
           </span>
         )
-      case 'ATAS':
+      case 'Terduga Prasejahtera':
         return (
           <span
-            title={note || 'Golongan Atas / Mampu'}
-            className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-md text-xs font-medium"
+            title={note || 'Keluarga Terduga Prasejahtera'}
+            className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-md text-xs font-semibold"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
-            Mampu (Atas)
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            Terduga Prasejahtera
           </span>
         )
-      case 'MENENGAH':
+      case 'Sejahtera':
       default:
         return (
           <span
-            title={note || 'Golongan Menengah'}
-            className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-md text-xs font-medium"
+            title={note || 'Keluarga Sejahtera'}
+            className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-md text-xs font-semibold"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-            Menengah
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            Sejahtera
           </span>
         )
     }
@@ -676,16 +676,16 @@ export default function DashboardOverviewPage() {
             <CardContent>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="bg-rose-50/80 border border-rose-200/80 rounded-xl p-2">
-                  <div className="text-xs font-bold text-rose-700">Miskin (Bawah)</div>
-                  <div className="text-xl font-extrabold text-rose-900 mt-0.5">{countMiskin} <span className="text-xs font-normal">KK</span></div>
+                  <div className="text-[11px] font-bold text-rose-700 truncate">Rentan Tdk Mampu</div>
+                  <div className="text-xl font-extrabold text-rose-900 mt-0.5">{countRentan} <span className="text-xs font-normal">KK</span></div>
                 </div>
                 <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-2">
-                  <div className="text-xs font-bold text-amber-800">Menengah</div>
-                  <div className="text-xl font-extrabold text-amber-950 mt-0.5">{countMenengah} <span className="text-xs font-normal">KK</span></div>
+                  <div className="text-[11px] font-bold text-amber-800 truncate">Terduga Prasejahtera</div>
+                  <div className="text-xl font-extrabold text-amber-950 mt-0.5">{countTerduga} <span className="text-xs font-normal">KK</span></div>
                 </div>
                 <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-2">
-                  <div className="text-xs font-bold text-emerald-800">Mampu (Atas)</div>
-                  <div className="text-xl font-extrabold text-emerald-950 mt-0.5">{countAtas} <span className="text-xs font-normal">KK</span></div>
+                  <div className="text-[11px] font-bold text-emerald-800 truncate">Sejahtera</div>
+                  <div className="text-xl font-extrabold text-emerald-950 mt-0.5">{countSejahtera} <span className="text-xs font-normal">KK</span></div>
                 </div>
               </div>
             </CardContent>
@@ -704,16 +704,16 @@ export default function DashboardOverviewPage() {
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
               {/* Golongan Filter */}
-              <div className="w-full sm:w-44">
+              <div className="w-full sm:w-48">
                 <Select value={filterGolongan} onValueChange={(val) => setFilterGolongan(val as any)}>
                   <SelectTrigger className="bg-white border-slate-200 text-slate-800 rounded-xl text-xs h-10">
-                    <SelectValue placeholder="Semua Golongan" />
+                    <SelectValue placeholder="Semua Status" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 text-slate-900">
-                    <SelectItem value="ALL">Semua Golongan</SelectItem>
-                    <SelectItem value="MISKIN">Miskin (Bawah)</SelectItem>
-                    <SelectItem value="MENENGAH">Menengah</SelectItem>
-                    <SelectItem value="ATAS">Mampu (Atas)</SelectItem>
+                    <SelectItem value="ALL">Semua Status</SelectItem>
+                    <SelectItem value="Sejahtera">Sejahtera</SelectItem>
+                    <SelectItem value="Terduga Prasejahtera">Terduga Prasejahtera</SelectItem>
+                    <SelectItem value="Rentan Tidak Mampu">Rentan Tidak Mampu</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1264,9 +1264,9 @@ export default function DashboardOverviewPage() {
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
             <div className="space-y-0.5">
               <div className="text-[11px] font-bold text-rose-600 uppercase tracking-wider flex items-center gap-1">
-                <span>🔴</span> Miskin (Bawah)
+                <span>🔴</span> Rentan Tidak Mampu
               </div>
-              <div className="text-2xl font-extrabold text-slate-900">{countMiskin} <span className="text-xs font-normal text-slate-500">KK</span></div>
+              <div className="text-2xl font-extrabold text-slate-900">{countRentan} <span className="text-xs font-normal text-slate-500">KK</span></div>
             </div>
             <span className="text-[11px] bg-rose-50 text-rose-700 px-2.5 py-1 rounded-md font-semibold border border-rose-100">
               Prioritas Subsidi
@@ -1276,24 +1276,24 @@ export default function DashboardOverviewPage() {
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
             <div className="space-y-0.5">
               <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">
-                <span>🟡</span> Menengah (Standar)
+                <span>🟡</span> Terduga Prasejahtera
               </div>
-              <div className="text-2xl font-extrabold text-slate-900">{countMenengah} <span className="text-xs font-normal text-slate-500">KK</span></div>
+              <div className="text-2xl font-extrabold text-slate-900">{countTerduga} <span className="text-xs font-normal text-slate-500">KK</span></div>
             </div>
             <span className="text-[11px] bg-amber-50 text-amber-700 px-2.5 py-1 rounded-md font-semibold border border-amber-100">
-              Mandiri
+              Perlu Perhatian
             </span>
           </div>
 
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
             <div className="space-y-0.5">
               <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1">
-                <span>🟢</span> Atas (Mampu)
+                <span>🟢</span> Sejahtera
               </div>
-              <div className="text-2xl font-extrabold text-slate-900">{countAtas} <span className="text-xs font-normal text-slate-500">KK</span></div>
+              <div className="text-2xl font-extrabold text-slate-900">{countSejahtera} <span className="text-xs font-normal text-slate-500">KK</span></div>
             </div>
             <span className="text-[11px] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md font-semibold border border-emerald-100">
-              Potensi Donatur
+              Mandiri / Sejahtera
             </span>
           </div>
         </div>

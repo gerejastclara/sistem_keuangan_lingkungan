@@ -83,7 +83,7 @@ function DafuFormContent() {
   const [formNama, setFormNama] = useState('')
   const [formAlamat, setFormAlamat] = useState('')
   const [formIsBiduk, setFormIsBiduk] = useState<boolean>(true)
-  const [formGolongan, setFormGolongan] = useState<KategoriGolongan>('MENENGAH')
+  const [formGolongan, setFormGolongan] = useState<KategoriGolongan>('Sejahtera')
   const [formKriteriaCatatan, setFormKriteriaCatatan] = useState('')
   const [formAnggotaList, setFormAnggotaList] = useState<MemberFormItem[]>([
     {
@@ -318,7 +318,7 @@ function DafuFormContent() {
     setFormNama(kk.nama_kk)
     setFormAlamat(kk.alamat || '')
     setFormIsBiduk(kk.is_biduk)
-    setFormGolongan(gol?.golongan || 'MENENGAH')
+    setFormGolongan(gol?.golongan || 'Sejahtera')
     setFormKriteriaCatatan(gol?.kriteria_catatan || '')
 
     if (members && members.length > 0) {
@@ -350,7 +350,7 @@ function DafuFormContent() {
     setFormNama('')
     setFormAlamat('')
     setFormIsBiduk(true)
-    setFormGolongan('MENENGAH')
+    setFormGolongan('Sejahtera')
     setFormKriteriaCatatan('')
     setFormAnggotaList([
       {
@@ -527,7 +527,7 @@ function DafuFormContent() {
     setFormNama('')
     setFormAlamat('')
     setFormIsBiduk(true)
-    setFormGolongan('MENENGAH')
+    setFormGolongan('Sejahtera')
     setFormKriteriaCatatan('')
     setFormAnggotaList([
       {
@@ -725,30 +725,30 @@ function DafuFormContent() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 text-slate-900 min-w-[340px] sm:min-w-[440px] shadow-lg rounded-xl p-1.5 z-50">
-                      <SelectItem value="MISKIN" className="cursor-pointer py-2.5 px-3 rounded-lg">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-base leading-none">🔴</span>
-                          <span className="font-bold text-slate-900">MISKIN</span>
-                          <span className="text-xs text-slate-500 font-normal">
-                            (Bawah / Butuh Bantuan Subsidi)
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="MENENGAH" className="cursor-pointer py-2.5 px-3 rounded-lg">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-base leading-none">🟡</span>
-                          <span className="font-bold text-slate-900">MENENGAH</span>
-                          <span className="text-xs text-slate-500 font-normal">
-                            (Standar / Mandiri)
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="ATAS" className="cursor-pointer py-2.5 px-3 rounded-lg">
+                      <SelectItem value="Sejahtera" className="cursor-pointer py-2.5 px-3 rounded-lg">
                         <div className="flex items-center gap-2.5">
                           <span className="text-base leading-none">🟢</span>
-                          <span className="font-bold text-slate-900">ATAS</span>
+                          <span className="font-bold text-slate-900">Sejahtera</span>
                           <span className="text-xs text-slate-500 font-normal">
-                            (Mampu / Potensial Donatur)
+                            (Keluarga Mampu / Mandiri)
+                          </span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="Terduga Prasejahtera" className="cursor-pointer py-2.5 px-3 rounded-lg">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-base leading-none">🟡</span>
+                          <span className="font-bold text-slate-900">Terduga Prasejahtera</span>
+                          <span className="text-xs text-slate-500 font-normal">
+                            (Perlu Perhatian Khusus)
+                          </span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="Rentan Tidak Mampu" className="cursor-pointer py-2.5 px-3 rounded-lg">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-base leading-none">🔴</span>
+                          <span className="font-bold text-slate-900">Rentan Tidak Mampu</span>
+                          <span className="text-xs text-slate-500 font-normal">
+                            (Butuh Bantuan / Subsidi Lingkungan)
                           </span>
                         </div>
                       </SelectItem>
@@ -968,7 +968,7 @@ function DafuFormContent() {
               ) : (
                 filteredKkList.map((kk, idx) => {
                   const members = anggotaMap[kk.id] || []
-                  const gol = golonganMap[kk.id]?.golongan || 'MENENGAH'
+                  const gol = (golonganMap[kk.id]?.golongan || 'Sejahtera') as KategoriGolongan
 
                   return (
                     <TableRow key={kk.id} className="hover:bg-slate-50">
@@ -978,9 +978,22 @@ function DafuFormContent() {
                         <div className="text-[11px] text-slate-500 mt-0.5">{kk.alamat || '-'}</div>
                       </TableCell>
                       <TableCell>
-                        <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200">
-                          {gol}
-                        </span>
+                        {gol === 'Rentan Tidak Mampu' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                            Rentan Tidak Mampu
+                          </span>
+                        ) : gol === 'Terduga Prasejahtera' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                            Terduga Prasejahtera
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                            Sejahtera
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="font-semibold text-slate-800">{members.length} Jiwa</div>
