@@ -20,12 +20,14 @@ import {
   getDummyAnggotaForKk,
   getDummyGolonganForKk
 } from '@/lib/dummyData'
+import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import {
   Plus,
   Trash2,
@@ -42,7 +44,11 @@ import {
   RotateCcw,
   Pencil,
   AlertCircle,
-  Search
+  Search,
+  ChevronDown,
+  ShieldCheck,
+  Wallet,
+  UserCheck
 } from 'lucide-react'
 
 const ROLE_OPTIONS: PeranKeluarga[] = [
@@ -96,6 +102,89 @@ function DafuFormContent() {
   const [submitting, setSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [expandedKkIds, setExpandedKkIds] = useState<Set<string>>(new Set())
+
+  // Edit Pengurus Modal State (Khusus Sekretaris)
+  const [isEditPengurusOpen, setIsEditPengurusOpen] = useState(false)
+  const [pengurusForm, setPengurusForm] = useState({
+    ketuaNama: '',
+    teleponKetua: '',
+    bendaharaNama: '',
+    teleponBendahara: '',
+    sekretarisNama: '',
+    teleponSekretaris: '',
+    periodeMasaBakti: '2024 - 2026',
+    status: 'Aktif'
+  })
+  const [savingPengurus, setSavingPengurus] = useState(false)
+  const [pengurusSuccessMsg, setPengurusSuccessMsg] = useState<string | null>(null)
+
+  const toggleExpandKk = (id: string) => {
+    setExpandedKkIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const handleOpenEditPengurus = () => {
+    const targetId = lingkunganId || 'default'
+    const pInfo = getPengurusForLingkungan(targetId, lingkunganName)
+    setPengurusForm({
+      ketuaNama: pInfo.ketua_nama || '',
+      teleponKetua: pInfo.ketua_kontak || '',
+      bendaharaNama: pInfo.bendahara_nama || '',
+      teleponBendahara: pInfo.bendahara_kontak || '',
+      sekretarisNama: pInfo.sekretaris_nama || '',
+      teleponSekretaris: pInfo.sekretaris_kontak || '',
+      periodeMasaBakti: pInfo.periode || '2024 - 2026',
+      status: pInfo.status || 'Aktif'
+    })
+    setIsEditPengurusOpen(true)
+  }
+
+  const handleSavePengurus = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingPengurus(true)
+
+    const targetId = lingkunganId || 'default'
+
+    try {
+      const existing = localStorage.getItem(`profil_manual_${targetId}`)
+      const obj = existing ? JSON.parse(existing) : {}
+      const updated = {
+        ...obj,
+        ketuaNama: pengurusForm.ketuaNama.trim(),
+        teleponKetua: pengurusForm.teleponKetua.trim(),
+        bendaharaNama: pengurusForm.bendaharaNama.trim(),
+        teleponBendahara: pengurusForm.teleponBendahara.trim(),
+        sekretarisNama: pengurusForm.sekretarisNama.trim(),
+        teleponSekretaris: pengurusForm.teleponSekretaris.trim(),
+        periodeMasaBakti: pengurusForm.periodeMasaBakti.trim(),
+        status: pengurusForm.status
+      }
+      localStorage.setItem(`profil_manual_${targetId}`, JSON.stringify(updated))
+      window.dispatchEvent(new Event('storage'))
+      window.dispatchEvent(new Event('lingkunganChanged'))
+    } catch (err) {}
+
+    try {
+      await supabase.from('profil_lingkungan').upsert({
+        lingkungan_id: targetId,
+        telepon_bendahara: pengurusForm.teleponBendahara.trim(),
+        periode_masa_bakti: pengurusForm.periodeMasaBakti.trim(),
+      }, { onConflict: 'lingkungan_id' })
+    } catch (err) {}
+
+    setSavingPengurus(false)
+    setIsEditPengurusOpen(false)
+    setPengurusSuccessMsg('Susunan pengurus lingkungan berhasil diperbarui!')
+    setTimeout(() => setPengurusSuccessMsg(null), 4000)
+  }
 
   const filteredKkList = kkList.filter(k => {
     if (!k || k.id.startsWith('dummy-') || k.id.includes('dummy')) return false
@@ -606,6 +695,18 @@ function DafuFormContent() {
             </span>
           </div>
 
+          {canEdit && (
+            <Button
+              type="button"
+              onClick={handleOpenEditPengurus}
+              className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white font-bold rounded-xl h-11 px-4 cursor-pointer shadow-xs"
+              title="Khusus Sekretaris: Tentukan Susunan Ketua, Bendahara, dan Sekretaris Lingkungan"
+            >
+              <ShieldCheck className="w-4 h-4 mr-1.5" />
+              Atur Pengurus
+            </Button>
+          )}
+
           <Link href="/dashboard">
             <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-xl h-11 cursor-pointer">
               <LayoutDashboard className="w-4 h-4 mr-1.5 text-slate-600" />
@@ -615,7 +716,15 @@ function DafuFormContent() {
         </div>
       </div>
 
-      {/* Success Alert */}
+      {/* Success Alert Pengurus */}
+      {pengurusSuccessMsg && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-2 text-sm font-bold shadow-xs">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <span>{pengurusSuccessMsg}</span>
+        </div>
+      )}
+
+      {/* Success Alert Umat */}
       {successMessage && (
         <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2 text-sm font-bold">
@@ -969,74 +1078,207 @@ function DafuFormContent() {
                 filteredKkList.map((kk, idx) => {
                   const members = anggotaMap[kk.id] || []
                   const gol = (golonganMap[kk.id]?.golongan || 'Sejahtera') as KategoriGolongan
+                  const isExpanded = expandedKkIds.has(kk.id)
 
                   return (
-                    <TableRow key={kk.id} className="hover:bg-slate-50">
-                      <TableCell className="text-center font-mono text-slate-400">{idx + 1}</TableCell>
-                      <TableCell>
-                        <div className="font-bold text-slate-900">{kk.nama_kk}</div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">{kk.alamat || '-'}</div>
-                      </TableCell>
-                      <TableCell>
-                        {gol === 'Rentan Tidak Mampu' ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                            Rentan Tidak Mampu
-                          </span>
-                        ) : gol === 'Terduga Prasejahtera' ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                            Terduga Prasejahtera
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                            Sejahtera
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-semibold text-slate-800">{members.length} Jiwa</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5 flex flex-wrap gap-1">
-                          {members.map(m => m.peran).reduce((acc: string[], role) => {
-                            const count = members.filter(m => m.peran === role).length
-                            const label = count > 1 ? `${count} ${role}` : role
-                            if (!acc.includes(label)) acc.push(label)
-                            return acc
-                          }, []).slice(0, 3).join(', ')}
-                          {members.length > 3 ? '...' : ''}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {kk.is_biduk ? (
-                          <span className="text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md">
-                            KAJ
-                          </span>
-                        ) : (
-                          <span className="text-xs font-medium bg-slate-50 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-md">
-                            Non-KAJ
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => populateFormForEdit(kk, anggotaMap[kk.id], golonganMap[kk.id])}
-                          className="h-7 px-2 text-emerald-700 hover:bg-emerald-50 rounded cursor-pointer"
-                        >
-                          <Pencil className="w-3 h-3 mr-1" /> Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDelete(kk.id, kk.nama_kk)}
-                          className="h-7 w-7 p-0 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    <React.Fragment key={kk.id}>
+                      <TableRow className={`hover:bg-slate-50 transition ${isExpanded ? 'bg-amber-50/30' : ''}`}>
+                        <TableCell className="text-center font-mono text-slate-400">{idx + 1}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {/* Tombol Dropdown ke Bawah */}
+                            <button
+                              type="button"
+                              onClick={() => toggleExpandKk(kk.id)}
+                              className={`p-1.5 rounded-lg transition cursor-pointer flex items-center justify-center shrink-0 border ${
+                                isExpanded
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
+                              }`}
+                              title={isExpanded ? 'Tutup Daftar Anggota' : 'Klik untuk Buka Daftar Anggota Keluarga (Dropdown)'}
+                            >
+                              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-amber-900' : ''}`} />
+                            </button>
+
+                            <div className="cursor-pointer select-none" onClick={() => toggleExpandKk(kk.id)}>
+                              <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                <span>{kk.nama_kk}</span>
+                                <span className="text-[10px] font-semibold text-slate-400">
+                                  ({members.length} Jiwa)
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-500 mt-0.5">{kk.alamat || '-'}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {gol === 'Rentan Tidak Mampu' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                              Rentan Tidak Mampu
+                            </span>
+                          ) : gol === 'Terduga Prasejahtera' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                              Terduga Prasejahtera
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                              Sejahtera
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-semibold text-slate-800">{members.length} Jiwa</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5 flex flex-wrap gap-1">
+                            {members.map(m => m.peran).reduce((acc: string[], role) => {
+                              const count = members.filter(m => m.peran === role).length
+                              const label = count > 1 ? `${count} ${role}` : role
+                              if (!acc.includes(label)) acc.push(label)
+                              return acc
+                            }, []).slice(0, 3).join(', ')}
+                            {members.length > 3 ? '...' : ''}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {kk.is_biduk ? (
+                            <span className="text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md">
+                              KAJ
+                            </span>
+                          ) : (
+                            <span className="text-xs font-medium bg-slate-50 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-md">
+                              Non-KAJ
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right space-x-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => toggleExpandKk(kk.id)}
+                            className="h-7 px-2 text-slate-600 hover:text-emerald-700 rounded cursor-pointer"
+                            title="Buka rincian anggota keluarga di bawah"
+                          >
+                            <ChevronDown className={`w-3.5 h-3.5 mr-1 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-amber-700' : 'text-slate-500'}`} />
+                            {isExpanded ? 'Tutup' : 'Anggota'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => populateFormForEdit(kk, anggotaMap[kk.id], golonganMap[kk.id])}
+                            className="h-7 px-2 text-emerald-700 hover:bg-emerald-50 rounded cursor-pointer"
+                          >
+                            <Pencil className="w-3 h-3 mr-1" /> Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(kk.id, kk.nama_kk)}
+                            className="h-7 w-7 p-0 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Expandable Dropdown Row Muncul di Bawahnya */}
+                      {isExpanded && (
+                        <TableRow className="bg-slate-50/90 border-b-2 border-amber-200">
+                          <TableCell colSpan={6} className="p-3 sm:p-4">
+                            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs space-y-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-1.5 bg-emerald-50 text-emerald-700 rounded-lg">
+                                    <Users className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-xs text-slate-900 flex items-center gap-2">
+                                      <span>Susunan Anggota Keluarga:</span>
+                                      <span className="text-emerald-800 font-extrabold">{kk.nama_kk}</span>
+                                    </div>
+                                    <div className="text-[11px] text-slate-400">
+                                      Alamat: {kk.alamat || '-'}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                    Total {members.length} Anggota Jiwa
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => populateFormForEdit(kk, anggotaMap[kk.id], golonganMap[kk.id])}
+                                    className="h-7 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg cursor-pointer"
+                                  >
+                                    <Pencil className="w-3 h-3 mr-1" />
+                                    Edit Anggota Ini di Form
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {/* Detailed Table of Family Members */}
+                              <div className="overflow-x-auto rounded-lg border border-slate-100">
+                                <table className="w-full text-left text-xs">
+                                  <thead className="bg-slate-50 text-slate-600 font-bold text-[11px] border-b border-slate-200">
+                                    <tr>
+                                      <th className="py-2 px-3 w-10 text-center">No</th>
+                                      <th className="py-2 px-3">Nama Lengkap Anggota</th>
+                                      <th className="py-2 px-3">Hubungan / Peran</th>
+                                      <th className="py-2 px-3 text-center">Status KAJ</th>
+                                      <th className="py-2 px-3">Keterangan</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                    {members.length === 0 ? (
+                                      <tr>
+                                        <td colSpan={5} className="py-3 text-center text-slate-400">
+                                          Tidak ada data rincian anggota keluarga.
+                                        </td>
+                                      </tr>
+                                    ) : (
+                                      members.map((m, mIdx) => (
+                                        <tr key={m.id || mIdx} className="hover:bg-slate-50/80">
+                                          <td className="py-2 px-3 text-center text-slate-400 font-mono text-[11px]">{mIdx + 1}</td>
+                                          <td className="py-2 px-3 font-bold text-slate-900">{m.nama}</td>
+                                          <td className="py-2 px-3">
+                                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                              m.peran === 'Kepala Keluarga'
+                                                ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                                                : m.peran === 'Istri'
+                                                ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                                                : m.peran === 'Anak'
+                                                ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                                                : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                            }`}>
+                                              {m.peran}
+                                            </span>
+                                          </td>
+                                          <td className="py-2 px-3 text-center">
+                                            {m.is_kaj ? (
+                                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                                                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> KAJ
+                                              </span>
+                                            ) : (
+                                              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                                                <XCircle className="w-3 h-3 text-slate-400" /> Non-KAJ
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td className="py-2 px-3 text-slate-500 text-[11px]">
+                                            {m.keterangan || m.peran}
+                                          </td>
+                                        </tr>
+                                      ))
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   )
                 })
               )}
@@ -1044,6 +1286,156 @@ function DafuFormContent() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Dialog Atur Pengurus Lingkungan Khusus Sekretaris */}
+      <Dialog open={isEditPengurusOpen} onOpenChange={setIsEditPengurusOpen}>
+        <DialogContent className="sm:max-w-lg bg-white border-slate-200 text-slate-900 rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-slate-800 font-bold text-base flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-[#A9834F]" />
+              Atur Susunan Pengurus Lingkungan
+            </DialogTitle>
+            <p className="text-xs text-slate-500 mt-1">
+              Khusus Sekretaris: Tentukan data nama dan kontak resmi pengurus {formatNamaLingkungan(lingkunganName)}.
+            </p>
+          </DialogHeader>
+
+          <form onSubmit={handleSavePengurus} className="space-y-4 pt-2">
+            {/* Ketua Lingkungan */}
+            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2">
+              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                Ketua Lingkungan
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600">Nama Lengkap Ketua</label>
+                  <Input
+                    value={pengurusForm.ketuaNama}
+                    onChange={(e) => setPengurusForm({ ...pengurusForm, ketuaNama: e.target.value })}
+                    placeholder="Contoh: FX Wisnu Ardianto"
+                    required
+                    className="h-9 text-xs bg-white mt-1 text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600">No. WhatsApp / Telepon</label>
+                  <Input
+                    value={pengurusForm.teleponKetua}
+                    onChange={(e) => setPengurusForm({ ...pengurusForm, teleponKetua: e.target.value })}
+                    placeholder="Contoh: 0812-8921-3341"
+                    className="h-9 text-xs bg-white mt-1 text-slate-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Bendahara Lingkungan */}
+            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2">
+              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Wallet className="w-3.5 h-3.5 text-emerald-700" />
+                Bendahara Lingkungan
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600">Nama Lengkap Bendahara</label>
+                  <Input
+                    value={pengurusForm.bendaharaNama}
+                    onChange={(e) => setPengurusForm({ ...pengurusForm, bendaharaNama: e.target.value })}
+                    placeholder="Contoh: Maria Bernadette Wijaya"
+                    required
+                    className="h-9 text-xs bg-white mt-1 text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600">No. WhatsApp / Telepon</label>
+                  <Input
+                    value={pengurusForm.teleponBendahara}
+                    onChange={(e) => setPengurusForm({ ...pengurusForm, teleponBendahara: e.target.value })}
+                    placeholder="Contoh: 0813-1456-7890"
+                    className="h-9 text-xs bg-white mt-1 text-slate-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Sekretaris Lingkungan */}
+            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2">
+              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-purple-700" />
+                Sekretaris Lingkungan
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600">Nama Lengkap Sekretaris</label>
+                  <Input
+                    value={pengurusForm.sekretarisNama}
+                    onChange={(e) => setPengurusForm({ ...pengurusForm, sekretarisNama: e.target.value })}
+                    placeholder="Contoh: Ignatius Stefanus Sugeng"
+                    required
+                    className="h-9 text-xs bg-white mt-1 text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600">No. WhatsApp / Telepon</label>
+                  <Input
+                    value={pengurusForm.teleponSekretaris}
+                    onChange={(e) => setPengurusForm({ ...pengurusForm, teleponSekretaris: e.target.value })}
+                    placeholder="Contoh: 0815-9988-2234"
+                    className="h-9 text-xs bg-white mt-1 text-slate-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Periode & Status */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600">Periode Masa Bakti</label>
+                <Input
+                  value={pengurusForm.periodeMasaBakti}
+                  onChange={(e) => setPengurusForm({ ...pengurusForm, periodeMasaBakti: e.target.value })}
+                  placeholder="2024 - 2026"
+                  className="h-9 text-xs bg-white mt-1 text-slate-900"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600">Status Kepengurusan</label>
+                <Select
+                  value={pengurusForm.status}
+                  onValueChange={(val) => val && setPengurusForm({ ...pengurusForm, status: val })}
+                >
+                  <SelectTrigger className="h-9 text-xs bg-white mt-1 text-slate-900 border-slate-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 text-slate-900">
+                    <SelectItem value="Aktif">Aktif</SelectItem>
+                    <SelectItem value="Purna Tugas">Purna Tugas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-3 gap-2 flex sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditPengurusOpen(false)}
+                className="h-9 text-xs border-slate-300 text-slate-700"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingPengurus}
+                className="h-9 text-xs bg-[#A9834F] hover:bg-[#8e6d3e] text-white font-bold cursor-pointer"
+              >
+                {savingPengurus ? 'Menyimpan...' : 'Simpan Susunan Pengurus'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
