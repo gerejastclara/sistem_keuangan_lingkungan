@@ -40,24 +40,29 @@ export function getPengurusForLingkungan(
   } | null
 ): PengurusLingkungan {
   const cleanId = lingkunganId || 'default'
-  const cleanNama = (namaLingkungan || '').replace(/^lingkungan\s+/i, '').trim() || 'St. Clara'
+  const cleanNama = (namaLingkungan || '').replace(/^lingkungan\s+/i, '').trim()
 
   // 1. Check manual localStorage overrides first
   if (typeof window !== 'undefined') {
     try {
-      const saved = localStorage.getItem(`profil_manual_${cleanId}`)
+      const saved =
+        localStorage.getItem(`profil_manual_${cleanId}`) ||
+        (cleanNama ? localStorage.getItem(`profil_manual_${cleanNama}`) : null) ||
+        (cleanNama ? localStorage.getItem(`profil_manual_${cleanNama.toLowerCase().replace(/\s+/g, '')}`) : null) ||
+        (cleanNama ? localStorage.getItem(`profil_manual_${cleanNama.toLowerCase().replace(/[^a-z0-9]/g, '')}`) : null)
+
       if (saved) {
         const parsed = JSON.parse(saved)
         if (parsed.ketuaNama || parsed.bendaharaNama || parsed.sekretarisNama) {
           return {
-            ketua_nama: parsed.ketuaNama || 'FX Wisnu Ardianto',
-            ketua_kontak: parsed.teleponKetua || '0812-8921-3341',
-            bendahara_nama: parsed.bendaharaNama || 'Maria Bernadette Wijaya',
-            bendahara_kontak: parsed.teleponBendahara || '0813-1456-7890',
-            sekretaris_nama: parsed.sekretarisNama || 'Ignatius Stefanus Sugeng',
-            sekretaris_kontak: parsed.teleponSekretaris || '0815-9988-2234',
-            periode: parsed.periodeMasaBakti || '2024 - 2026',
-            status: 'Aktif'
+            ketua_nama: parsed.ketuaNama || 'Susunan pengurus belum ditentukan',
+            ketua_kontak: parsed.teleponKetua || '-',
+            bendahara_nama: parsed.bendaharaNama || 'Susunan pengurus belum ditentukan',
+            bendahara_kontak: parsed.teleponBendahara || '-',
+            sekretaris_nama: parsed.sekretarisNama || 'Susunan pengurus belum ditentukan',
+            sekretaris_kontak: parsed.teleponSekretaris || '-',
+            periode: parsed.periodeMasaBakti || 'Belum ditentukan',
+            status: parsed.status || 'Aktif'
           }
         }
       }
@@ -67,44 +72,27 @@ export function getPengurusForLingkungan(
   // 2. Check DB profil if present
   if (profilDb && (profilDb.ketua_nama || profilDb.bendahara_nama || profilDb.sekretaris_nama)) {
     return {
-      ketua_nama: profilDb.ketua_nama || 'FX Wisnu Ardianto',
-      ketua_kontak: '0812-8921-3341',
-      bendahara_nama: profilDb.bendahara_nama || 'Maria Bernadette Wijaya',
-      bendahara_kontak: profilDb.telepon_bendahara || '0813-1456-7890',
-      sekretaris_nama: profilDb.sekretaris_nama || 'Ignatius Stefanus Sugeng',
-      sekretaris_kontak: '0815-9988-2234',
-      periode: profilDb.periode_masa_bakti || '2024 - 2026',
+      ketua_nama: profilDb.ketua_nama || 'Susunan pengurus belum ditentukan',
+      ketua_kontak: '-',
+      bendahara_nama: profilDb.bendahara_nama || 'Susunan pengurus belum ditentukan',
+      bendahara_kontak: profilDb.telepon_bendahara || '-',
+      sekretaris_nama: profilDb.sekretaris_nama || 'Susunan pengurus belum ditentukan',
+      sekretaris_kontak: '-',
+      periode: profilDb.periode_masa_bakti || 'Belum ditentukan',
       status: 'Aktif'
     }
   }
 
-  // 3. Deterministic calculation for any of the 69 Lingkungan
-  let hash = 0
-  for (let i = 0; i < cleanNama.length; i++) {
-    hash = ((hash << 5) - hash) + cleanNama.charCodeAt(i)
-    hash |= 0
-  }
-  const absHash = Math.abs(hash)
-
-  const numMatch = cleanNama.match(/\d+/)
-  const lingNum = numMatch ? parseInt(numMatch[0], 10) : 1
-
-  const idxKetua = (absHash + lingNum * 3) % CATHOLIC_OFFICER_NAMES.length
-  const idxBendahara = (absHash + lingNum * 7 + 1) % CATHOLIC_OFFICER_NAMES.length
-  const idxSekretaris = (absHash + lingNum * 11 + 2) % CATHOLIC_OFFICER_NAMES.length
-
-  const ketua = CATHOLIC_OFFICER_NAMES[idxKetua]
-  const bendahara = CATHOLIC_OFFICER_NAMES[idxBendahara]
-  const sekretaris = CATHOLIC_OFFICER_NAMES[idxSekretaris]
-
+  // 3. Fallback when not yet configured:
   return {
-    ketua_nama: ketua.nama,
-    ketua_kontak: ketua.kontak,
-    bendahara_nama: bendahara.nama,
-    bendahara_kontak: bendahara.kontak,
-    sekretaris_nama: sekretaris.nama,
-    sekretaris_kontak: sekretaris.kontak,
-    periode: '2024 - 2026',
-    status: 'Aktif'
+    ketua_nama: 'Susunan pengurus belum ditentukan',
+    ketua_kontak: '-',
+    bendahara_nama: 'Susunan pengurus belum ditentukan',
+    bendahara_kontak: '-',
+    sekretaris_nama: 'Susunan pengurus belum ditentukan',
+    sekretaris_kontak: '-',
+    periode: 'Belum ditentukan',
+    status: 'Belum Ditentukan'
   }
 }
+

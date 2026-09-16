@@ -260,12 +260,14 @@ export default function JurnalPage() {
     window.addEventListener('storage', handleSync)
     window.addEventListener('lingkunganChanged', handleSync)
     window.addEventListener('coaDataUpdated', handleSync)
+    window.addEventListener('pengurusUpdated', handleSync)
 
     return () => {
       window.removeEventListener('dafuDataUpdated', handleSync)
       window.removeEventListener('storage', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
       window.removeEventListener('coaDataUpdated', handleSync)
+      window.removeEventListener('pengurusUpdated', handleSync)
     }
   }, [supabase])
 
@@ -1023,7 +1025,7 @@ export default function JurnalPage() {
 
       {/* FOOTER INFORMASI LINGKUNGAN */}
       <div className="text-center text-xs text-slate-400 pt-6">
-        © {selectedYear} Gereja St Clara, Paroki Bekasi Utara — {pengurus?.bendahara_nama || 'FX Wisnu Ardianto'} (Bendahara {formatNamaLingkungan(lingkunganName)})
+        © {selectedYear} Gereja St Clara, Paroki Bekasi Utara — {pengurus?.bendahara_nama && pengurus.bendahara_nama !== 'Susunan pengurus belum ditentukan' ? `${pengurus.bendahara_nama} (Bendahara ${formatNamaLingkungan(lingkunganName)})` : `Bendahara ${formatNamaLingkungan(lingkunganName)} (Susunan pengurus belum ditentukan)`}
       </div>
     </div>
   )

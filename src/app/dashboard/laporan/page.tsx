@@ -234,11 +234,13 @@ export default function LaporanPage() {
     window.addEventListener('storage', handleSync)
     window.addEventListener('lingkunganChanged', handleSync)
     window.addEventListener('coaDataUpdated', handleSync)
+    window.addEventListener('pengurusUpdated', handleSync)
 
     return () => {
       window.removeEventListener('storage', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
       window.removeEventListener('coaDataUpdated', handleSync)
+      window.removeEventListener('pengurusUpdated', handleSync)
     }
   }, [supabase])
 
@@ -600,22 +602,40 @@ export default function LaporanPage() {
         <div className="pt-10 grid grid-cols-3 gap-4 text-center text-xs text-slate-700">
           <div className="space-y-16">
             <div>Ketua Lingkungan</div>
-            <div className="border-t border-slate-300 pt-1 font-bold text-slate-900">
-              {pengurus?.ketua_nama || 'FX Wisnu Ardianto'}
+            <div className={`border-t border-slate-300 pt-1 font-bold ${
+              !pengurus?.ketua_nama || pengurus.ketua_nama === 'Susunan pengurus belum ditentukan'
+                ? 'text-slate-400 italic text-[11px]'
+                : 'text-slate-900'
+            }`}>
+              {pengurus?.ketua_nama && pengurus.ketua_nama !== 'Susunan pengurus belum ditentukan'
+                ? pengurus.ketua_nama
+                : 'Susunan pengurus belum ditentukan'}
             </div>
           </div>
 
           <div className="space-y-16">
             <div>Sekretaris Lingkungan</div>
-            <div className="border-t border-slate-300 pt-1 font-bold text-slate-900">
-              {pengurus?.sekretaris_nama || 'Ignatius Stefanus Sugeng'}
+            <div className={`border-t border-slate-300 pt-1 font-bold ${
+              !pengurus?.sekretaris_nama || pengurus.sekretaris_nama === 'Susunan pengurus belum ditentukan'
+                ? 'text-slate-400 italic text-[11px]'
+                : 'text-slate-900'
+            }`}>
+              {pengurus?.sekretaris_nama && pengurus.sekretaris_nama !== 'Susunan pengurus belum ditentukan'
+                ? pengurus.sekretaris_nama
+                : 'Susunan pengurus belum ditentukan'}
             </div>
           </div>
 
           <div className="space-y-16">
             <div>Bendahara Lingkungan</div>
-            <div className="border-t border-slate-300 pt-1 font-bold text-slate-900">
-              {pengurus?.bendahara_nama || 'Maria Bernadette Wijaya'}
+            <div className={`border-t border-slate-300 pt-1 font-bold ${
+              !pengurus?.bendahara_nama || pengurus.bendahara_nama === 'Susunan pengurus belum ditentukan'
+                ? 'text-slate-400 italic text-[11px]'
+                : 'text-slate-900'
+            }`}>
+              {pengurus?.bendahara_nama && pengurus.bendahara_nama !== 'Susunan pengurus belum ditentukan'
+                ? pengurus.bendahara_nama
+                : 'Susunan pengurus belum ditentukan'}
             </div>
           </div>
         </div>

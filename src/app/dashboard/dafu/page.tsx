@@ -46,6 +46,7 @@ import {
   AlertCircle,
   Search,
   ChevronDown,
+  ChevronRight,
   ShieldCheck,
   Wallet,
   UserCheck
@@ -134,15 +135,17 @@ function DafuFormContent() {
   const handleOpenEditPengurus = () => {
     const targetId = lingkunganId || 'default'
     const pInfo = getPengurusForLingkungan(targetId, lingkunganName)
+    const isDefaultUnset = pInfo.ketua_nama === 'Susunan pengurus belum ditentukan'
+
     setPengurusForm({
-      ketuaNama: pInfo.ketua_nama || '',
-      teleponKetua: pInfo.ketua_kontak || '',
-      bendaharaNama: pInfo.bendahara_nama || '',
-      teleponBendahara: pInfo.bendahara_kontak || '',
-      sekretarisNama: pInfo.sekretaris_nama || '',
-      teleponSekretaris: pInfo.sekretaris_kontak || '',
-      periodeMasaBakti: pInfo.periode || '2024 - 2026',
-      status: pInfo.status || 'Aktif'
+      ketuaNama: isDefaultUnset ? '' : (pInfo.ketua_nama || ''),
+      teleponKetua: pInfo.ketua_kontak === '-' ? '' : (pInfo.ketua_kontak || ''),
+      bendaharaNama: isDefaultUnset ? '' : (pInfo.bendahara_nama || ''),
+      teleponBendahara: pInfo.bendahara_kontak === '-' ? '' : (pInfo.bendahara_kontak || ''),
+      sekretarisNama: isDefaultUnset ? '' : (pInfo.sekretaris_nama || ''),
+      teleponSekretaris: pInfo.sekretaris_kontak === '-' ? '' : (pInfo.sekretaris_kontak || ''),
+      periodeMasaBakti: pInfo.periode === 'Belum ditentukan' ? '2024 - 2026' : (pInfo.periode || '2024 - 2026'),
+      status: pInfo.status === 'Belum Ditentukan' ? 'Aktif' : (pInfo.status || 'Aktif')
     })
     setIsEditPengurusOpen(true)
   }
@@ -158,18 +161,30 @@ function DafuFormContent() {
       const obj = existing ? JSON.parse(existing) : {}
       const updated = {
         ...obj,
-        ketuaNama: pengurusForm.ketuaNama.trim(),
-        teleponKetua: pengurusForm.teleponKetua.trim(),
-        bendaharaNama: pengurusForm.bendaharaNama.trim(),
-        teleponBendahara: pengurusForm.teleponBendahara.trim(),
-        sekretarisNama: pengurusForm.sekretarisNama.trim(),
-        teleponSekretaris: pengurusForm.teleponSekretaris.trim(),
-        periodeMasaBakti: pengurusForm.periodeMasaBakti.trim(),
-        status: pengurusForm.status
+        ketuaNama: pengurusForm.ketuaNama.trim() || 'Susunan pengurus belum ditentukan',
+        teleponKetua: pengurusForm.teleponKetua.trim() || '-',
+        bendaharaNama: pengurusForm.bendaharaNama.trim() || 'Susunan pengurus belum ditentukan',
+        teleponBendahara: pengurusForm.teleponBendahara.trim() || '-',
+        sekretarisNama: pengurusForm.sekretarisNama.trim() || 'Susunan pengurus belum ditentukan',
+        teleponSekretaris: pengurusForm.teleponSekretaris.trim() || '-',
+        periodeMasaBakti: pengurusForm.periodeMasaBakti.trim() || '2024 - 2026',
+        status: pengurusForm.status || 'Aktif'
       }
       localStorage.setItem(`profil_manual_${targetId}`, JSON.stringify(updated))
+
+      if (lingkunganName) {
+        const cleanN = lingkunganName.replace(/^lingkungan\s+/i, '').trim()
+        if (cleanN) {
+          localStorage.setItem(`profil_manual_${cleanN}`, JSON.stringify(updated))
+          localStorage.setItem(`profil_manual_${cleanN.toLowerCase().replace(/\s+/g, '')}`, JSON.stringify(updated))
+          localStorage.setItem(`profil_manual_${cleanN.toLowerCase().replace(/[^a-z0-9]/g, '')}`, JSON.stringify(updated))
+        }
+      }
+
+      window.dispatchEvent(new CustomEvent('pengurusUpdated', { detail: { targetId, updated } }))
       window.dispatchEvent(new Event('storage'))
       window.dispatchEvent(new Event('lingkunganChanged'))
+      window.dispatchEvent(new Event('dafuDataUpdated'))
     } catch (err) {}
 
     try {
@@ -676,10 +691,6 @@ function DafuFormContent() {
               DAFU - Formulir Input Data Umat & Keluarga
             </h1>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Input langsung seluruh anggota keluarga, peran, dan klasifikasi desil lingkungan{' '}
-            <span className="text-emerald-700 font-semibold">{formatNamaLingkungan(lingkunganName)}</span>.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -822,7 +833,7 @@ function DafuFormContent() {
               <div className="flex items-center justify-between">
                 <div className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2 font-serif">
                   <Sparkles className="w-4 h-4 text-emerald-600" />
-                  2. KLASIFIKASI GOLONGAN / DESIL (DITENTUKAN SEKRETARIS)
+                  2. KLASIFIKASI GOLONGAN (DITENTUKAN SEKRETARIS)
                 </div>
               </div>
 
@@ -1059,7 +1070,8 @@ function DafuFormContent() {
           <Table>
             <TableHeader className="bg-slate-50 text-slate-700 font-bold text-xs border-b border-slate-200">
               <TableRow>
-                <TableHead className="w-10 text-center">No</TableHead>
+                <TableHead className="w-10 text-center"></TableHead>
+                <TableHead className="w-12 text-center text-slate-700 font-bold">No</TableHead>
                 <TableHead>Nama Kepala Keluarga & Alamat</TableHead>
                 <TableHead>Golongan</TableHead>
                 <TableHead>Susunan Jiwa</TableHead>
@@ -1070,7 +1082,7 @@ function DafuFormContent() {
             <TableBody className="divide-y divide-slate-100 text-xs">
               {filteredKkList.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-slate-400">
+                  <TableCell colSpan={7} className="text-center py-8 text-slate-400">
                     {searchQuery ? 'Tidak ada keluarga yang cocok dengan kata kunci pencarian.' : 'Belum ada data keluarga di lingkungan ini.'}
                   </TableCell>
                 </TableRow>
@@ -1082,49 +1094,48 @@ function DafuFormContent() {
 
                   return (
                     <React.Fragment key={kk.id}>
-                      <TableRow className={`hover:bg-slate-50 transition ${isExpanded ? 'bg-amber-50/30' : ''}`}>
-                        <TableCell className="text-center font-mono text-slate-400">{idx + 1}</TableCell>
+                      <TableRow className={`hover:bg-slate-50 transition ${isExpanded ? 'bg-slate-50/60' : ''}`}>
+                        {/* Tombol Dropdown Dashboard Style */}
+                        <TableCell className="text-center p-2 w-10">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandKk(kk.id)}
+                            className="p-1 rounded hover:bg-slate-200 text-slate-500 transition cursor-pointer"
+                            title={isExpanded ? 'Tutup rincian anggota keluarga' : 'Buka rincian anggota keluarga'}
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="w-4 h-4 text-slate-700" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-slate-400" />
+                            )}
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-center font-mono text-slate-500 text-xs w-12">{idx + 1}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            {/* Tombol Dropdown ke Bawah */}
-                            <button
-                              type="button"
-                              onClick={() => toggleExpandKk(kk.id)}
-                              className={`p-1.5 rounded-lg transition cursor-pointer flex items-center justify-center shrink-0 border ${
-                                isExpanded
-                                  ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs'
-                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
-                              }`}
-                              title={isExpanded ? 'Tutup Daftar Anggota' : 'Klik untuk Buka Daftar Anggota Keluarga (Dropdown)'}
-                            >
-                              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-amber-900' : ''}`} />
-                            </button>
-
-                            <div className="cursor-pointer select-none" onClick={() => toggleExpandKk(kk.id)}>
-                              <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                                <span>{kk.nama_kk}</span>
-                                <span className="text-[10px] font-semibold text-slate-400">
-                                  ({members.length} Jiwa)
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-slate-500 mt-0.5">{kk.alamat || '-'}</div>
+                          <div className="cursor-pointer select-none" onClick={() => toggleExpandKk(kk.id)}>
+                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                              <span>{kk.nama_kk}</span>
+                              <span className="text-[10px] font-semibold text-slate-400">
+                                ({members.length} Jiwa)
+                              </span>
                             </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">{kk.alamat || '-'}</div>
                           </div>
                         </TableCell>
                         <TableCell>
                           {gol === 'Rentan Tidak Mampu' ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-rose-50/80 text-rose-900 border border-rose-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-600 shrink-0" />
                               Rentan Tidak Mampu
                             </span>
                           ) : gol === 'Terduga Prasejahtera' ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-amber-50/80 text-amber-900 border border-amber-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-600 shrink-0" />
                               Terduga Prasejahtera
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-emerald-50/80 text-emerald-900 border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
                               Sejahtera
                             </span>
                           )}
@@ -1143,7 +1154,7 @@ function DafuFormContent() {
                         </TableCell>
                         <TableCell className="text-center">
                           {kk.is_biduk ? (
-                            <span className="text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md">
+                            <span className="text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md">
                               KAJ
                             </span>
                           ) : (
@@ -1156,18 +1167,9 @@ function DafuFormContent() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => toggleExpandKk(kk.id)}
-                            className="h-7 px-2 text-slate-600 hover:text-emerald-700 rounded cursor-pointer"
-                            title="Buka rincian anggota keluarga di bawah"
-                          >
-                            <ChevronDown className={`w-3.5 h-3.5 mr-1 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-amber-700' : 'text-slate-500'}`} />
-                            {isExpanded ? 'Tutup' : 'Anggota'}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
                             onClick={() => populateFormForEdit(kk, anggotaMap[kk.id], golonganMap[kk.id])}
-                            className="h-7 px-2 text-emerald-700 hover:bg-emerald-50 rounded cursor-pointer"
+                            className="h-7 px-2 text-slate-700 hover:text-emerald-700 hover:bg-slate-100 rounded cursor-pointer"
+                            title="Edit data keluarga"
                           >
                             <Pencil className="w-3 h-3 mr-1" /> Edit
                           </Button>
@@ -1176,6 +1178,7 @@ function DafuFormContent() {
                             variant="ghost"
                             onClick={() => handleDelete(kk.id, kk.nama_kk)}
                             className="h-7 w-7 p-0 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                            title="Hapus KK"
                           >
                             <Trash2 className="w-3 h-3" />
                           </Button>
@@ -1184,43 +1187,43 @@ function DafuFormContent() {
 
                       {/* Expandable Dropdown Row Muncul di Bawahnya */}
                       {isExpanded && (
-                        <TableRow className="bg-slate-50/90 border-b-2 border-amber-200">
-                          <TableCell colSpan={6} className="p-3 sm:p-4">
+                        <TableRow className="bg-slate-50/90 border-b-2 border-slate-200">
+                          <TableCell colSpan={7} className="p-3 sm:p-4">
                             <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs space-y-3">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                                 <div className="flex items-center gap-2">
-                                  <div className="p-1.5 bg-emerald-50 text-emerald-700 rounded-lg">
+                                  <div className="p-1.5 bg-slate-100 text-slate-700 rounded-lg">
                                     <Users className="w-4 h-4" />
                                   </div>
                                   <div>
                                     <div className="font-bold text-xs text-slate-900 flex items-center gap-2">
                                       <span>Susunan Anggota Keluarga:</span>
-                                      <span className="text-emerald-800 font-extrabold">{kk.nama_kk}</span>
+                                      <span className="text-slate-900 font-extrabold">{kk.nama_kk}</span>
                                     </div>
-                                    <div className="text-[11px] text-slate-400">
+                                    <div className="text-[11px] text-slate-500">
                                       Alamat: {kk.alamat || '-'}
                                     </div>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                  <span className="text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-full">
                                     Total {members.length} Anggota Jiwa
                                   </span>
                                   <Button
                                     size="sm"
                                     onClick={() => populateFormForEdit(kk, anggotaMap[kk.id], golonganMap[kk.id])}
-                                    className="h-7 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg cursor-pointer"
+                                    className="h-7 text-[11px] bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg cursor-pointer inline-flex items-center gap-1"
                                   >
-                                    <Pencil className="w-3 h-3 mr-1" />
-                                    Edit Anggota Ini di Form
+                                    <Pencil className="w-3 h-3" />
+                                    Edit Anggota
                                   </Button>
                                 </div>
                               </div>
 
                               {/* Detailed Table of Family Members */}
-                              <div className="overflow-x-auto rounded-lg border border-slate-100">
+                              <div className="overflow-x-auto rounded-lg border border-slate-200">
                                 <table className="w-full text-left text-xs">
-                                  <thead className="bg-slate-50 text-slate-600 font-bold text-[11px] border-b border-slate-200">
+                                  <thead className="bg-slate-50 text-slate-700 font-bold text-[11px] border-b border-slate-200">
                                     <tr>
                                       <th className="py-2 px-3 w-10 text-center">No</th>
                                       <th className="py-2 px-3">Nama Lengkap Anggota</th>
@@ -1242,13 +1245,9 @@ function DafuFormContent() {
                                           <td className="py-2 px-3 text-center text-slate-400 font-mono text-[11px]">{mIdx + 1}</td>
                                           <td className="py-2 px-3 font-bold text-slate-900">{m.nama}</td>
                                           <td className="py-2 px-3">
-                                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                            <span className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-medium ${
                                               m.peran === 'Kepala Keluarga'
-                                                ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                                                : m.peran === 'Istri'
-                                                ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                                                : m.peran === 'Anak'
-                                                ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                                                ? 'bg-slate-100 text-slate-800 border border-slate-200 font-semibold'
                                                 : 'bg-slate-100 text-slate-700 border border-slate-200'
                                             }`}>
                                               {m.peran}
@@ -1256,11 +1255,11 @@ function DafuFormContent() {
                                           </td>
                                           <td className="py-2 px-3 text-center">
                                             {m.is_kaj ? (
-                                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800 bg-emerald-50/60 border border-emerald-200 px-2 py-0.5 rounded">
                                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" /> KAJ
                                               </span>
                                             ) : (
-                                              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
                                                 <XCircle className="w-3 h-3 text-slate-400" /> Non-KAJ
                                               </span>
                                             )}

@@ -66,14 +66,14 @@ export default function DashboardOverviewPage() {
 
   // Pengurus State (Ketua Lingkungan, Bendahara, Sekretaris)
   const [pengurus, setPengurus] = useState<PengurusLingkungan>({
-    ketua_nama: 'FX Wisnu Ardianto',
-    ketua_kontak: '0812-8921-3341',
-    bendahara_nama: 'Maria Bernadette Wijaya',
-    bendahara_kontak: '0813-1456-7890',
-    sekretaris_nama: 'Ignatius Stefanus Sugeng',
-    sekretaris_kontak: '0815-9988-2234',
-    periode: '2024 - 2026',
-    status: 'Aktif'
+    ketua_nama: 'Susunan pengurus belum ditentukan',
+    ketua_kontak: '-',
+    bendahara_nama: 'Susunan pengurus belum ditentukan',
+    bendahara_kontak: '-',
+    sekretaris_nama: 'Susunan pengurus belum ditentukan',
+    sekretaris_kontak: '-',
+    periode: 'Belum ditentukan',
+    status: 'Belum Ditentukan'
   })
 
   // Financial State (for Bendahara & Paroki)
@@ -117,15 +117,16 @@ export default function DashboardOverviewPage() {
   }
 
   const handleOpenEditPengurus = () => {
+    const isDefaultUnset = pengurus.ketua_nama === 'Susunan pengurus belum ditentukan'
     setPengurusForm({
-      ketuaNama: pengurus.ketua_nama || '',
-      teleponKetua: pengurus.ketua_kontak || '',
-      bendaharaNama: pengurus.bendahara_nama || '',
-      teleponBendahara: pengurus.bendahara_kontak || '',
-      sekretarisNama: pengurus.sekretaris_nama || '',
-      teleponSekretaris: pengurus.sekretaris_kontak || '',
-      periodeMasaBakti: pengurus.periode || '2024 - 2026',
-      status: pengurus.status || 'Aktif'
+      ketuaNama: isDefaultUnset ? '' : (pengurus.ketua_nama || ''),
+      teleponKetua: pengurus.ketua_kontak === '-' ? '' : (pengurus.ketua_kontak || ''),
+      bendaharaNama: isDefaultUnset ? '' : (pengurus.bendahara_nama || ''),
+      teleponBendahara: pengurus.bendahara_kontak === '-' ? '' : (pengurus.bendahara_kontak || ''),
+      sekretarisNama: isDefaultUnset ? '' : (pengurus.sekretaris_nama || ''),
+      teleponSekretaris: pengurus.sekretaris_kontak === '-' ? '' : (pengurus.sekretaris_kontak || ''),
+      periodeMasaBakti: pengurus.periode === 'Belum ditentukan' ? '2024 - 2026' : (pengurus.periode || '2024 - 2026'),
+      status: pengurus.status === 'Belum Ditentukan' ? 'Aktif' : (pengurus.status || 'Aktif')
     })
     setIsEditPengurusOpen(true)
   }
@@ -136,23 +137,37 @@ export default function DashboardOverviewPage() {
 
     const targetId = lingkunganId || 'default'
 
+    const updated = {
+      ketuaNama: pengurusForm.ketuaNama.trim() || 'Susunan pengurus belum ditentukan',
+      teleponKetua: pengurusForm.teleponKetua.trim() || '-',
+      bendaharaNama: pengurusForm.bendaharaNama.trim() || 'Susunan pengurus belum ditentukan',
+      teleponBendahara: pengurusForm.teleponBendahara.trim() || '-',
+      sekretarisNama: pengurusForm.sekretarisNama.trim() || 'Susunan pengurus belum ditentukan',
+      teleponSekretaris: pengurusForm.teleponSekretaris.trim() || '-',
+      periodeMasaBakti: pengurusForm.periodeMasaBakti.trim() || '2024 - 2026',
+      status: pengurusForm.status || 'Aktif'
+    }
+
     try {
       const existing = localStorage.getItem(`profil_manual_${targetId}`)
       const obj = existing ? JSON.parse(existing) : {}
-      const updated = {
-        ...obj,
-        ketuaNama: pengurusForm.ketuaNama.trim(),
-        teleponKetua: pengurusForm.teleponKetua.trim(),
-        bendaharaNama: pengurusForm.bendaharaNama.trim(),
-        teleponBendahara: pengurusForm.teleponBendahara.trim(),
-        sekretarisNama: pengurusForm.sekretarisNama.trim(),
-        teleponSekretaris: pengurusForm.teleponSekretaris.trim(),
-        periodeMasaBakti: pengurusForm.periodeMasaBakti.trim(),
-        status: pengurusForm.status
+      const fullUpdated = { ...obj, ...updated }
+
+      localStorage.setItem(`profil_manual_${targetId}`, JSON.stringify(fullUpdated))
+
+      if (lingkunganName) {
+        const cleanN = lingkunganName.replace(/^lingkungan\s+/i, '').trim()
+        if (cleanN) {
+          localStorage.setItem(`profil_manual_${cleanN}`, JSON.stringify(fullUpdated))
+          localStorage.setItem(`profil_manual_${cleanN.toLowerCase().replace(/\s+/g, '')}`, JSON.stringify(fullUpdated))
+          localStorage.setItem(`profil_manual_${cleanN.toLowerCase().replace(/[^a-z0-9]/g, '')}`, JSON.stringify(fullUpdated))
+        }
       }
-      localStorage.setItem(`profil_manual_${targetId}`, JSON.stringify(updated))
+
+      window.dispatchEvent(new CustomEvent('pengurusUpdated', { detail: { targetId, updated: fullUpdated } }))
       window.dispatchEvent(new Event('storage'))
       window.dispatchEvent(new Event('lingkunganChanged'))
+      window.dispatchEvent(new Event('dafuDataUpdated'))
     } catch (err) {}
 
     try {
@@ -164,14 +179,14 @@ export default function DashboardOverviewPage() {
     } catch (err) {}
 
     setPengurus({
-      ketua_nama: pengurusForm.ketuaNama.trim() || 'FX Wisnu Ardianto',
-      ketua_kontak: pengurusForm.teleponKetua.trim() || '0812-8921-3341',
-      bendahara_nama: pengurusForm.bendaharaNama.trim() || 'Maria Bernadette Wijaya',
-      bendahara_kontak: pengurusForm.teleponBendahara.trim() || '0813-1456-7890',
-      sekretaris_nama: pengurusForm.sekretarisNama.trim() || 'Ignatius Stefanus Sugeng',
-      sekretaris_kontak: pengurusForm.teleponSekretaris.trim() || '0815-9988-2234',
-      periode: pengurusForm.periodeMasaBakti.trim() || '2024 - 2026',
-      status: pengurusForm.status || 'Aktif'
+      ketua_nama: updated.ketuaNama,
+      ketua_kontak: updated.teleponKetua,
+      bendahara_nama: updated.bendaharaNama,
+      bendahara_kontak: updated.teleponBendahara,
+      sekretaris_nama: updated.sekretarisNama,
+      sekretaris_kontak: updated.teleponSekretaris,
+      periode: updated.periodeMasaBakti,
+      status: updated.status
     })
 
     setSavingPengurus(false)
@@ -373,11 +388,13 @@ export default function DashboardOverviewPage() {
       loadDashboardData()
     }
     window.addEventListener('dafuDataUpdated', handleSync)
+    window.addEventListener('pengurusUpdated', handleSync)
     window.addEventListener('storage', handleSync)
     window.addEventListener('lingkunganChanged', handleSync)
 
     return () => {
       window.removeEventListener('dafuDataUpdated', handleSync)
+      window.removeEventListener('pengurusUpdated', handleSync)
       window.removeEventListener('storage', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
     }
@@ -521,9 +538,9 @@ export default function DashboardOverviewPage() {
         return (
           <span
             title={note || 'Keluarga Rentan Tidak Mampu'}
-            className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-md text-xs font-semibold"
+            className="inline-flex items-center gap-1.5 bg-rose-50/80 text-rose-900 border border-rose-200 px-2.5 py-0.5 rounded-md text-xs font-medium"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
             Rentan Tidak Mampu
           </span>
         )
@@ -531,9 +548,9 @@ export default function DashboardOverviewPage() {
         return (
           <span
             title={note || 'Keluarga Terduga Prasejahtera'}
-            className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-md text-xs font-semibold"
+            className="inline-flex items-center gap-1.5 bg-amber-50/80 text-amber-900 border border-amber-200 px-2.5 py-0.5 rounded-md text-xs font-medium"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
             Terduga Prasejahtera
           </span>
         )
@@ -542,9 +559,9 @@ export default function DashboardOverviewPage() {
         return (
           <span
             title={note || 'Keluarga Sejahtera'}
-            className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-md text-xs font-semibold"
+            className="inline-flex items-center gap-1.5 bg-emerald-50/80 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-md text-xs font-medium"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
             Sejahtera
           </span>
         )
@@ -559,69 +576,46 @@ export default function DashboardOverviewPage() {
         {viewingKk && (
           <>
             <DialogHeader>
-              <DialogTitle className="text-slate-800 font-bold text-lg flex items-center gap-2">
+              <DialogTitle className="text-slate-900 font-bold text-lg flex items-center gap-2">
                 <Users className="w-5 h-5 text-emerald-600" />
-                Rincian Kartu Keluarga Umat
+                Detail Kepala Keluarga & Anggota
               </DialogTitle>
+              <p className="text-xs text-slate-500">
+                Informasi detail KK dan daftar seluruh anggota jiwa keluarga.
+              </p>
             </DialogHeader>
 
-            <div className="space-y-4 py-2 text-sm">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-slate-500 font-medium">Nama Kepala Keluarga:</span>
-                    <div className="text-base font-bold text-slate-900">{viewingKk.nama_kk}</div>
-                  </div>
-                  <div>
-                    {getGolonganBadge(
-                      golonganMap[viewingKk.id]?.golongan,
-                      golonganMap[viewingKk.id]?.kriteria_catatan
-                    )}
-                  </div>
+            <div className="space-y-4 pt-3">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
+                <div className="text-xs font-bold text-slate-800">{viewingKk.nama_kk}</div>
+                <div className="text-xs text-slate-500">{viewingKk.alamat || 'Alamat belum diisi'}</div>
+                <div className="text-xs text-slate-500">
+                  Wilayah {viewingKk.wilayah || getWilayahForLingkungan(lingkunganName || '')} • Lingkungan {formatNamaLingkungan(lingkunganName)}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs py-1 border-t border-slate-200/60">
-                  <div>
-                    <span className="text-slate-500 font-medium">Wilayah:</span>
-                    <div className="font-semibold text-slate-800">{viewingKk.wilayah || getWilayahForLingkungan(lingkunganName || '')}</div>
-                  </div>
-                  {viewingKk.telepon && (
-                    <div>
-                      <span className="text-slate-500 font-medium">Kontak / Telepon:</span>
-                      <div className="font-semibold text-slate-800">{viewingKk.telepon}</div>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <span className="text-xs text-slate-500 font-medium">Alamat Rumah:</span>
-                  <div className="text-slate-700 text-xs mt-0.5">{viewingKk.alamat || '-'}</div>
-                </div>
-                {golonganMap[viewingKk.id]?.kriteria_catatan && (
-                  <div className="pt-1 border-t border-slate-200/80 text-xs text-slate-600">
-                    <span className="font-semibold">Catatan Kriteria Sekretaris:</span>{' '}
-                    &ldquo;{golonganMap[viewingKk.id]?.kriteria_catatan}&rdquo;
-                  </div>
-                )}
               </div>
 
               <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                  Daftar Anggota Keluarga ({anggotaMap[viewingKk.id]?.length || 0} Jiwa)
+                <div className="text-xs font-bold text-slate-700 mb-2">
+                  Daftar Anggota Jiwa ({(anggotaMap[viewingKk.id] || []).length} Orang)
                 </div>
-                <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
-                  {(anggotaMap[viewingKk.id] || []).map((m, idx) => (
-                    <div key={idx} className="p-3 flex items-center justify-between hover:bg-slate-50">
+                <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                  {(anggotaMap[viewingKk.id] || []).map((m, i) => (
+                    <div
+                      key={m.id || i}
+                      className="p-2.5 rounded-lg border border-slate-200 bg-white flex items-center justify-between text-xs"
+                    >
                       <div>
-                        <div className="font-bold text-slate-900 text-xs">{m.nama}</div>
-                        <div className="text-[11px] text-emerald-700">Peran: {m.peran}</div>
+                        <div className="font-semibold text-slate-900">{m.nama}</div>
+                        <div className="text-[11px] text-slate-500">Peran: {m.peran}</div>
                       </div>
-                      <div>
+                      <div className="flex items-center gap-2">
                         {m.is_kaj ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
-                            <CheckCircle2 className="w-3 h-3 text-slate-600" /> Terdaftar KAJ
+                          <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded font-medium">
+                            KAJ
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md">
-                            <XCircle className="w-3 h-3 text-slate-400" /> Non-KAJ
+                          <span className="text-[10px] bg-slate-50 text-slate-500 border border-slate-200 px-2 py-0.5 rounded font-medium">
+                            Non-KAJ
                           </span>
                         )}
                       </div>
@@ -630,30 +624,13 @@ export default function DashboardOverviewPage() {
                 </div>
               </div>
             </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setViewingKk(null)}
-                className="border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl"
-              >
-                Tutup
-              </Button>
-              <Link href={`/dashboard/dafu?edit=${viewingKk.id}`}>
-                <Button
-                  type="button"
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl cursor-pointer"
-                >
-                  Edit di DAFU
-                </Button>
-              </Link>
-            </DialogFooter>
           </>
         )}
       </DialogContent>
     </Dialog>
   )
+
+  const isUnsetPengurus = (name: string) => !name || name === 'Susunan pengurus belum ditentukan'
 
   const renderPengurusCard = (canEdit: boolean) => (
     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-3">
@@ -664,13 +641,13 @@ export default function DashboardOverviewPage() {
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-800">Susunan Pengurus {formatNamaLingkungan(lingkunganName)}</h3>
-            <p className="text-xs text-slate-500">Masa Bakti: {pengurus.periode} • Paroki Bekasi Utara</p>
+            <p className="text-xs text-slate-500">Masa Bakti: {pengurus.periode === 'Belum ditentukan' ? 'Belum ditentukan' : (pengurus.periode || 'Belum ditentukan')} • Paroki Bekasi Utara</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[11px] bg-slate-100 text-slate-700 border border-slate-200 font-bold px-3 py-1 rounded-full w-fit flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-            Status: {pengurus.status}
+            Status: {pengurus.status || 'Belum Ditentukan'}
           </span>
           {canEdit && (
             <button
@@ -701,9 +678,13 @@ export default function DashboardOverviewPage() {
           </div>
           <div className="min-w-0">
             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ketua Lingkungan</div>
-            <div className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{pengurus.ketua_nama}</div>
+            {isUnsetPengurus(pengurus.ketua_nama) ? (
+              <div className="text-xs font-semibold text-slate-500 italic mt-0.5">Susunan pengurus belum ditentukan</div>
+            ) : (
+              <div className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{pengurus.ketua_nama}</div>
+            )}
             <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-              <span>📞</span> {pengurus.ketua_kontak}
+              <span>📞</span> {pengurus.ketua_kontak && pengurus.ketua_kontak !== '-' ? pengurus.ketua_kontak : '-'}
             </div>
           </div>
         </div>
@@ -715,9 +696,13 @@ export default function DashboardOverviewPage() {
           </div>
           <div className="min-w-0">
             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bendahara Lingkungan</div>
-            <div className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{pengurus.bendahara_nama}</div>
+            {isUnsetPengurus(pengurus.bendahara_nama) ? (
+              <div className="text-xs font-semibold text-slate-500 italic mt-0.5">Susunan pengurus belum ditentukan</div>
+            ) : (
+              <div className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{pengurus.bendahara_nama}</div>
+            )}
             <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-              <span>📞</span> {pengurus.bendahara_kontak}
+              <span>📞</span> {pengurus.bendahara_kontak && pengurus.bendahara_kontak !== '-' ? pengurus.bendahara_kontak : '-'}
             </div>
           </div>
         </div>
@@ -729,9 +714,13 @@ export default function DashboardOverviewPage() {
           </div>
           <div className="min-w-0">
             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Sekretaris Lingkungan</div>
-            <div className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{pengurus.sekretaris_nama}</div>
+            {isUnsetPengurus(pengurus.sekretaris_nama) ? (
+              <div className="text-xs font-semibold text-slate-500 italic mt-0.5">Susunan pengurus belum ditentukan</div>
+            ) : (
+              <div className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{pengurus.sekretaris_nama}</div>
+            )}
             <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-              <span>📞</span> {pengurus.sekretaris_kontak}
+              <span>📞</span> {pengurus.sekretaris_kontak && pengurus.sekretaris_kontak !== '-' ? pengurus.sekretaris_kontak : '-'}
             </div>
           </div>
         </div>
@@ -912,11 +901,11 @@ export default function DashboardOverviewPage() {
                 Dashboard Data Umat & Keluarga
               </h1>
               <span className="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">
-                Sistem Desil & KAJ
+                Sistem Golongan & KAJ
               </span>
             </div>
             <p className="text-sm text-slate-500 mt-1">
-              Rangkuman data seluruh umat, rincian keluarga, & klasifikasi desil lingkungan{' '}
+              Rangkuman data seluruh umat, rincian keluarga, & klasifikasi golongan keluarga lingkungan{' '}
               <span className="text-emerald-700 font-semibold">{formatNamaLingkungan(lingkunganName)}</span>.
             </p>
           </div>
@@ -982,12 +971,12 @@ export default function DashboardOverviewPage() {
             </CardContent>
           </Card>
 
-          {/* Card 3: Klasifikasi Desil / Golongan */}
+          {/* Card 3: Klasifikasi Golongan */}
           <Card className="bg-white border-slate-200 rounded-2xl p-1 shadow-xs sm:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                Klasifikasi Golongan Keluarga (Sistem Desil Sekretaris)
+                Klasifikasi Golongan Keluarga
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1046,7 +1035,7 @@ export default function DashboardOverviewPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 text-slate-900">
                     <SelectItem value="ALL">Semua Status KAJ</SelectItem>
-                    <SelectItem value="BIDUK">Terdaftar KAJ</SelectItem>
+                    <SelectItem value="BIDUK">Sudah KAJ</SelectItem>
                     <SelectItem value="NON_BIDUK">Belum KAJ</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1073,7 +1062,7 @@ export default function DashboardOverviewPage() {
                   <TableHead className="w-10 text-center"></TableHead>
                   <TableHead className="w-12 text-center text-slate-700 font-bold">No</TableHead>
                   <TableHead className="text-slate-800 font-bold">Nama Kepala Keluarga & Peran</TableHead>
-                  <TableHead className="text-slate-800 font-bold">Golongan (Desil)</TableHead>
+                  <TableHead className="text-slate-800 font-bold">Golongan</TableHead>
                   <TableHead className="text-slate-800 font-bold">Anggota Keluarga (Jiwa)</TableHead>
                   <TableHead className="text-center text-slate-800 font-bold">Status KAJ</TableHead>
                   <TableHead className="text-right text-slate-800 font-bold">Aksi</TableHead>
@@ -1105,9 +1094,9 @@ export default function DashboardOverviewPage() {
                               title={isExpanded ? 'Tutup rincian anggota keluarga' : 'Buka rincian anggota keluarga'}
                             >
                               {isExpanded ? (
-                                <ChevronDown className="w-4 h-4 text-emerald-600" />
+                                <ChevronDown className="w-4 h-4 text-slate-700" />
                               ) : (
-                                <ChevronRight className="w-4 h-4" />
+                                <ChevronRight className="w-4 h-4 text-slate-400" />
                               )}
                             </button>
                           </TableCell>
@@ -1142,9 +1131,9 @@ export default function DashboardOverviewPage() {
                             <button
                               type="button"
                               onClick={() => toggleExpandKk(kk.id)}
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-emerald-300 px-2.5 py-1 rounded-xl shadow-2xs hover:bg-emerald-50/40 transition cursor-pointer"
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 px-2.5 py-1 rounded-xl shadow-2xs hover:bg-slate-50 transition cursor-pointer"
                             >
-                              <Users className="w-3.5 h-3.5 text-emerald-600" />
+                              <Users className="w-3.5 h-3.5 text-slate-600" />
                               <span>{members.length} Jiwa</span>
                               <span className="text-[11px] text-slate-400">
                                 ({isExpanded ? 'Sembunyikan' : 'Rincian'})
@@ -1174,7 +1163,7 @@ export default function DashboardOverviewPage() {
                                 className="h-8 px-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer text-xs"
                                 title="Edit di DAFU"
                               >
-                                <Pencil className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                                <Pencil className="w-3.5 h-3.5 mr-1 text-slate-600" />
                                 Edit
                               </Button>
                             </Link>
@@ -1202,66 +1191,95 @@ export default function DashboardOverviewPage() {
                           </TableCell>
                         </TableRow>
 
-                        {/* Expanded Subtable (List of all members in this KK) */}
+                        {/* Expanded Subtable (Exact DAFU Gambar 2 style) */}
                         {isExpanded && (
-                          <TableRow className="bg-slate-50/70 border-b border-slate-200">
-                            <TableCell colSpan={7} className="p-4 pl-12">
-                              <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs">
-                                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                          <TableRow className="bg-slate-50/90 border-b-2 border-slate-200">
+                            <TableCell colSpan={7} className="p-3 sm:p-4">
+                              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs space-y-3">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                                   <div className="flex items-center gap-2">
-                                    <Users className="w-4 h-4 text-emerald-600" />
-                                    <span className="text-xs font-bold text-slate-800">
-                                      Daftar Anggota Keluarga ({kk.nama_kk})
-                                    </span>
+                                    <div className="p-1.5 bg-slate-100 text-slate-700 rounded-lg">
+                                      <Users className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-xs text-slate-900 flex items-center gap-2">
+                                        <span>Susunan Anggota Keluarga:</span>
+                                        <span className="text-slate-900 font-extrabold">{kk.nama_kk}</span>
+                                      </div>
+                                      <div className="text-[11px] text-slate-500">
+                                        Alamat: {kk.alamat || '-'}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <Link href={`/dashboard/dafu?edit=${kk.id}`}>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-7 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer"
-                                    >
-                                      <Pencil className="w-3 h-3 mr-1" /> Edit di DAFU
-                                    </Button>
-                                  </Link>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-full">
+                                      Total {members.length} Anggota Jiwa
+                                    </span>
+                                    <Link href={`/dashboard/dafu?edit=${kk.id}`}>
+                                      <Button
+                                        size="sm"
+                                        className="h-7 text-[11px] bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg cursor-pointer inline-flex items-center gap-1"
+                                      >
+                                        <Pencil className="w-3 h-3" />
+                                        Edit Anggota
+                                      </Button>
+                                    </Link>
+                                  </div>
                                 </div>
 
-                                {members.length === 0 ? (
-                                  <p className="text-xs text-slate-400 py-2">
-                                    Belum ada rincian anggota keluarga yang diinput untuk KK ini.
-                                  </p>
-                                ) : (
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                                    {members.map((m, mIdx) => (
-                                      <div
-                                        key={m.id || mIdx}
-                                        className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col justify-between"
-                                      >
-                                        <div className="flex items-start justify-between gap-2">
-                                          <div>
-                                            <div className="text-xs font-bold text-slate-900">{m.nama}</div>
-                                            <div className="text-[11px] font-medium text-emerald-700 mt-0.5">
-                                              Peran: {m.peran}
-                                            </div>
-                                          </div>
-                                          {m.is_kaj ? (
-                                            <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 font-semibold px-1.5 py-0.5 rounded-md shrink-0">
-                                              KAJ
-                                            </span>
-                                          ) : (
-                                            <span className="text-[10px] bg-slate-50 text-slate-500 border border-slate-200 font-medium px-1.5 py-0.5 rounded-md shrink-0">
-                                              Non-KAJ
-                                            </span>
-                                          )}
-                                        </div>
-                                        {m.keterangan && (
-                                          <div className="text-[10px] text-slate-500 mt-1 italic">
-                                            {m.keterangan}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
+                                {/* Detailed Table of Family Members */}
+                                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                                  <table className="w-full text-left text-xs">
+                                    <thead className="bg-slate-50 text-slate-700 font-bold text-[11px] border-b border-slate-200">
+                                      <tr>
+                                        <th className="py-2 px-3 w-10 text-center">No</th>
+                                        <th className="py-2 px-3">Nama Lengkap Anggota</th>
+                                        <th className="py-2 px-3">Hubungan / Peran</th>
+                                        <th className="py-2 px-3 text-center">Status KAJ</th>
+                                        <th className="py-2 px-3">Keterangan</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                      {members.length === 0 ? (
+                                        <tr>
+                                          <td colSpan={5} className="py-3 text-center text-slate-400">
+                                            Tidak ada data rincian anggota keluarga.
+                                          </td>
+                                        </tr>
+                                      ) : (
+                                        members.map((m, mIdx) => (
+                                          <tr key={m.id || mIdx} className="hover:bg-slate-50/80">
+                                            <td className="py-2 px-3 text-center text-slate-400 font-mono text-[11px]">{mIdx + 1}</td>
+                                            <td className="py-2 px-3 font-bold text-slate-900">{m.nama}</td>
+                                            <td className="py-2 px-3">
+                                              <span className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-medium ${
+                                                m.peran === 'Kepala Keluarga'
+                                                  ? 'bg-slate-100 text-slate-800 border border-slate-200 font-semibold'
+                                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                              }`}>
+                                                {m.peran}
+                                              </span>
+                                            </td>
+                                            <td className="py-2 px-3 text-center">
+                                              {m.is_kaj ? (
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800 bg-emerald-50/60 border border-emerald-200 px-2 py-0.5 rounded">
+                                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> KAJ
+                                                </span>
+                                              ) : (
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
+                                                  <XCircle className="w-3 h-3 text-slate-400" /> Non-KAJ
+                                                </span>
+                                              )}
+                                            </td>
+                                            <td className="py-2 px-3 text-slate-500 text-[11px]">
+                                              {m.keterangan || m.peran}
+                                            </td>
+                                          </tr>
+                                        ))
+                                      )}
+                                    </tbody>
+                                  </table>
+                                </div>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -1510,7 +1528,7 @@ export default function DashboardOverviewPage() {
             </div>
             <h2 className="text-lg font-bold text-slate-800 mt-1 font-serif">Data Keluarga & Klasifikasi Golongan Umat</h2>
             <p className="text-xs text-slate-500">
-              Data seluruh KK, anggota keluarga, dan status desil/golongan yang diinput oleh Sekretaris Lingkungan tersinkronisasi otomatis ke Bendahara dan Paroki.
+              Data seluruh KK, anggota keluarga, dan status golongan yang diinput oleh Sekretaris Lingkungan tersinkronisasi otomatis ke Bendahara dan Paroki.
             </p>
           </div>
 
@@ -1556,21 +1574,21 @@ export default function DashboardOverviewPage() {
               <div className="text-2xl font-extrabold text-slate-900">{countSejahtera} <span className="text-xs font-normal text-slate-500">KK</span></div>
             </div>
             <span className="text-[11px] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md font-semibold border border-emerald-100">
-              Mandiri / Sejahtera
+              Keluarga Mandiri
             </span>
           </div>
         </div>
 
-        {/* Tabel Data Keluarga */}
+        {/* Data Keluarga List Table for Bendahara */}
         <Card className="bg-white border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-          <CardHeader className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <CardHeader className="p-4 border-b border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             <div>
-              <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
                 <Users className="w-4 h-4 text-emerald-600" />
                 Daftar Keluarga ({filteredKkList.length} KK)
               </CardTitle>
               <CardDescription className="text-xs text-slate-400">
-                Klik tombol &ldquo;Rincian&rdquo; untuk melihat seluruh anggota keluarga yang diinput Sekretaris
+                Klik tombol panah atau baris untuk melihat seluruh anggota keluarga yang diinput Sekretaris
               </CardDescription>
             </div>
 
@@ -1603,11 +1621,12 @@ export default function DashboardOverviewPage() {
             <Table>
               <TableHeader className="bg-slate-50/80">
                 <TableRow>
-                  <TableHead className="w-10 text-center font-bold text-xs text-slate-700">No</TableHead>
+                  <TableHead className="w-10 text-center"></TableHead>
+                  <TableHead className="w-12 text-center font-bold text-xs text-slate-700">No</TableHead>
                   <TableHead className="font-bold text-xs text-slate-700">Kepala Keluarga</TableHead>
                   <TableHead className="font-bold text-xs text-slate-700">Alamat</TableHead>
                   <TableHead className="font-bold text-xs text-slate-700">Status KAJ</TableHead>
-                  <TableHead className="font-bold text-xs text-slate-700">Golongan (Desil)</TableHead>
+                  <TableHead className="font-bold text-xs text-slate-700">Golongan</TableHead>
                   <TableHead className="font-bold text-xs text-slate-700">Total Jiwa</TableHead>
                   <TableHead className="text-right font-bold text-xs text-slate-700">Aksi</TableHead>
                 </TableRow>
@@ -1615,7 +1634,7 @@ export default function DashboardOverviewPage() {
               <TableBody className="divide-y divide-slate-100">
                 {filteredKkList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-slate-400 text-xs">
+                    <TableCell colSpan={8} className="text-center py-8 text-slate-400 text-xs">
                       Tidak ada data keluarga yang sesuai kriteria pencarian.
                     </TableCell>
                   </TableRow>
@@ -1627,43 +1646,41 @@ export default function DashboardOverviewPage() {
 
                     return (
                       <React.Fragment key={k.id}>
-                        <TableRow className={`hover:bg-slate-50/80 transition ${isExpanded ? 'bg-amber-50/30' : ''}`}>
-                          <TableCell className="text-center text-xs font-semibold text-slate-400">{idx + 1}</TableCell>
+                        <TableRow className={`hover:bg-slate-50/80 transition ${isExpanded ? 'bg-slate-50/60' : ''}`}>
+                          <TableCell className="text-center p-2 w-10">
+                            <button
+                              type="button"
+                              onClick={() => toggleExpandKk(k.id)}
+                              className="p-1 rounded hover:bg-slate-200 text-slate-500 transition cursor-pointer"
+                              title={isExpanded ? 'Tutup rincian anggota keluarga' : 'Buka rincian anggota keluarga'}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="w-4 h-4 text-slate-700" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                              )}
+                            </button>
+                          </TableCell>
+                          <TableCell className="text-center text-xs font-semibold text-slate-500 w-12">{idx + 1}</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              {/* Tombol Dropdown ke Bawah */}
-                              <button
-                                type="button"
-                                onClick={() => toggleExpandKk(k.id)}
-                                className={`p-1.5 rounded-lg transition cursor-pointer flex items-center justify-center shrink-0 border ${
-                                  isExpanded
-                                    ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs'
-                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
-                                }`}
-                                title={isExpanded ? 'Tutup Daftar Anggota' : 'Klik untuk Buka Daftar Anggota Keluarga (Dropdown)'}
-                              >
-                                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-amber-900' : ''}`} />
-                              </button>
-
-                              <div className="cursor-pointer select-none" onClick={() => toggleExpandKk(k.id)}>
-                                <div className="font-bold text-slate-900 text-xs hover:text-emerald-700 flex items-center gap-1.5">
-                                  <span>{k.nama_kk}</span>
-                                  <span className="text-[10px] font-semibold text-slate-400">
-                                    ({members.length} Jiwa)
-                                  </span>
-                                </div>
-                                {members.length > 0 && !isExpanded && (
-                                  <div className="text-[11px] text-slate-400 truncate max-w-xs mt-0.5">
-                                    {members.map(m => `${m.nama} (${m.peran})`).join(', ')}
-                                  </div>
-                                )}
+                            <div className="cursor-pointer select-none" onClick={() => toggleExpandKk(k.id)}>
+                              <div className="font-bold text-slate-900 text-xs hover:text-emerald-700 flex items-center gap-1.5">
+                                <span>{k.nama_kk}</span>
+                                <span className="text-[10px] font-semibold text-slate-400">
+                                  ({members.length} Jiwa)
+                                </span>
                               </div>
+                              {members.length > 0 && !isExpanded && (
+                                <div className="text-[11px] text-slate-400 truncate max-w-xs mt-0.5">
+                                  {members.map(m => `${m.nama} (${m.peran})`).join(', ')}
+                                </div>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-xs text-slate-600">{k.alamat || '-'}</TableCell>
                           <TableCell>
                             {k.is_biduk ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-slate-600" /> KAJ
                               </span>
                             ) : (
@@ -1683,54 +1700,53 @@ export default function DashboardOverviewPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => toggleExpandKk(k.id)}
-                              className="text-xs text-slate-600 hover:text-emerald-700 h-8 px-2.5 rounded-lg cursor-pointer"
+                              onClick={() => setViewingKk(k)}
+                              className="text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-100 h-8 px-2.5 rounded-lg cursor-pointer"
+                              title="Lihat Detail"
                             >
-                              <ChevronDown className={`w-3.5 h-3.5 mr-1 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-amber-700' : 'text-slate-500'}`} />
-                              {isExpanded ? 'Tutup' : 'Rincian'}
+                              <Eye className="w-3.5 h-3.5 mr-1" />
+                              Detail
                             </Button>
                           </TableCell>
                         </TableRow>
 
-                        {/* Expandable Dropdown Row Muncul di Bawahnya */}
+                        {/* Expandable Dropdown Row (Exact DAFU Gambar 2 style) */}
                         {isExpanded && (
-                          <TableRow className="bg-slate-50/90 border-b-2 border-amber-200">
-                            <TableCell colSpan={7} className="p-3 sm:p-4">
+                          <TableRow className="bg-slate-50/90 border-b-2 border-slate-200">
+                            <TableCell colSpan={8} className="p-3 sm:p-4">
                               <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs space-y-3">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                                   <div className="flex items-center gap-2">
-                                    <div className="p-1.5 bg-emerald-50 text-emerald-700 rounded-lg">
+                                    <div className="p-1.5 bg-slate-100 text-slate-700 rounded-lg">
                                       <Users className="w-4 h-4" />
                                     </div>
                                     <div>
                                       <div className="font-bold text-xs text-slate-900 flex items-center gap-2">
                                         <span>Susunan Anggota Keluarga:</span>
-                                        <span className="text-emerald-800 font-extrabold">{k.nama_kk}</span>
+                                        <span className="text-slate-900 font-extrabold">{k.nama_kk}</span>
                                       </div>
-                                      <div className="text-[11px] text-slate-400">
+                                      <div className="text-[11px] text-slate-500">
                                         Alamat: {k.alamat || '-'} • Wilayah {k.wilayah || getWilayahForLingkungan(lingkunganName || '')}
                                       </div>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                    <span className="text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-full">
                                       Total {members.length} Anggota Jiwa
                                     </span>
-                                    {userRole === 'PAROKI' && (
-                                      <Link href={`/dashboard/dafu?edit=${k.id}`}>
-                                        <Button size="sm" variant="outline" className="h-7 text-[11px] border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-bold rounded-lg cursor-pointer">
-                                          <Pencil className="w-3 h-3 mr-1" />
-                                          Edit di DAFU
-                                        </Button>
-                                      </Link>
-                                    )}
+                                    <Link href={`/dashboard/dafu?edit=${k.id}`}>
+                                      <Button size="sm" className="h-7 text-[11px] bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg cursor-pointer inline-flex items-center gap-1">
+                                        <Pencil className="w-3 h-3 mr-1" />
+                                        Edit Anggota
+                                      </Button>
+                                    </Link>
                                   </div>
                                 </div>
 
                                 {/* Detailed Table of Family Members */}
-                                <div className="overflow-x-auto rounded-lg border border-slate-100">
+                                <div className="overflow-x-auto rounded-lg border border-slate-200">
                                   <table className="w-full text-left text-xs">
-                                    <thead className="bg-slate-50 text-slate-600 font-bold text-[11px] border-b border-slate-200">
+                                    <thead className="bg-slate-50 text-slate-700 font-bold text-[11px] border-b border-slate-200">
                                       <tr>
                                         <th className="py-2 px-3 w-10 text-center">No</th>
                                         <th className="py-2 px-3">Nama Lengkap Anggota</th>
@@ -1752,31 +1768,27 @@ export default function DashboardOverviewPage() {
                                             <td className="py-2 px-3 text-center text-slate-400 font-mono text-[11px]">{mIdx + 1}</td>
                                             <td className="py-2 px-3 font-bold text-slate-900">{m.nama}</td>
                                             <td className="py-2 px-3">
-                                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                              <span className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-medium ${
                                                 m.peran === 'Kepala Keluarga'
-                                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                                  : m.peran === 'Istri'
-                                                  ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                                                  : m.peran === 'Anak'
-                                                  ? 'bg-blue-100 text-blue-900 border border-blue-200'
-                                                  : 'bg-slate-100 text-slate-700'
+                                                  ? 'bg-slate-100 text-slate-800 border border-slate-200 font-semibold'
+                                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
                                               }`}>
                                                 {m.peran}
                                               </span>
                                             </td>
                                             <td className="py-2 px-3 text-center">
                                               {m.is_kaj ? (
-                                                <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 font-semibold px-2 py-0.5 rounded-full">
-                                                  KAJ
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800 bg-emerald-50/60 border border-emerald-200 px-2 py-0.5 rounded">
+                                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> KAJ
                                                 </span>
                                               ) : (
-                                                <span className="text-[10px] bg-slate-50 text-slate-400 border border-slate-200 font-medium px-2 py-0.5 rounded-full">
-                                                  Non-KAJ
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
+                                                  <XCircle className="w-3 h-3 text-slate-400" /> Non-KAJ
                                                 </span>
                                               )}
                                             </td>
-                                            <td className="py-2 px-3 text-slate-500 italic text-[11px]">
-                                              {m.keterangan || '-'}
+                                            <td className="py-2 px-3 text-slate-500 text-[11px]">
+                                              {m.keterangan || m.peran}
                                             </td>
                                           </tr>
                                         ))
