@@ -1123,22 +1123,9 @@ function DafuFormContent() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {gol === 'Rentan Tidak Mampu' ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-rose-50/80 text-rose-900 border border-rose-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-600 shrink-0" />
-                              Rentan Tidak Mampu
-                            </span>
-                          ) : gol === 'Terduga Prasejahtera' ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-amber-50/80 text-amber-900 border border-amber-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-600 shrink-0" />
-                              Terduga Prasejahtera
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-emerald-50/80 text-emerald-900 border border-emerald-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
-                              Sejahtera
-                            </span>
-                          )}
+                          <span className="inline-block px-2.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            {gol}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <div className="font-semibold text-slate-800">{members.length} Jiwa</div>
@@ -1255,8 +1242,8 @@ function DafuFormContent() {
                                           </td>
                                           <td className="py-2 px-3 text-center">
                                             {m.is_kaj ? (
-                                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800 bg-emerald-50/60 border border-emerald-200 px-2 py-0.5 rounded">
-                                                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> KAJ
+                                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                                                <CheckCircle2 className="w-3 h-3 text-slate-600" /> KAJ
                                               </span>
                                             ) : (
                                               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
