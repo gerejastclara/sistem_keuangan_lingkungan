@@ -1,5 +1,6 @@
 import { KepalaKeluarga, AnggotaKeluarga, GolonganKeluarga } from './types'
 import rawSantaClaraData from '@/data/santaClaraUmat.json'
+import { getAllMasterLingkungan } from './constants'
 
 interface SantaClaraDataset {
   totalFamilies: number
@@ -55,32 +56,29 @@ export function getRealKkListForLingkungan(lingkunganId: string, namaLingkungan?
     return data.kksByLingkungan[lingkunganId]
   }
 
-  // 2. Normalized lookup
-  const normKey = normalizeLookupKey(lingkunganId || namaLingkungan || '')
-  if (normKey) {
-    if (data.kksByLingkungan[normKey]) return data.kksByLingkungan[normKey]
-    if (data.kksByLingkungan[`st${normKey}`]) return data.kksByLingkungan[`st${normKey}`]
-    if (data.kksByLingkungan[`csv-${normKey}`]) return data.kksByLingkungan[`csv-${normKey}`]
-    if (data.kksByLingkungan[`csv-st-${normKey}`]) return data.kksByLingkungan[`csv-st-${normKey}`]
-
-    // Yohanes vs Yohannes alternate spelling
-    const normWithDoubleN = normKey.replace(/yohanes/g, 'yohannes')
-    if (data.kksByLingkungan[normWithDoubleN]) return data.kksByLingkungan[normWithDoubleN]
-    if (data.kksByLingkungan[`st${normWithDoubleN}`]) return data.kksByLingkungan[`st${normWithDoubleN}`]
-    if (data.kksByLingkungan[`csv-st-${normWithDoubleN}`]) return data.kksByLingkungan[`csv-st-${normWithDoubleN}`]
+  // Resolve canonical name if not provided
+  let resolvedName = namaLingkungan || ''
+  if (!resolvedName && lingkunganId) {
+    const all = getAllMasterLingkungan()
+    const found = all.find(l => l.id === lingkunganId || l.slug === lingkunganId)
+    if (found) resolvedName = found.nama_lingkungan
   }
 
-  // 3. Match against all known lists if needed
-  if (namaLingkungan) {
-    const normName = normalizeLookupKey(namaLingkungan)
-    if (normName) {
-      if (data.kksByLingkungan[normName]) return data.kksByLingkungan[normName]
-      if (data.kksByLingkungan[`st${normName}`]) return data.kksByLingkungan[`st${normName}`]
+  const keysToTry: string[] = []
+  if (lingkunganId) keysToTry.push(lingkunganId, normalizeLookupKey(lingkunganId))
+  if (resolvedName) keysToTry.push(resolvedName, normalizeLookupKey(resolvedName))
 
-      const normNameWithDoubleN = normName.replace(/yohanes/g, 'yohannes')
-      if (data.kksByLingkungan[normNameWithDoubleN]) return data.kksByLingkungan[normNameWithDoubleN]
-      if (data.kksByLingkungan[`st${normNameWithDoubleN}`]) return data.kksByLingkungan[`st${normNameWithDoubleN}`]
-    }
+  for (const k of keysToTry) {
+    if (!k) continue
+    if (data.kksByLingkungan[k]) return data.kksByLingkungan[k]
+    if (data.kksByLingkungan[`csv-${k}`]) return data.kksByLingkungan[`csv-${k}`]
+    if (data.kksByLingkungan[`st${k}`]) return data.kksByLingkungan[`st${k}`]
+    if (data.kksByLingkungan[`csv-st-${k}`]) return data.kksByLingkungan[`csv-st-${k}`]
+
+    const withDoubleN = k.replace(/yohanes/g, 'yohannes')
+    if (data.kksByLingkungan[withDoubleN]) return data.kksByLingkungan[withDoubleN]
+    if (data.kksByLingkungan[`st${withDoubleN}`]) return data.kksByLingkungan[`st${withDoubleN}`]
+    if (data.kksByLingkungan[`csv-st-${withDoubleN}`]) return data.kksByLingkungan[`csv-st-${withDoubleN}`]
   }
 
   return []

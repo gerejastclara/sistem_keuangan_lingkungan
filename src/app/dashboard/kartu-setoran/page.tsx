@@ -53,7 +53,11 @@ export default function KartuSetoranPage() {
       setLoading(true)
       try {
         const { data: { user } } = await supabase.auth.getUser()
-        const effectiveEmail = user?.email || (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() : '') || ''
+        let rawDemoEmail = typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() || '' : ''
+        try {
+          rawDemoEmail = decodeURIComponent(rawDemoEmail)
+        } catch (e) {}
+        const effectiveEmail = user?.email || rawDemoEmail || ''
         const effectiveRole = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_role=').pop()?.split(';').shift() : '') || ''
 
         let targetLingkunganId: string | null = null

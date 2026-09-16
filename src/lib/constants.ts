@@ -164,7 +164,16 @@ export function getAllMasterLingkungan(): Array<{ id: string; nama_lingkungan: s
 
 export function findLingkunganByQuery(query: string): { id: string; nama_lingkungan: string } | null {
   if (!query) return null;
-  const rawQ = query.toLowerCase().replace(/@(example\.com|stclara\.id|gmail\.com)/g, '');
+  let decoded = query;
+  try {
+    decoded = decodeURIComponent(query);
+  } catch (e) {}
+
+  const rawQ = decoded
+    .toLowerCase()
+    .replace(/(?:@|%40).*$/gi, '')
+    .trim();
+
   const cleanQ = rawQ
     .replace(/^(sekretaris|bendahara)[_.\-]?/i, '')
     .replace(/[^a-z0-9]/g, '');

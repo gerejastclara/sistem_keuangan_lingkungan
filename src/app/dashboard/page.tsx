@@ -257,7 +257,11 @@ export default function DashboardOverviewPage() {
           })
         }
 
-        const effectiveEmail = user?.email || (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() : '') || ''
+        let rawDemoEmail = typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() || '' : ''
+        try {
+          rawDemoEmail = decodeURIComponent(rawDemoEmail)
+        } catch (e) {}
+        const effectiveEmail = user?.email || rawDemoEmail || ''
         
         // Strictly match Lingkungan from user email if non-PAROKI
         if (role !== 'PAROKI' && effectiveEmail) {
