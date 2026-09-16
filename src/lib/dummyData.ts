@@ -57,15 +57,29 @@ export function getRealKkListForLingkungan(lingkunganId: string, namaLingkungan?
 
   // 2. Normalized lookup
   const normKey = normalizeLookupKey(lingkunganId || namaLingkungan || '')
-  if (normKey && data.kksByLingkungan[normKey]) {
-    return data.kksByLingkungan[normKey]
+  if (normKey) {
+    if (data.kksByLingkungan[normKey]) return data.kksByLingkungan[normKey]
+    if (data.kksByLingkungan[`st${normKey}`]) return data.kksByLingkungan[`st${normKey}`]
+    if (data.kksByLingkungan[`csv-${normKey}`]) return data.kksByLingkungan[`csv-${normKey}`]
+    if (data.kksByLingkungan[`csv-st-${normKey}`]) return data.kksByLingkungan[`csv-st-${normKey}`]
+
+    // Yohanes vs Yohannes alternate spelling
+    const normWithDoubleN = normKey.replace(/yohanes/g, 'yohannes')
+    if (data.kksByLingkungan[normWithDoubleN]) return data.kksByLingkungan[normWithDoubleN]
+    if (data.kksByLingkungan[`st${normWithDoubleN}`]) return data.kksByLingkungan[`st${normWithDoubleN}`]
+    if (data.kksByLingkungan[`csv-st-${normWithDoubleN}`]) return data.kksByLingkungan[`csv-st-${normWithDoubleN}`]
   }
 
   // 3. Match against all known lists if needed
   if (namaLingkungan) {
     const normName = normalizeLookupKey(namaLingkungan)
-    if (normName && data.kksByLingkungan[normName]) {
-      return data.kksByLingkungan[normName]
+    if (normName) {
+      if (data.kksByLingkungan[normName]) return data.kksByLingkungan[normName]
+      if (data.kksByLingkungan[`st${normName}`]) return data.kksByLingkungan[`st${normName}`]
+
+      const normNameWithDoubleN = normName.replace(/yohanes/g, 'yohannes')
+      if (data.kksByLingkungan[normNameWithDoubleN]) return data.kksByLingkungan[normNameWithDoubleN]
+      if (data.kksByLingkungan[`st${normNameWithDoubleN}`]) return data.kksByLingkungan[`st${normNameWithDoubleN}`]
     }
   }
 

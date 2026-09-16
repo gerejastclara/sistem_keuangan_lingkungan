@@ -82,6 +82,18 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     if (matched) {
       profile.lingkungan_id = matched.id
       profile.lingkungan_nama = matched.nama_lingkungan
+
+      // Sync demo cookies & database to immediately heal any mismatched active session
+      try {
+        cookieStore.set('demo_user_lingkungan_id', matched.id)
+        cookieStore.set('demo_user_lingkungan_nama', matched.nama_lingkungan)
+
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await supabase.from('users').update({ lingkungan_id: matched.id }).eq('id', user.id)
+        }
+      } catch (e) {}
     } else if (!profile.lingkungan_nama && profile.lingkungan_id) {
       const allM = getAllMasterLingkungan()
       const found = allM.find(l => l.id === profile?.lingkungan_id)

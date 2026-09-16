@@ -108,11 +108,21 @@ export function getWilayahList(): string[] {
 
 export function getWilayahForLingkungan(namaOrId: string): string {
   if (!namaOrId) return 'Santa Clara';
-  const clean = namaOrId.toLowerCase().replace(/^csv-/, '').replace(/^st-?/i, '').replace(/[^a-z0-9]/g, '');
+  const clean = namaOrId
+    .toLowerCase()
+    .replace(/^csv-/, '')
+    .replace(/^st-?/i, '')
+    .replace(/yohan+es/gi, 'yohanes')
+    .replace(/[^a-z0-9]/g, '');
+
   for (const [wil, lings] of Object.entries(WILAYAH_LINGKUNGAN_MAP)) {
+    const wilClean = wil.toLowerCase().replace(/yohan+es/gi, 'yohanes').replace(/[^a-z0-9]/g, '');
+    if (clean.includes(wilClean) || wilClean.includes(clean.replace(/\d+/g, ''))) {
+      return wil;
+    }
     for (const l of lings) {
-      const lClean = l.toLowerCase().replace(/^st\.\s*/i, '').replace(/[^a-z0-9]/g, '');
-      if (clean.includes(lClean) || lClean.includes(clean)) {
+      const lClean = l.toLowerCase().replace(/^st\.\s*/i, '').replace(/yohan+es/gi, 'yohanes').replace(/[^a-z0-9]/g, '');
+      if (clean === lClean || clean.includes(lClean) || lClean.includes(clean)) {
         return wil;
       }
     }
@@ -163,20 +173,14 @@ export function findLingkunganByQuery(query: string): { id: string; nama_lingkun
 
   const all = getAllMasterLingkungan();
 
-  // 1. Special aliases: pedro / padrepio (e.g. padrepio3 -> Padre Pio 3, pedro -> Padre Pio 1)
-  if (cleanQ.includes('pedro') || cleanQ.includes('padrepio')) {
-    const num = cleanQ.match(/\d+/)?.[0] || '1';
-    const matched = all.find((l) => l.nama_lingkungan.toLowerCase().includes('padre pio') && l.nama_lingkungan.endsWith(num))
-      || all.find((l) => l.nama_lingkungan.toLowerCase().includes('padre pio'));
-    if (matched) return { id: matched.id, nama_lingkungan: matched.nama_lingkungan };
-  }
-  
-  // 2. Exact slug match or clean match (with or without 'st' prefix)
+  // 1. Direct slug or clean name match
   const exact = all.find((l) => {
     const lClean = l.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '');
     const lCleanWithoutSt = lClean.replace(/^st/i, '');
+    const lSlugClean = l.slug.replace(/[^a-z0-9]/g, '');
     return (
       l.slug === cleanQ ||
+      lSlugClean === cleanQ ||
       l.nama_lingkungan.toLowerCase() === rawQ ||
       lClean === cleanQ ||
       lCleanWithoutSt === cleanQ ||
@@ -185,13 +189,48 @@ export function findLingkunganByQuery(query: string): { id: string; nama_lingkun
   });
   if (exact) return { id: exact.id, nama_lingkungan: exact.nama_lingkungan };
 
-  // 3. Partial matching with numbers preserved
-  const queryNum = cleanQ.match(/\d+/)?.[0];
+  // 2. Intelligent Wilayah & Lingkungan Number resolver
+  // Handles variances like yohanes/yohannes, pedro/padre pio, thomas/aquinas, teresa, etc.
+  const WILAYAH_ALIAS_MAP: Array<{
+    match: RegExp;
+    prefix: string;
+    max: number;
+  }> = [
+    { match: /(?:yohan+es|pemandi)/i, prefix: 'St. Yohannes Pemandi', max: 5 },
+    { match: /(?:thomas|aquinas|aquino)/i, prefix: 'St. Thomas Aquinas', max: 6 },
+    { match: /(?:caterin|catarin|siena)/i, prefix: 'St. Catarina', max: 4 },
+    { match: /(?:laurent|brindisi)/i, prefix: 'St. Laurentius', max: 3 },
+    { match: /(?:padrepio|padre|pio|pedro)/i, prefix: 'Padre Pio', max: 4 },
+    { match: /(?:bundateresa|teresa)/i, prefix: 'St. Bunda Teresa', max: 6 },
+    { match: /(?:antonius|anto\b)/i, prefix: 'St. Antonius', max: 6 },
+    { match: /(?:bonaventura|bona\b)/i, prefix: 'St. Bonaventura', max: 6 },
+    { match: /(?:fidelis)/i, prefix: 'St. Fidelis', max: 5 },
+    { match: /(?:konradus|konrad)/i, prefix: 'St. Konradus', max: 6 },
+    { match: /(?:paulus)/i, prefix: 'St. Paulus', max: 5 },
+    { match: /(?:petrus|peter)/i, prefix: 'St. Petrus', max: 8 },
+    { match: /(?:agnes)/i, prefix: 'St. Agnes', max: 5 },
+  ];
+
+  const queryNumMatch = cleanQ.match(/\d+/);
+  const num = queryNumMatch ? parseInt(queryNumMatch[0], 10) : 1;
+
+  for (const alias of WILAYAH_ALIAS_MAP) {
+    if (alias.match.test(cleanQ)) {
+      const validNum = Math.min(Math.max(num, 1), alias.max);
+      const targetName = `${alias.prefix} ${validNum}`;
+      const found = all.find((l) => l.nama_lingkungan.toLowerCase() === targetName.toLowerCase());
+      if (found) {
+        return { id: found.id, nama_lingkungan: found.nama_lingkungan };
+      }
+    }
+  }
+
+  // 3. Fallback partial matching with numbers preserved
   const partial = all.find((l) => {
     const cleanName = l.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '');
     const nameNum = cleanName.match(/\d+/)?.[0];
-    if (queryNum && nameNum && queryNum !== nameNum) {
-      return false; // don't match Padre Pio 1 to Padre Pio 3
+    if (queryNumMatch && nameNum && queryNumMatch[0] !== nameNum) {
+      return false;
     }
     return cleanName.includes(cleanQ) || cleanQ.includes(cleanName.replace(/\d+/g, ''));
   });
