@@ -886,7 +886,7 @@ export default function JurnalPage() {
       {/* FORM: CATAT TRANSAKSI BARU (Persis Gambar 2, 3, 4) */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
         <div className="p-5 pb-4 border-b border-slate-100 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-[#F0F5FD] text-[#18539E] flex items-center justify-center font-extrabold text-base shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-extrabold text-base shrink-0">
             +
           </div>
           <div>
@@ -898,7 +898,7 @@ export default function JurnalPage() {
         <form onSubmit={handleSaveTransaction} className="p-5 sm:p-6 space-y-6">
           {/* LANGKAH 1 - Uang masuk atau keluar? */}
           <div className="space-y-3">
-            <div className="text-xs font-bold text-[#18539E]">
+            <div className="text-xs font-bold text-slate-700">
               LANGKAH 1 - Uang masuk atau keluar & Rekening Kas
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -909,10 +909,10 @@ export default function JurnalPage() {
                   setStep2Jenis('')
                   setStep2ManualJenis('')
                 }}
-                className={`py-3.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
+                className={`py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center cursor-pointer border ${
                   step1Arus === 'MASUK'
-                    ? 'border-2 border-[#137333] bg-[#EAF7EE] text-[#0D6539] shadow-2xs'
-                    : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                    ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                    : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                 }`}
               >
                 Uang Masuk
@@ -925,10 +925,10 @@ export default function JurnalPage() {
                   setStep2Jenis('')
                   setStep2ManualJenis('')
                 }}
-                className={`py-3.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
+                className={`py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center cursor-pointer border ${
                   step1Arus === 'KELUAR'
-                    ? 'border-2 border-[#C5221F] bg-[#FDF0ED] text-[#A51D24] shadow-2xs'
-                    : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                    ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                    : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                 }`}
               >
                 Uang Keluar
@@ -938,9 +938,9 @@ export default function JurnalPage() {
             {/* OPSI KAS & BANK (Cash on Hand vs Cash in Bank) */}
             {step1Arus && (
               <div className="pt-2 pb-1 border-t border-slate-100 animate-fadeIn">
-                <div className="text-xs font-semibold text-slate-700 mb-2 flex flex-wrap items-center justify-between gap-1">
+                <div className="text-xs font-semibold text-slate-600 mb-2 flex flex-wrap items-center justify-between gap-1">
                   <span>Pilih Rekening Media Pembukuan:</span>
-                  <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                  <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/80">
                     Buku: {step1Arus === 'MASUK' ? (selectedRekening === 'KAS' ? 'BKM (Buku Kas Masuk)' : 'BBM (Buku Bank Masuk)') : (selectedRekening === 'KAS' ? 'BKK (Buku Kas Keluar)' : 'BBK (Buku Bank Keluar)')}
                   </span>
                 </div>
@@ -948,17 +948,19 @@ export default function JurnalPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedRekening('KAS')}
-                    className={`py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer border ${
+                    className={`py-2.5 px-3.5 rounded-xl text-xs transition-all flex items-center justify-between border cursor-pointer ${
                       selectedRekening === 'KAS'
-                        ? 'border-[#0D6539] bg-[#EAF7EE] text-[#0D6539] shadow-2xs ring-1 ring-[#0D6539]'
-                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                        ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                        : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <Wallet className="w-4 h-4 text-emerald-600" />
+                      <Wallet className={`w-4 h-4 ${selectedRekening === 'KAS' ? 'text-slate-800' : 'text-slate-400'}`} />
                       <span>KAS (Cash on Hand)</span>
                     </div>
-                    <span className="font-mono text-[11px] bg-white/90 px-2 py-0.5 rounded border border-slate-200 text-slate-700">
+                    <span className={`font-mono text-[11px] px-2 py-0.5 rounded border ${
+                      selectedRekening === 'KAS' ? 'bg-slate-200/90 text-slate-800 font-semibold border-slate-300' : 'bg-slate-100/70 text-slate-400 border-slate-200'
+                    }`}>
                       COA 1200
                     </span>
                   </button>
@@ -966,17 +968,19 @@ export default function JurnalPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedRekening('BANK')}
-                    className={`py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer border ${
+                    className={`py-2.5 px-3.5 rounded-xl text-xs transition-all flex items-center justify-between border cursor-pointer ${
                       selectedRekening === 'BANK'
-                        ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-2xs ring-1 ring-blue-600'
-                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                        ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                        : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-blue-600" />
+                      <BookOpen className={`w-4 h-4 ${selectedRekening === 'BANK' ? 'text-slate-800' : 'text-slate-400'}`} />
                       <span>BANK (Cash in Bank)</span>
                     </div>
-                    <span className="font-mono text-[11px] bg-white/90 px-2 py-0.5 rounded border border-slate-200 text-slate-700">
+                    <span className={`font-mono text-[11px] px-2 py-0.5 rounded border ${
+                      selectedRekening === 'BANK' ? 'bg-slate-200/90 text-slate-800 font-semibold border-slate-300' : 'bg-slate-100/70 text-slate-400 border-slate-200'
+                    }`}>
                       COA 1100
                     </span>
                   </button>
@@ -988,7 +992,7 @@ export default function JurnalPage() {
           {/* LANGKAH 2 - Jenis transaksi apa? (Muncul setelah Langkah 1 dipilih, Persis Gambar 3 & 5) */}
           {step1Arus && (
             <div className="space-y-2 animate-fadeIn">
-              <div className="text-xs font-bold text-[#18539E]">
+              <div className="text-xs font-bold text-slate-700">
                 LANGKAH 2 - Jenis transaksi apa?
               </div>
               <Select
@@ -1041,7 +1045,7 @@ export default function JurnalPage() {
           {step1Arus && step2Jenis && (
             <div className="space-y-3 animate-fadeIn">
               <div className="space-y-1.5">
-                <div className="text-xs font-bold text-[#18539E]">
+                <div className="text-xs font-bold text-slate-700">
                   LANGKAH 3 - Nama Kepala Keluarga (KK) <span className="text-rose-500">*</span>
                 </div>
                 <Select value={step3KkId} onValueChange={(val) => setStep3KkId(val || '')}>
@@ -1126,7 +1130,7 @@ export default function JurnalPage() {
           {/* LANGKAH 4 - Tanggal, Jumlah uang & Nomor Bukti Otomatis */}
           {step1Arus && step2Jenis && step3KkId && (
             <div className="space-y-3 animate-fadeIn">
-              <div className="text-xs font-bold text-[#18539E]">
+              <div className="text-xs font-bold text-slate-700">
                 LANGKAH 4 - Tanggal, Jumlah Uang & Kode Dokumen
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1182,7 +1186,7 @@ export default function JurnalPage() {
             <div className="space-y-5 animate-fadeIn">
               {/* Langkah 5 Input */}
               <div className="space-y-1.5">
-                <div className="text-xs font-bold text-[#18539E]">
+                <div className="text-xs font-bold text-slate-700">
                   LANGKAH 5 - Keterangan singkat
                 </div>
                 <Input
@@ -1193,13 +1197,13 @@ export default function JurnalPage() {
                 />
               </div>
 
-              {/* PRATINJAU JURNAL AKUNTANSI (otomatis) (Kotak Ungu Persis Gambar 4) */}
-              <div className="bg-[#EEF1FF] border border-[#D0D9FF] rounded-xl p-4 sm:p-5 space-y-3">
-                <div className="text-xs font-bold text-[#3B4C9B] uppercase tracking-wider">
+              {/* PRATINJAU JURNAL AKUNTANSI (otomatis) */}
+              <div className="bg-slate-50/80 border border-slate-200/90 rounded-xl p-4 sm:p-5 space-y-3">
+                <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                   PRATINJAU JURNAL AKUNTANSI (otomatis)
                 </div>
 
-                <div className="grid grid-cols-12 text-xs font-bold pb-1 border-b border-indigo-200/80">
+                <div className="grid grid-cols-12 text-xs font-bold pb-1 border-b border-slate-200">
                   <div className="col-span-8 text-slate-700">Akun</div>
                   <div className="col-span-2 text-right text-rose-700">Debit</div>
                   <div className="col-span-2 text-right text-emerald-700">Kredit</div>
