@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, Suspense } from 'react'
+import React, { useState, useEffect, useMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
@@ -21,6 +21,8 @@ import {
   getDummyGolonganForKk
 } from '@/lib/dummyData'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
+import { getKriteriaGolonganList, KriteriaGolonganItem } from '@/lib/kriteriaGolonganData'
+import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -120,6 +122,56 @@ function DafuFormContent() {
   })
   const [savingPengurus, setSavingPengurus] = useState(false)
   const [pengurusSuccessMsg, setPengurusSuccessMsg] = useState<string | null>(null)
+  const [kriteriaList, setKriteriaList] = useState<KriteriaGolonganItem[]>(() => getKriteriaGolonganList())
+  const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null)
+
+  // Sinkronisasi data kriteria golongan secara real-time dari modul kriteria
+  useEffect(() => {
+    const handleUpdate = () => {
+      setKriteriaList(getKriteriaGolonganList())
+    }
+    window.addEventListener('kriteriaGolonganChanged', handleUpdate)
+    window.addEventListener('storage', handleUpdate)
+    return () => {
+      window.removeEventListener('kriteriaGolonganChanged', handleUpdate)
+      window.removeEventListener('storage', handleUpdate)
+    }
+  }, [])
+
+  // Seluruh nama anggota keluarga & KK di lingkungan ini untuk dropdown pengurus
+  const allLingkunganMembers = useMemo(() => {
+    const list: { id: string; nama: string; peran?: string; telepon?: string; nama_kk?: string }[] = []
+    const seenNames = new Set<string>()
+
+    kkList.forEach((kk) => {
+      if (kk.nama_kk && !seenNames.has(kk.nama_kk.trim().toLowerCase())) {
+        seenNames.add(kk.nama_kk.trim().toLowerCase())
+        list.push({
+          id: `kk-${kk.id}`,
+          nama: kk.nama_kk.trim(),
+          peran: 'Kepala Keluarga',
+          telepon: (kk as any).telepon || undefined,
+          nama_kk: kk.nama_kk,
+        })
+      }
+
+      const members = anggotaMap[kk.id] || []
+      members.forEach((m) => {
+        if (m.nama && !seenNames.has(m.nama.trim().toLowerCase())) {
+          seenNames.add(m.nama.trim().toLowerCase())
+          list.push({
+            id: m.id || `mem-${Math.random()}`,
+            nama: m.nama.trim(),
+            peran: m.peran || 'Anggota',
+            telepon: (kk as any).telepon || undefined,
+            nama_kk: kk.nama_kk,
+          })
+        }
+      })
+    })
+
+    return list
+  }, [kkList, anggotaMap])
 
   const toggleExpandKk = (id: string) => {
     setExpandedKkIds(prev => {
@@ -478,6 +530,7 @@ function DafuFormContent() {
       }
     ])
     setSuccessMessage(null)
+    setFormErrorMessage(null)
   }
 
   const handleAddMemberRow = () => {
@@ -506,8 +559,19 @@ function DafuFormContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!lingkunganId || !formNama.trim()) return
+    if (!lingkunganId) return
 
+    if (!formNama.trim()) {
+      setFormErrorMessage('Nama Kepala Keluarga wajib diisi!')
+      return
+    }
+
+    if (!formKriteriaCatatan.trim()) {
+      setFormErrorMessage('Catatan Kriteria / Alasan penetapan golongan keluarga wajib diisi sebelum menyimpan data!')
+      return
+    }
+
+    setFormErrorMessage(null)
     setSubmitting(true)
     setSuccessMessage(null)
 
@@ -781,6 +845,24 @@ function DafuFormContent() {
         </div>
       )}
 
+      {/* Error Alert Umat */}
+      {formErrorMessage && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center justify-between gap-3 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <span>{formErrorMessage}</span>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setFormErrorMessage(null)}
+            className="text-xs text-rose-600 hover:bg-rose-100/60 rounded-lg cursor-pointer"
+          >
+            Tutup
+          </Button>
+        </div>
+      )}
+
       {/* FORMULIR INPUT LANGSUNG DI MODUL (GAMBAR 2 - BUKAN POPUP!) */}
       <Card className="bg-white border-slate-200 rounded-2xl shadow-xs overflow-hidden">
         <CardHeader className="bg-slate-50/70 border-b border-slate-100 p-5">
@@ -843,11 +925,17 @@ function DafuFormContent() {
 
             {/* Bagian 2: Klasifikasi Golongan / Desil */}
             <div className="bg-slate-50/70 p-5 rounded-xl border border-slate-200 space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2 font-serif">
                   <Sparkles className="w-4 h-4 text-emerald-600" />
                   2. KLASIFIKASI GOLONGAN (DITENTUKAN SEKRETARIS)
                 </div>
+                <Link
+                  href="/dashboard/kriteria-golongan"
+                  className="text-[11px] text-emerald-700 hover:text-emerald-800 font-semibold underline underline-offset-2 flex items-center gap-1"
+                >
+                  Kelola Parameter Kriteria Golongan &rarr;
+                </Link>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -858,57 +946,66 @@ function DafuFormContent() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 text-slate-900 min-w-[340px] sm:min-w-[440px] shadow-lg rounded-xl p-1.5 z-50">
-                      <SelectItem value="Sejahtera" className="cursor-pointer py-2.5 px-3 rounded-lg">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-base leading-none">🟢</span>
-                          <span className="font-bold text-slate-900">Sejahtera</span>
-                          <span className="text-xs text-slate-500 font-normal">
-                            (Keluarga Mampu / Mandiri)
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="Terduga Prasejahtera" className="cursor-pointer py-2.5 px-3 rounded-lg">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-base leading-none">🟡</span>
-                          <span className="font-bold text-slate-900">Terduga Prasejahtera</span>
-                          <span className="text-xs text-slate-500 font-normal">
-                            (Perlu Perhatian Khusus)
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="Rentan Tidak Mampu" className="cursor-pointer py-2.5 px-3 rounded-lg">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-base leading-none">🟠</span>
-                          <span className="font-bold text-slate-900">Rentan Tidak Mampu</span>
-                          <span className="text-xs text-slate-500 font-normal">
-                            (Butuh Bantuan / Subsidi Lingkungan)
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="Tidak Mampu" className="cursor-pointer py-2.5 px-3 rounded-lg">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-base leading-none">🔴</span>
-                          <span className="font-bold text-slate-900">Tidak Mampu</span>
-                          <span className="text-xs text-slate-500 font-normal">
-                            (Bantuan Penuh / Prioritas Khusus)
-                          </span>
-                        </div>
-                      </SelectItem>
+                      {kriteriaList.map((item) => (
+                        <SelectItem key={item.id} value={item.nama} className="cursor-pointer py-2.5 px-3 rounded-lg">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-base leading-none">{item.iconEmoji || '🏷️'}</span>
+                            <span className="font-bold text-slate-900">{item.nama}</span>
+                            <span className="text-xs text-slate-500 font-normal">
+                              ({item.subjudul})
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="kriteria" className="text-xs font-semibold text-slate-700">Catatan Kriteria / Alasan Golongan</Label>
+                  <Label htmlFor="kriteria" className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span>Catatan Kriteria / Alasan Golongan <span className="text-rose-500 font-bold">* (Wajib Diisi)</span></span>
+                  </Label>
                   <Input
                     id="kriteria"
                     value={formKriteriaCatatan}
-                    onChange={(e) => setFormKriteriaCatatan(e.target.value)}
+                    onChange={(e) => {
+                      setFormKriteriaCatatan(e.target.value)
+                      if (formErrorMessage) setFormErrorMessage(null)
+                    }}
                     placeholder="Contoh: Pekerja harian, lansia / Karyawan swasta tetap"
-                    className="bg-white border-slate-300 text-slate-900 rounded-xl focus:ring-emerald-500 h-11 text-sm"
+                    required
+                    className={`bg-white text-slate-900 rounded-xl focus:ring-emerald-500 h-11 text-sm ${
+                      !formKriteriaCatatan.trim() ? 'border-amber-300 focus:border-rose-500' : 'border-slate-300'
+                    }`}
                   />
                 </div>
               </div>
+
+              {/* Panduan Indikator Kriteria Terpilih */}
+              {(() => {
+                const activeKriteria = kriteriaList.find((k) => k.nama === formGolongan)
+                if (!activeKriteria) return null
+                return (
+                  <div
+                    className="p-3 rounded-xl border text-xs space-y-1.5 transition-all"
+                    style={{
+                      backgroundColor: activeKriteria.bgLight || '#f8fafc',
+                      borderColor: activeKriteria.borderLight || '#e2e8f0',
+                    }}
+                  >
+                    <div className="flex items-center gap-2 font-bold" style={{ color: activeKriteria.textColor || '#1e293b' }}>
+                      <span>{activeKriteria.iconEmoji}</span>
+                      <span>Panduan Indikator: {activeKriteria.nama} ({activeKriteria.subjudul})</span>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed">{activeKriteria.indikator}</p>
+                    {activeKriteria.rekomendasiBantuan && (
+                      <p className="text-[11px] text-slate-500 pt-0.5">
+                        <span className="font-semibold">Rekomendasi Kebijakan:</span> {activeKriteria.rekomendasiBantuan}
+                      </p>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Bagian 3: Anggota Keluarga */}
@@ -1091,10 +1188,12 @@ function DafuFormContent() {
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900">
                   <SelectItem value="ALL">Semua Golongan</SelectItem>
-                  <SelectItem value="Tidak Mampu">Tidak Mampu</SelectItem>
-                  <SelectItem value="Rentan Tidak Mampu">Rentan Tidak Mampu</SelectItem>
-                  <SelectItem value="Terduga Prasejahtera">Terduga Prasejahtera</SelectItem>
-                  <SelectItem value="Sejahtera">Sejahtera</SelectItem>
+                  {kriteriaList.map((item) => (
+                    <SelectItem key={item.id} value={item.nama}>
+                      <span className="mr-1.5">{item.iconEmoji}</span>
+                      {item.nama}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1334,13 +1433,21 @@ function DafuFormContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-[11px] font-semibold text-slate-600">Nama Lengkap Ketua</label>
-                  <Input
-                    value={pengurusForm.ketuaNama}
-                    onChange={(e) => setPengurusForm({ ...pengurusForm, ketuaNama: e.target.value })}
-                    placeholder="Contoh: FX Wisnu Ardianto"
-                    required
-                    className="h-9 text-xs bg-white mt-1 text-slate-900"
-                  />
+                  <div className="mt-1">
+                    <SearchableMemberSelect
+                      members={allLingkunganMembers}
+                      value={pengurusForm.ketuaNama}
+                      onChange={(nama, member) => {
+                        setPengurusForm(prev => ({
+                          ...prev,
+                          ketuaNama: nama,
+                          teleponKetua: member?.telepon && (!prev.teleponKetua || prev.teleponKetua === '-') ? member.telepon : prev.teleponKetua
+                        }))
+                      }}
+                      placeholder="Pilih/cari nama Ketua Lingkungan..."
+                      required
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold text-slate-600">No. WhatsApp / Telepon</label>
@@ -1363,13 +1470,21 @@ function DafuFormContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-[11px] font-semibold text-slate-600">Nama Lengkap Bendahara</label>
-                  <Input
-                    value={pengurusForm.bendaharaNama}
-                    onChange={(e) => setPengurusForm({ ...pengurusForm, bendaharaNama: e.target.value })}
-                    placeholder="Contoh: Maria Bernadette Wijaya"
-                    required
-                    className="h-9 text-xs bg-white mt-1 text-slate-900"
-                  />
+                  <div className="mt-1">
+                    <SearchableMemberSelect
+                      members={allLingkunganMembers}
+                      value={pengurusForm.bendaharaNama}
+                      onChange={(nama, member) => {
+                        setPengurusForm(prev => ({
+                          ...prev,
+                          bendaharaNama: nama,
+                          teleponBendahara: member?.telepon && (!prev.teleponBendahara || prev.teleponBendahara === '-') ? member.telepon : prev.teleponBendahara
+                        }))
+                      }}
+                      placeholder="Pilih/cari nama Bendahara..."
+                      required
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold text-slate-600">No. WhatsApp / Telepon</label>
@@ -1392,13 +1507,21 @@ function DafuFormContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-[11px] font-semibold text-slate-600">Nama Lengkap Sekretaris</label>
-                  <Input
-                    value={pengurusForm.sekretarisNama}
-                    onChange={(e) => setPengurusForm({ ...pengurusForm, sekretarisNama: e.target.value })}
-                    placeholder="Contoh: Ignatius Stefanus Sugeng"
-                    required
-                    className="h-9 text-xs bg-white mt-1 text-slate-900"
-                  />
+                  <div className="mt-1">
+                    <SearchableMemberSelect
+                      members={allLingkunganMembers}
+                      value={pengurusForm.sekretarisNama}
+                      onChange={(nama, member) => {
+                        setPengurusForm(prev => ({
+                          ...prev,
+                          sekretarisNama: nama,
+                          teleponSekretaris: member?.telepon && (!prev.teleponSekretaris || prev.teleponSekretaris === '-') ? member.telepon : prev.teleponSekretaris
+                        }))
+                      }}
+                      placeholder="Pilih/cari nama Sekretaris..."
+                      required
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold text-slate-600">No. WhatsApp / Telepon</label>

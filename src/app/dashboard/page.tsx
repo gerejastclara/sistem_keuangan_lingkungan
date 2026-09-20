@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 import {
@@ -21,6 +21,7 @@ import {
 import { formatRupiah, formatDateIndo } from '@/lib/utils'
 import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getWilayahForLingkungan } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
+import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import {
   TrendingUp,
   TrendingDown,
@@ -103,6 +104,41 @@ export default function DashboardOverviewPage() {
   })
   const [savingPengurus, setSavingPengurus] = useState(false)
   const [pengurusSuccessMsg, setPengurusSuccessMsg] = useState<string | null>(null)
+
+  // Seluruh nama anggota keluarga & KK di lingkungan ini untuk dropdown pengurus
+  const allLingkunganMembers = useMemo(() => {
+    const list: { id: string; nama: string; peran?: string; telepon?: string; nama_kk?: string }[] = []
+    const seenNames = new Set<string>()
+
+    kkList.forEach((kk) => {
+      if (kk.nama_kk && !seenNames.has(kk.nama_kk.trim().toLowerCase())) {
+        seenNames.add(kk.nama_kk.trim().toLowerCase())
+        list.push({
+          id: `kk-${kk.id}`,
+          nama: kk.nama_kk.trim(),
+          peran: 'Kepala Keluarga',
+          telepon: kk.telepon || undefined,
+          nama_kk: kk.nama_kk,
+        })
+      }
+
+      const members = anggotaMap[kk.id] || []
+      members.forEach((m) => {
+        if (m.nama && !seenNames.has(m.nama.trim().toLowerCase())) {
+          seenNames.add(m.nama.trim().toLowerCase())
+          list.push({
+            id: m.id || `mem-${Math.random()}`,
+            nama: m.nama.trim(),
+            peran: m.peran || 'Anggota',
+            telepon: kk.telepon || undefined,
+            nama_kk: kk.nama_kk,
+          })
+        }
+      })
+    })
+
+    return list
+  }, [kkList, anggotaMap])
 
   const toggleExpandKk = (id: string) => {
     setExpandedKkIds(prev => {
@@ -741,13 +777,21 @@ export default function DashboardOverviewPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className="text-[11px] font-semibold text-slate-600">Nama Lengkap Ketua</label>
-                <Input
-                  value={pengurusForm.ketuaNama}
-                  onChange={(e) => setPengurusForm({ ...pengurusForm, ketuaNama: e.target.value })}
-                  placeholder="Contoh: FX Wisnu Ardianto"
-                  required
-                  className="h-9 text-xs bg-white mt-1 text-slate-900"
-                />
+                <div className="mt-1">
+                  <SearchableMemberSelect
+                    members={allLingkunganMembers}
+                    value={pengurusForm.ketuaNama}
+                    onChange={(nama, member) => {
+                      setPengurusForm(prev => ({
+                        ...prev,
+                        ketuaNama: nama,
+                        teleponKetua: member?.telepon && (!prev.teleponKetua || prev.teleponKetua === '-') ? member.telepon : prev.teleponKetua
+                      }))
+                    }}
+                    placeholder="Pilih/cari nama Ketua Lingkungan..."
+                    required
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-[11px] font-semibold text-slate-600">No. WhatsApp / Telepon</label>
@@ -770,13 +814,21 @@ export default function DashboardOverviewPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className="text-[11px] font-semibold text-slate-600">Nama Lengkap Bendahara</label>
-                <Input
-                  value={pengurusForm.bendaharaNama}
-                  onChange={(e) => setPengurusForm({ ...pengurusForm, bendaharaNama: e.target.value })}
-                  placeholder="Contoh: Maria Bernadette Wijaya"
-                  required
-                  className="h-9 text-xs bg-white mt-1 text-slate-900"
-                />
+                <div className="mt-1">
+                  <SearchableMemberSelect
+                    members={allLingkunganMembers}
+                    value={pengurusForm.bendaharaNama}
+                    onChange={(nama, member) => {
+                      setPengurusForm(prev => ({
+                        ...prev,
+                        bendaharaNama: nama,
+                        teleponBendahara: member?.telepon && (!prev.teleponBendahara || prev.teleponBendahara === '-') ? member.telepon : prev.teleponBendahara
+                      }))
+                    }}
+                    placeholder="Pilih/cari nama Bendahara..."
+                    required
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-[11px] font-semibold text-slate-600">No. WhatsApp / Telepon</label>
@@ -799,13 +851,21 @@ export default function DashboardOverviewPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className="text-[11px] font-semibold text-slate-600">Nama Lengkap Sekretaris</label>
-                <Input
-                  value={pengurusForm.sekretarisNama}
-                  onChange={(e) => setPengurusForm({ ...pengurusForm, sekretarisNama: e.target.value })}
-                  placeholder="Contoh: Ignatius Stefanus Sugeng"
-                  required
-                  className="h-9 text-xs bg-white mt-1 text-slate-900"
-                />
+                <div className="mt-1">
+                  <SearchableMemberSelect
+                    members={allLingkunganMembers}
+                    value={pengurusForm.sekretarisNama}
+                    onChange={(nama, member) => {
+                      setPengurusForm(prev => ({
+                        ...prev,
+                        sekretarisNama: nama,
+                        teleponSekretaris: member?.telepon && (!prev.teleponSekretaris || prev.teleponSekretaris === '-') ? member.telepon : prev.teleponSekretaris
+                      }))
+                    }}
+                    placeholder="Pilih/cari nama Sekretaris..."
+                    required
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-[11px] font-semibold text-slate-600">No. WhatsApp / Telepon</label>

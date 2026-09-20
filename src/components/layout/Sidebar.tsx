@@ -16,6 +16,8 @@ import {
   Building2,
   ShieldCheck,
   ChevronLeft,
+  SlidersHorizontal,
+  FileText,
 } from 'lucide-react'
 import { UserRole } from '@/lib/types'
 
@@ -43,6 +45,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'DAFU (Input Umat)',
       href: '/dashboard/dafu',
       icon: Users,
+      roles: ['SEKRETARIS', 'PAROKI'],
+    },
+    {
+      title: 'Kriteria Golongan',
+      href: '/dashboard/kriteria-golongan',
+      icon: SlidersHorizontal,
+      roles: ['SEKRETARIS', 'PAROKI'],
+    },
+    {
+      title: 'Form Standar Sekretariat',
+      href: '/dashboard/form-standar',
+      icon: FileText,
       roles: ['SEKRETARIS', 'PAROKI'],
     },
     {
@@ -78,15 +92,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ]
 
   // Filter items based on user role
-  // Sekretaris: Dashboard Overview & DAFU
+  // Sekretaris: Dashboard Overview, DAFU, Kriteria Golongan, Form Standar
   // Bendahara: Dashboard Overview, COA & Saldo Awal, Jurnal Transaksi, Laporan, Aset, Kartu Setoran
   // Paroki: All available modules
   const visibleNavItems = allNavItems.filter((item) => {
     if (userRole === 'SEKRETARIS') {
-      return item.href === '/dashboard' || item.href === '/dashboard/dafu'
+      return (
+        item.href === '/dashboard' ||
+        item.href === '/dashboard/dafu' ||
+        item.href === '/dashboard/kriteria-golongan' ||
+        item.href === '/dashboard/form-standar'
+      )
     }
     if (userRole === 'BENDAHARA') {
-      return item.href !== '/dashboard/dafu'
+      return (
+        item.href !== '/dashboard/dafu' &&
+        item.href !== '/dashboard/kriteria-golongan' &&
+        item.href !== '/dashboard/form-standar'
+      )
     }
     return true
   })
