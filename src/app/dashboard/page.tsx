@@ -234,10 +234,14 @@ export default function DashboardOverviewPage() {
             return null
           }
 
-          const demoEmail = getCookieVal('demo_user_email') || ''
+          const demoEmail = getCookieVal('demo_user_email') || getCookieVal('demo_user_username') || ''
           const demoRole = getCookieVal('demo_user_role') || ''
 
-          if (demoRole === 'SEKRETARIS' || demoEmail.includes('sekretaris')) {
+          if (
+            demoRole === 'SEKRETARIS' || 
+            demoEmail.includes('sekretaris') || 
+            demoEmail.includes('sekertaris')
+          ) {
             role = 'SEKRETARIS'
           } else if (demoRole === 'PAROKI' || demoEmail.includes('paroki')) {
             role = 'PAROKI'
@@ -1304,9 +1308,13 @@ export default function DashboardOverviewPage() {
                 Gereja St. Clara
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 mt-1 tracking-tight">Ringkasan Keuangan Lingkungan</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 mt-1 tracking-tight">
+              {userRole === 'PAROKI'
+                ? 'Ringkasan Keuangan & Umat Paroki'
+                : 'Ringkasan Keuangan Lingkungan'}
+            </h1>
             <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
-              Pantau arus kas, posisi saldo bank, data umat (DAFU), dan pengurus lingkungan secara akurat.
+              Pantau arus kas, posisi saldo bank, data penerimaan dan pengeluaran secara akurat.
             </p>
           </div>
         </div>

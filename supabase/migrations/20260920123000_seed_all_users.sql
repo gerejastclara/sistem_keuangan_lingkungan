@@ -14,7 +14,8 @@ DELETE FROM public.users;
 CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON public.users(username);
 
 INSERT INTO public.users (id, username, password, role, lingkungan_id)
-VALUES (gen_random_uuid(), 'paroki', 'Paroki321', 'PAROKI', NULL);
+VALUES (gen_random_uuid(), 'paroki', 'Paroki321', 'PAROKI', NULL)
+ON CONFLICT (username) DO NOTHING;
 
 DO $$
 DECLARE
@@ -29,9 +30,15 @@ BEGIN
     clean_slug := regexp_replace(raw_name, '[^a-z0-9]', '', 'g');
 
     INSERT INTO public.users (id, username, password, role, lingkungan_id)
-    VALUES (gen_random_uuid(), 'sekretaris_' || clean_slug, 'Paroki321', 'SEKRETARIS', ling.id);
+    VALUES (gen_random_uuid(), 'sekretaris_' || clean_slug, 'Paroki321', 'SEKRETARIS', ling.id)
+    ON CONFLICT (username) DO NOTHING;
 
     INSERT INTO public.users (id, username, password, role, lingkungan_id)
-    VALUES (gen_random_uuid(), 'bendahara_' || clean_slug, 'Paroki321', 'BENDAHARA', ling.id);
+    VALUES (gen_random_uuid(), 'sekertaris_' || clean_slug, 'Paroki321', 'SEKRETARIS', ling.id)
+    ON CONFLICT (username) DO NOTHING;
+
+    INSERT INTO public.users (id, username, password, role, lingkungan_id)
+    VALUES (gen_random_uuid(), 'bendahara_' || clean_slug, 'Paroki321', 'BENDAHARA', ling.id)
+    ON CONFLICT (username) DO NOTHING;
   END LOOP;
 END $$;

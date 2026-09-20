@@ -14,30 +14,42 @@ export async function login(formData: FormData) {
     redirect('/login?message=Username dan password wajib diisi')
   }
 
-  // Bersihkan username (contoh: sekretaris_padrepio1)
+  // Bersihkan username dari domain email jika ada
   const cleanUsername = usernameInput.replace(/@.*$/, '').trim()
+  // Normalisasi ejaan sekertaris / sekretaris agar keduanya kompatibel
+  const normalizedUsername = cleanUsername.replace(/^seke?retaris/i, 'sekretaris')
+  const altUsername = cleanUsername.replace(/^seke?retaris/i, 'sekertaris')
 
   let role: 'BENDAHARA' | 'SEKRETARIS' | 'PAROKI' = 'BENDAHARA'
-  if (cleanUsername.includes('sekretaris')) role = 'SEKRETARIS'
-  else if (cleanUsername.includes('paroki')) role = 'PAROKI'
+  if (
+    cleanUsername.includes('sekretaris') || 
+    cleanUsername.includes('sekertaris') || 
+    cleanUsername.startsWith('sek')
+  ) {
+    role = 'SEKRETARIS'
+  } else if (cleanUsername.includes('paroki')) {
+    role = 'PAROKI'
+  }
 
   try {
     const supabase = await createClient()
 
     // 1. Cek langsung ke tabel public.users berdasarkan USERNAME dan PASSWORD (tanpa email)
+    // Mendukung variasi ejaan 'sekretaris_' maupun 'sekertaris_'
     const { data: dbUser, error: dbError } = await supabase
       .from('users')
       .select('*, lingkungan:lingkungan_id(id, nama_lingkungan)')
-      .eq('username', cleanUsername)
+      .or(`username.eq.${cleanUsername},username.eq.${normalizedUsername},username.eq.${altUsername}`)
       .eq('password', password)
       .maybeSingle()
 
     if (dbUser) {
+      const actualRole = dbUser.role || role
       const cookieStore = await cookies()
       cookieStore.set('demo_user_id', dbUser.id)
       cookieStore.set('demo_user_username', dbUser.username)
       cookieStore.set('demo_user_email', dbUser.username)
-      cookieStore.set('demo_user_role', dbUser.role || role)
+      cookieStore.set('demo_user_role', actualRole)
       
       if (dbUser.lingkungan_id) {
         cookieStore.set('demo_user_lingkungan_id', dbUser.lingkungan_id)
@@ -63,7 +75,7 @@ export async function login(formData: FormData) {
     let fallbackLingkunganNama: string | null = null
 
     if (role !== 'PAROKI') {
-      const matched = findLingkunganByQuery(cleanUsername)
+      const matched = findLingkunganByQuery(normalizedUsername) || findLingkunganByQuery(cleanUsername)
       if (matched) {
         fallbackLingkunganId = matched.id
         fallbackLingkunganNama = matched.nama_lingkungan

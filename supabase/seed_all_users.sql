@@ -1,7 +1,6 @@
 -- ==============================================================================
 -- SEED SCRIPT RESMI: PENGGUNA MURNI BERBASIS USERNAME & PASSWORD (TANPA EMAIL)
 -- Paroki Santa Clara - Bekasi Utara
--- Total: 139 Pengguna (69 Sekretaris + 69 Bendahara + 1 Paroki)
 -- Password Semua Pengguna: Paroki321
 --
 -- Struktur Tabel public.users:
@@ -21,7 +20,7 @@ ALTER TABLE public.users ALTER COLUMN id SET DEFAULT gen_random_uuid();
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS username VARCHAR(100);
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS password VARCHAR(100);
 
--- 3. Hapus data user lama yang sebelumnya memakai email agar bersih dan fresh
+-- 3. Hapus data user lama yang sebelumnya berbasis email agar bersih dan fresh
 DELETE FROM public.users;
 
 -- 4. Pasang index unik pada username agar tidak ada duplikasi
@@ -29,7 +28,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON public.users(username
 
 -- 5. Masukkan akun Pengurus Paroki
 INSERT INTO public.users (id, username, password, role, lingkungan_id)
-VALUES (gen_random_uuid(), 'paroki', 'Paroki321', 'PAROKI', NULL);
+VALUES (gen_random_uuid(), 'paroki', 'Paroki321', 'PAROKI', NULL)
+ON CONFLICT (username) DO NOTHING;
 
 -- 6. Masukkan akun Sekretaris dan Bendahara untuk seluruh 69 Lingkungan
 DO $$
@@ -42,19 +42,25 @@ BEGIN
   FOR ling IN SELECT id, nama_lingkungan FROM public.lingkungan ORDER BY nama_lingkungan LOOP
     -- Standarisasi nama lingkungan ke format slug:
     -- Contoh: "Padre Pio 1" -> "padrepio1"
-    -- Contoh: "St. Agnes 1" -> "stagnes1"
+    -- Contoh: "St. Catarina 1" -> "stcatarina1"
     raw_name := lower(ling.nama_lingkungan);
     raw_name := regexp_replace(raw_name, '^lingkungan\s+', '', 'i');
     raw_name := regexp_replace(raw_name, 'st\.\s*', 'st', 'gi');
     clean_slug := regexp_replace(raw_name, '[^a-z0-9]', '', 'g');
 
-    -- Masukkan akun Sekretaris
+    -- Masukkan akun Sekretaris (mendukung kedua variasi ejaan: sekretaris_ & sekertaris_)
     INSERT INTO public.users (id, username, password, role, lingkungan_id)
-    VALUES (gen_random_uuid(), 'sekretaris_' || clean_slug, 'Paroki321', 'SEKRETARIS', ling.id);
+    VALUES (gen_random_uuid(), 'sekretaris_' || clean_slug, 'Paroki321', 'SEKRETARIS', ling.id)
+    ON CONFLICT (username) DO NOTHING;
+
+    INSERT INTO public.users (id, username, password, role, lingkungan_id)
+    VALUES (gen_random_uuid(), 'sekertaris_' || clean_slug, 'Paroki321', 'SEKRETARIS', ling.id)
+    ON CONFLICT (username) DO NOTHING;
 
     -- Masukkan akun Bendahara
     INSERT INTO public.users (id, username, password, role, lingkungan_id)
-    VALUES (gen_random_uuid(), 'bendahara_' || clean_slug, 'Paroki321', 'BENDAHARA', ling.id);
+    VALUES (gen_random_uuid(), 'bendahara_' || clean_slug, 'Paroki321', 'BENDAHARA', ling.id)
+    ON CONFLICT (username) DO NOTHING;
 
     total_lingkungan := total_lingkungan + 1;
   END LOOP;

@@ -33,7 +33,17 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   // Baca sesi login langsung dari cookie (berbasis username & password)
   const sessionUsername = cookieStore.get('demo_user_username')?.value || cookieStore.get('demo_user_email')?.value
-  const sessionRole = (cookieStore.get('demo_user_role')?.value as any) || (sessionUsername?.includes('sekretaris') ? 'SEKRETARIS' : sessionUsername?.includes('paroki') ? 'PAROKI' : 'BENDAHARA')
+  const sessionRoleCookie = cookieStore.get('demo_user_role')?.value as any
+  let sessionRole: any = sessionRoleCookie
+
+  if (sessionUsername?.includes('sekretaris') || sessionUsername?.includes('sekertaris')) {
+    sessionRole = 'SEKRETARIS'
+  } else if (sessionUsername?.includes('paroki')) {
+    sessionRole = 'PAROKI'
+  } else if (!sessionRole) {
+    sessionRole = 'BENDAHARA'
+  }
+
   const sessionLingkunganId = cookieStore.get('demo_user_lingkungan_id')?.value || null
   const sessionLingkunganNama = cookieStore.get('demo_user_lingkungan_nama')?.value || null
   const sessionUserId = cookieStore.get('demo_user_id')?.value || 'user-id'
