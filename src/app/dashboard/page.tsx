@@ -250,6 +250,7 @@ export default function DashboardOverviewPage() {
 
           setUserProfile({
             id: 'demo-user',
+            username: demoEmail || role.toLowerCase(),
             email: demoEmail || `${role.toLowerCase()}@example.com`,
             role: role,
             lingkungan_id: role === 'PAROKI' ? null : currentLId,

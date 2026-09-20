@@ -55,7 +55,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     const isDbUuid = profile.lingkungan_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profile.lingkungan_id)
     if (!isDbUuid || !profile.lingkungan_nama) {
       const { findLingkunganByQuery } = await import('@/lib/constants')
-      const matched = findLingkunganByQuery(profile.username)
+      const matched = findLingkunganByQuery(profile.username || '')
       if (matched) {
         const dbL = lingkunganList.find(l => l.nama_lingkungan.toLowerCase() === matched.nama_lingkungan.toLowerCase())
         profile.lingkungan_id = dbL ? dbL.id : matched.id

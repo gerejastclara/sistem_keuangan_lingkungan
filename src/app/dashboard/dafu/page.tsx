@@ -251,6 +251,7 @@ function DafuFormContent() {
 
           setUserProfile({
             id: 'demo-user',
+            username: demoEmail || currentRole.toLowerCase(),
             email: demoEmail || `${currentRole.toLowerCase()}@example.com`,
             role: currentRole,
             lingkungan_id: currentRole === 'PAROKI' ? null : currentLingkunganId,
