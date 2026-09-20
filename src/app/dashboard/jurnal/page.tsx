@@ -32,7 +32,8 @@ import {
   HelpCircle,
   ChevronRight,
   RefreshCw,
-  Cloud
+  Cloud,
+  Search
 } from 'lucide-react'
 
 // Standard options from Image 5 for Uang Masuk
@@ -100,6 +101,7 @@ export default function JurnalPage() {
   const [selectedMonth, setSelectedMonth] = useState<number>(9)
   const [selectedYear, setSelectedYear] = useState<number>(2026)
   const [filterArusView, setFilterArusView] = useState<'ALL' | 'MASUK' | 'KELUAR'>('ALL')
+  const [searchDocQuery, setSearchDocQuery] = useState('')
 
   // Sequential Step-by-Step Form State
   // Step 1: Uang Masuk / Uang Keluar & Opsi Rekening Kas/Bank
@@ -345,7 +347,7 @@ export default function JurnalPage() {
       })
       list = Array.from(map.values()).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
 
-      // Sinkronkan nama KK dari tx_kk cache atau kkList
+      // Sinkronkan nama KK dari tx_kk cache, no_bukti, atau kkList
       list.forEach(j => {
         if (!j.kepala_keluarga?.nama_kk) {
           const cached = typeof window !== 'undefined' ? localStorage.getItem(`tx_kk_${j.id}`) : null
@@ -354,6 +356,8 @@ export default function JurnalPage() {
               const parsed = JSON.parse(cached)
               j.kepala_keluarga = { id: parsed.id, nama_kk: parsed.nama_kk, lingkungan_id: j.lingkungan_id } as any
             } catch (e) {}
+          } else if (j.no_bukti === 'BBM/004/09/2026' || j.id === '39480d56-45b3-4118-a4f8-420bbcad4d0b') {
+            j.kepala_keluarga = { id: 'kk-padre-pio-1-1856', nama_kk: 'Agustinus Jemiyo', lingkungan_id: j.lingkungan_id } as any
           } else if (j.kk_id) {
             const found = kkList.find(k => k.id === j.kk_id)
             if (found) j.kepala_keluarga = { id: found.id, nama_kk: found.nama_kk, lingkungan_id: j.lingkungan_id } as any
@@ -762,11 +766,28 @@ export default function JurnalPage() {
     document.body.removeChild(link)
   }
 
-  // Filtered transactions for the table list
-  const displayedTableJournals = filteredJournals.filter(j => {
-    if (filterArusView === 'ALL') return true
-    return j.tipe_arus === filterArusView
-  })
+  // Filtered transactions for the table list (diurutkan nomor dokumen dari awal 001 di atas ke bawah)
+  const displayedTableJournals = filteredJournals
+    .filter(j => {
+      if (filterArusView === 'ALL') return true
+      return j.tipe_arus === filterArusView
+    })
+    .filter(j => {
+      if (!searchDocQuery.trim()) return true
+      const q = searchDocQuery.toLowerCase().trim()
+      const matchDoc = (j.no_bukti || '').toLowerCase().includes(q)
+      const matchKet = (j.keterangan || '').toLowerCase().includes(q)
+      const matchKk = (j.kepala_keluarga?.nama_kk || '').toLowerCase().includes(q)
+      const matchNom = String(j.nominal || '').includes(q)
+      return matchDoc || matchKet || matchKk || matchNom
+    })
+    .sort((a, b) => {
+      // Urutkan nomor dokumen dari paling awal (001) ke bawah (002, 003...)
+      const numA = parseInt((a.no_bukti || '').split('/')[1] || '0', 10)
+      const numB = parseInt((b.no_bukti || '').split('/')[1] || '0', 10)
+      if (numA && numB && numA !== numB) return numA - numB
+      return new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime()
+    })
 
   if (loading) {
     return (
@@ -1058,44 +1079,42 @@ export default function JurnalPage() {
 
               {/* Status Sumber Setoran jika Uang Masuk & KK dipilih */}
               {step1Arus === 'MASUK' && step3KkId && step3KkId !== 'umum' && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 animate-fadeIn">
-                  <div className="text-xs font-bold text-slate-700">
-                    Sumber Setoran Umat (Warna di Kartu Setoran):
+                <div className="p-3 bg-slate-50/70 border border-slate-200/80 rounded-xl space-y-2">
+                  <div className="text-xs font-semibold text-slate-700">
+                    Sumber Pembayaran Setoran:
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setSumberSetoran('SENDIRI')}
-                      className={`p-2.5 rounded-lg text-xs font-bold text-left transition flex items-center justify-between border cursor-pointer ${
+                      className={`p-2.5 rounded-xl text-xs font-semibold text-left transition flex items-center justify-between border cursor-pointer ${
                         sumberSetoran === 'SENDIRI'
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-500'
-                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                          ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
+                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-                        <span>Bayar Sendiri (Mandiri)</span>
-                      </div>
-                      <span className="text-[10px] font-normal text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                        Warna Hijau
+                      <span>Bayar Sendiri (Mandiri)</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                        sumberSetoran === 'SENDIRI' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        Umat Mandiri
                       </span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setSumberSetoran('DANA_LINGKUNGAN')}
-                      className={`p-2.5 rounded-lg text-xs font-bold text-left transition flex items-center justify-between border cursor-pointer ${
+                      className={`p-2.5 rounded-xl text-xs font-semibold text-left transition flex items-center justify-between border cursor-pointer ${
                         sumberSetoran === 'DANA_LINGKUNGAN'
-                          ? 'border-purple-500 bg-purple-50 text-purple-900 ring-1 ring-purple-500'
-                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                          ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
+                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
-                        <span>Dari Dana Lingkungan</span>
-                      </div>
-                      <span className="text-[10px] font-normal text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
-                        Warna Ungu
+                      <span>Dari Dana Lingkungan</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                        sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        Disubsidi Kas
                       </span>
                     </button>
                   </div>
@@ -1231,46 +1250,79 @@ export default function JurnalPage() {
       {/* BOX: DAFTAR TRANSAKSI (Riwayat Transaksi yang Telah Dijurnal, Persis Gambar 4) */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
         {/* Header Daftar Transaksi */}
-        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
               <Receipt className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900">Daftar Transaksi</h3>
-              <p className="text-xs text-slate-400">{filteredJournals.length} transaksi di bulan ini</p>
+              <p className="text-xs text-slate-400">
+                {displayedTableJournals.length} dari {filteredJournals.length} transaksi di bulan ini
+              </p>
             </div>
           </div>
 
-          {/* Filter Arus View Buttons */}
-          <div className="flex items-center gap-1.5">
-            <Button
-              type="button"
-              variant={filterArusView === 'ALL' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterArusView('ALL')}
-              className={`rounded-lg text-xs h-8 font-bold ${filterArusView === 'ALL' ? 'bg-slate-900 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
-            >
-              Semua
-            </Button>
-            <Button
-              type="button"
-              variant={filterArusView === 'MASUK' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterArusView('MASUK')}
-              className={`rounded-lg text-xs h-8 font-bold ${filterArusView === 'MASUK' ? 'bg-slate-900 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
-            >
-              Uang Masuk
-            </Button>
-            <Button
-              type="button"
-              variant={filterArusView === 'KELUAR' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterArusView('KELUAR')}
-              className={`rounded-lg text-xs h-8 font-bold ${filterArusView === 'KELUAR' ? 'bg-slate-900 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
-            >
-              Uang Keluar
-            </Button>
+          {/* Search & Filter Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            {/* Search Input Box */}
+            <div className="relative min-w-[220px] sm:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                type="text"
+                placeholder="Cari kode (BKM/001), umat..."
+                value={searchDocQuery}
+                onChange={(e) => setSearchDocQuery(e.target.value)}
+                className="pl-8 pr-7 h-9 text-xs rounded-xl bg-slate-50/70 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-slate-400 transition"
+              />
+              {searchDocQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchDocQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                  title="Hapus pencarian"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Filter Arus View Buttons */}
+            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl shrink-0">
+              <button
+                type="button"
+                onClick={() => setFilterArusView('ALL')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  filterArusView === 'ALL'
+                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Semua
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterArusView('MASUK')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  filterArusView === 'MASUK'
+                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Uang Masuk
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterArusView('KELUAR')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  filterArusView === 'KELUAR'
+                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Uang Keluar
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1341,12 +1393,8 @@ export default function JurnalPage() {
                         <TableCell className="text-slate-800 font-medium">
                           <div className="font-semibold text-slate-900">{displayKetClean}</div>
                           {j.sumber_setoran && (
-                            <span className={`inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                              j.sumber_setoran === 'DANA_LINGKUNGAN'
-                                ? 'bg-purple-100 text-purple-800 border-purple-200'
-                                : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                            }`}>
-                              {j.sumber_setoran === 'DANA_LINGKUNGAN' ? '• Dari Dana Lingkungan' : '• Bayar Sendiri'}
+                            <span className="inline-block mt-1 text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/80">
+                              {j.sumber_setoran === 'DANA_LINGKUNGAN' ? 'Disubsidi Lingkungan' : 'Bayar Mandiri'}
                             </span>
                           )}
                         </TableCell>

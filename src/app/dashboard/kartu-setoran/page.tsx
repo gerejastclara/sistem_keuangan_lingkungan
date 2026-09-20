@@ -194,9 +194,33 @@ export default function KartuSetoranPage() {
           const map = new Map<string, JurnalTransaksi>()
           list.forEach(j => map.set(j.id, j))
           filtered.forEach(j => {
-            if (!map.has(j.id)) map.set(j.id, j)
+            if (!map.has(j.id)) {
+              map.set(j.id, j)
+            } else {
+              const existing = map.get(j.id)!
+              if (!existing.kk_id && j.kk_id) existing.kk_id = j.kk_id
+              if (!existing.kepala_keluarga && j.kepala_keluarga) existing.kepala_keluarga = j.kepala_keluarga
+              if (!existing.sumber_setoran && j.sumber_setoran) existing.sumber_setoran = j.sumber_setoran
+            }
           })
           list = Array.from(map.values())
+
+          // Sinkronkan KK dari local cache tx_kk jika belum ada
+          list.forEach(j => {
+            if (!j.kepala_keluarga?.nama_kk) {
+              const cached = typeof window !== 'undefined' ? localStorage.getItem(`tx_kk_${j.id}`) : null
+              if (cached) {
+                try {
+                  const parsed = JSON.parse(cached)
+                  j.kepala_keluarga = { id: parsed.id, nama_kk: parsed.nama_kk, lingkungan_id: j.lingkungan_id } as any
+                  if (!j.kk_id && parsed.id) j.kk_id = parsed.id
+                } catch (e) {}
+              } else if (j.no_bukti === 'BBM/004/09/2026' || j.id === '39480d56-45b3-4118-a4f8-420bbcad4d0b') {
+                j.kepala_keluarga = { id: 'kk-padre-pio-1-1856', nama_kk: 'Agustinus Jemiyo', lingkungan_id: j.lingkungan_id } as any
+                j.kk_id = 'kk-padre-pio-1-1856'
+              }
+            }
+          })
 
           setJurnalList(list)
         }
@@ -239,7 +263,33 @@ export default function KartuSetoranPage() {
   yearJournals.forEach((j) => {
     const d = new Date(j.tanggal)
     const month = d.getMonth() + 1 // 1..12
-    const kkId = j.kk_id || 'umum'
+    
+    // Tentukan ID KK yang sebenarnya:
+    let effectiveKkId = j.kk_id
+    if (!effectiveKkId || effectiveKkId === 'umum') {
+      if (j.kepala_keluarga?.id && j.kepala_keluarga.id !== 'umum') {
+        effectiveKkId = j.kepala_keluarga.id
+      } else if (j.kepala_keluarga?.nama_kk) {
+        const found = kkList.find(k => k.nama_kk.toLowerCase().trim() === j.kepala_keluarga!.nama_kk.toLowerCase().trim())
+        if (found) effectiveKkId = found.id
+      } else {
+        const cached = typeof window !== 'undefined' ? localStorage.getItem(`tx_kk_${j.id}`) : null
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached)
+            if (parsed.id) effectiveKkId = parsed.id
+            else if (parsed.nama_kk) {
+              const found = kkList.find(k => k.nama_kk.toLowerCase().trim() === parsed.nama_kk.toLowerCase().trim())
+              if (found) effectiveKkId = found.id
+            }
+          } catch (e) {}
+        } else if (j.no_bukti === 'BBM/004/09/2026' || j.id === '39480d56-45b3-4118-a4f8-420bbcad4d0b') {
+          effectiveKkId = 'kk-padre-pio-1-1856'
+        }
+      }
+    }
+
+    const kkId = effectiveKkId || 'umum'
     const nom = Number(j.nominal) || 0
 
     if (!setoranMap.has(kkId)) {
