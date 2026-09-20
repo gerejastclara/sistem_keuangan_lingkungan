@@ -1079,23 +1079,23 @@ export default function JurnalPage() {
 
               {/* Status Sumber Setoran jika Uang Masuk & KK dipilih */}
               {step1Arus === 'MASUK' && step3KkId && step3KkId !== 'umum' && (
-                <div className="p-3 bg-slate-50/70 border border-slate-200/80 rounded-xl space-y-2">
-                  <div className="text-xs font-semibold text-slate-700">
+                <div className="p-3 bg-slate-50/60 border border-slate-200/70 rounded-xl space-y-2">
+                  <div className="text-xs font-semibold text-slate-600">
                     Sumber Pembayaran Setoran:
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setSumberSetoran('SENDIRI')}
-                      className={`p-2.5 rounded-xl text-xs font-semibold text-left transition flex items-center justify-between border cursor-pointer ${
+                      className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
                         sumberSetoran === 'SENDIRI'
-                          ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
-                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                          ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                          : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                       }`}
                     >
                       <span>Bayar Sendiri (Mandiri)</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'SENDIRI' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                        sumberSetoran === 'SENDIRI' ? 'bg-slate-200/90 text-slate-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
                       }`}>
                         Umat Mandiri
                       </span>
@@ -1104,15 +1104,15 @@ export default function JurnalPage() {
                     <button
                       type="button"
                       onClick={() => setSumberSetoran('DANA_LINGKUNGAN')}
-                      className={`p-2.5 rounded-xl text-xs font-semibold text-left transition flex items-center justify-between border cursor-pointer ${
+                      className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
                         sumberSetoran === 'DANA_LINGKUNGAN'
-                          ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
-                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                          ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                          : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                       }`}
                     >
                       <span>Dari Dana Lingkungan</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                        sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-slate-200/90 text-slate-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
                       }`}>
                         Disubsidi Kas
                       </span>
