@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { KepalaKeluarga, JurnalTransaksi } from '@/lib/types'
 import { formatRupiah, MONTH_NAMES } from '@/lib/utils'
-import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery } from '@/lib/constants'
+import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getLingkunganDbUuid } from '@/lib/constants'
 import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -158,27 +158,45 @@ export default function KartuSetoranPage() {
 
           // Load Journals for this lingkungan
           let list: JurnalTransaksi[] = []
+          const dbUuid = getLingkunganDbUuid(targetLingkunganId)
           try {
             const { data: journals } = await supabase
               .from('jurnal_transaksi')
               .select('*, kepala_keluarga:kk_id(nama_kk)')
-              .eq('lingkungan_id', targetLingkunganId)
+              .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
               .eq('tipe_arus', 'MASUK')
 
-            if (journals) list = journals
+            if (journals && journals.length > 0) list = journals
           } catch (e) {}
 
-          const raw = localStorage.getItem(`custom_journals_${targetLingkunganId}`)
-          if (raw) {
+          const keys = [`custom_journals_${dbUuid}`, `custom_journals_${targetLingkunganId}`, `custom_journals_csv-${targetLingkunganId}`]
+          const localList: JurnalTransaksi[] = []
+          keys.forEach(k => {
+            const raw = localStorage.getItem(k)
+            if (raw) {
+              try {
+                const parsed = JSON.parse(raw)
+                if (Array.isArray(parsed)) localList.push(...parsed)
+              } catch (e) {}
+            }
+          })
+          const rawAll = localStorage.getItem('custom_journals_all_store')
+          if (rawAll) {
             try {
-              const localList: JurnalTransaksi[] = JSON.parse(raw)
-              const filtered = localList.filter(j => j.tipe_arus === 'MASUK')
-              const map = new Map<string, JurnalTransaksi>()
-              list.forEach(j => map.set(j.id, j))
-              filtered.forEach(j => map.set(j.id, j))
-              list = Array.from(map.values())
+              const parsedAll = JSON.parse(rawAll)
+              if (Array.isArray(parsedAll)) {
+                localList.push(...parsedAll.filter((j: any) => j.lingkungan_id === dbUuid || j.lingkungan_id === targetLingkunganId))
+              }
             } catch (e) {}
           }
+
+          const filtered = localList.filter(j => j.tipe_arus === 'MASUK')
+          const map = new Map<string, JurnalTransaksi>()
+          list.forEach(j => map.set(j.id, j))
+          filtered.forEach(j => {
+            if (!map.has(j.id)) map.set(j.id, j)
+          })
+          list = Array.from(map.values())
 
           setJurnalList(list)
         }
@@ -194,10 +212,12 @@ export default function KartuSetoranPage() {
     const handleSync = () => {
       loadData()
     }
+    window.addEventListener('customJournalsUpdated', handleSync)
     window.addEventListener('storage', handleSync)
     window.addEventListener('lingkunganChanged', handleSync)
 
     return () => {
+      window.removeEventListener('customJournalsUpdated', handleSync)
       window.removeEventListener('storage', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
     }

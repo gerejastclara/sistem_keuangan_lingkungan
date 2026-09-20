@@ -150,13 +150,107 @@ export function getLingkunganSlug(nama: string): string {
     .replace(/^-|-$/g, '');
 }
 
-export function getAllMasterLingkungan(): Array<{ id: string; nama_lingkungan: string; slug: string; wilayah: string }> {
+export const MASTER_LINGKUNGAN_UUID_MAP: Record<string, string> = {
+  "St. Agnes 1": "61676e65-7331-4000-a000-000000000000",
+  "St. Agnes 2": "61676e65-7332-4000-a000-000000000000",
+  "St. Agnes 3": "61676e65-7333-4000-a000-000000000000",
+  "St. Agnes 4": "61676e65-7334-4000-a000-000000000000",
+  "St. Agnes 5": "61676e65-7335-4000-a000-000000000000",
+  "St. Antonius 1": "616e746f-6e69-4573-a100-000000000000",
+  "St. Antonius 2": "616e746f-6e69-4573-a200-000000000000",
+  "St. Antonius 3": "616e746f-6e69-4573-a300-000000000000",
+  "St. Antonius 4": "616e746f-6e69-4573-a400-000000000000",
+  "St. Antonius 5": "616e746f-6e69-4573-a500-000000000000",
+  "St. Antonius 6": "616e746f-6e69-4573-a600-000000000000",
+  "St. Bonaventura 1": "626f6e61-7665-4e74-a572-613100000000",
+  "St. Bonaventura 2": "626f6e61-7665-4e74-a572-613200000000",
+  "St. Bonaventura 3": "626f6e61-7665-4e74-a572-613300000000",
+  "St. Bonaventura 4": "626f6e61-7665-4e74-a572-613400000000",
+  "St. Bonaventura 5": "626f6e61-7665-4e74-a572-613500000000",
+  "St. Bonaventura 6": "626f6e61-7665-4e74-a572-613600000000",
+  "St. Bunda Teresa 1": "62756e64-6174-4572-a573-613100000000",
+  "St. Bunda Teresa 2": "62756e64-6174-4572-a573-613200000000",
+  "St. Bunda Teresa 3": "62756e64-6174-4572-a573-613300000000",
+  "St. Bunda Teresa 4": "62756e64-6174-4572-a573-613400000000",
+  "St. Bunda Teresa 5": "62756e64-6174-4572-a573-613500000000",
+  "St. Bunda Teresa 6": "62756e64-6174-4572-a573-613600000000",
+  "St. Catarina 1": "63617465-7269-4e61-a100-000000000000",
+  "St. Catarina 2": "63617465-7269-4e61-a200-000000000000",
+  "St. Catarina 3": "63617465-7269-4e61-a300-000000000000",
+  "St. Catarina 4": "63617465-7269-4e61-a400-000000000000",
+  "St. Fidelis 1": "66696465-6c69-4331-a000-000000000000",
+  "St. Fidelis 2": "66696465-6c69-4332-a000-000000000000",
+  "St. Fidelis 3": "66696465-6c69-4333-a000-000000000000",
+  "St. Fidelis 4": "66696465-6c69-4334-a000-000000000000",
+  "St. Fidelis 5": "66696465-6c69-4335-a000-000000000000",
+  "St. Konradus 1": "6b6f6e72-6164-4573-a100-000000000000",
+  "St. Konradus 2": "6b6f6e72-6164-4573-a200-000000000000",
+  "St. Konradus 3": "6b6f6e72-6164-4573-a300-000000000000",
+  "St. Konradus 4": "6b6f6e72-6164-4573-a400-000000000000",
+  "St. Konradus 5": "6b6f6e72-6164-4573-a500-000000000000",
+  "St. Konradus 6": "6b6f6e72-6164-4573-a600-000000000000",
+  "St. Laurentius 1": "6c617572-656e-4469-a573-310000000000",
+  "St. Laurentius 2": "6c617572-656e-4469-a573-320000000000",
+  "St. Laurentius 3": "6c617572-656e-4469-a573-330000000000",
+  "Padre Pio 1": "70616472-6570-496f-a100-000000000000",
+  "Padre Pio 2": "70616472-6570-496f-a200-000000000000",
+  "Padre Pio 3": "70616472-6570-496f-a300-000000000000",
+  "Padre Pio 4": "70616472-6570-496f-a400-000000000000",
+  "St. Paulus 1": "7061756c-7573-4100-a000-000000000000",
+  "St. Paulus 2": "7061756c-7573-4200-a000-000000000000",
+  "St. Paulus 3": "7061756c-7573-4300-a000-000000000000",
+  "St. Paulus 4": "7061756c-7573-4400-a000-000000000000",
+  "St. Paulus 5": "7061756c-7573-4500-a000-000000000000",
+  "St. Petrus 1": "70657472-7573-4100-a000-000000000000",
+  "St. Petrus 2": "70657472-7573-4200-a000-000000000000",
+  "St. Petrus 3": "70657472-7573-4300-a000-000000000000",
+  "St. Petrus 4": "70657472-7573-4400-a000-000000000000",
+  "St. Petrus 5": "70657472-7573-4500-a000-000000000000",
+  "St. Petrus 6": "70657472-7573-4600-a000-000000000000",
+  "St. Petrus 7": "70657472-7573-4700-a000-000000000000",
+  "St. Petrus 8": "70657472-7573-4800-a000-000000000000",
+  "St. Thomas Aquinas 1": "74686f6d-6173-4171-a569-6e6f31000000",
+  "St. Thomas Aquinas 2": "74686f6d-6173-4171-a569-6e6f32000000",
+  "St. Thomas Aquinas 3": "74686f6d-6173-4171-a569-6e6f33000000",
+  "St. Thomas Aquinas 4": "74686f6d-6173-4171-a569-6e6f34000000",
+  "St. Thomas Aquinas 5": "74686f6d-6173-4171-a569-6e6f35000000",
+  "St. Thomas Aquinas 6": "74686f6d-6173-4171-a569-6e6f36000000",
+  "St. Yohannes Pemandi 1": "796f6861-6e65-4370-a56d-616e64693100",
+  "St. Yohannes Pemandi 2": "796f6861-6e65-4370-a56d-616e64693200",
+  "St. Yohannes Pemandi 3": "796f6861-6e65-4370-a56d-616e64693300",
+  "St. Yohannes Pemandi 4": "796f6861-6e65-4370-a56d-616e64693400",
+  "St. Yohannes Pemandi 5": "796f6861-6e65-4370-a56d-616e64693500"
+};
+
+export function getLingkunganDbUuid(val?: string | null): string {
+  if (!val) return "70616472-6570-496f-a100-000000000000";
+  const trimmed = val.trim();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) {
+    return trimmed;
+  }
+  if (MASTER_LINGKUNGAN_UUID_MAP[trimmed]) {
+    return MASTER_LINGKUNGAN_UUID_MAP[trimmed];
+  }
+  const cleanQ = trimmed.toLowerCase().replace(/^(csv-|lingkungan\s+)/i, '').replace(/[^a-z0-9]/g, '');
+  for (const [name, uuid] of Object.entries(MASTER_LINGKUNGAN_UUID_MAP)) {
+    const cleanName = name.toLowerCase().replace(/^st\.\s*/i, '').replace(/[^a-z0-9]/g, '');
+    const cleanWithSt = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (cleanName === cleanQ || cleanWithSt === cleanQ) {
+      return uuid;
+    }
+  }
+  return "70616472-6570-496f-a100-000000000000";
+}
+
+export function getAllMasterLingkungan(): Array<{ id: string; nama_lingkungan: string; slug: string; wilayah: string; csv_id: string }> {
   return MASTER_LINGKUNGAN_LIST.map((name) => {
     const slug = getLingkunganSlug(name);
+    const uuid = MASTER_LINGKUNGAN_UUID_MAP[name] || getLingkunganDbUuid(name);
     return {
-      id: `csv-${slug}`,
+      id: uuid,
       nama_lingkungan: name,
       slug,
+      csv_id: `csv-${slug}`,
       wilayah: getWilayahForLingkungan(name)
     };
   });

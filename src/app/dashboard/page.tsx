@@ -19,7 +19,7 @@ import {
   getDummyGolonganForKk
 } from '@/lib/dummyData'
 import { formatRupiah, formatDateIndo } from '@/lib/utils'
-import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getWilayahForLingkungan } from '@/lib/constants'
+import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getWilayahForLingkungan, getLingkunganDbUuid } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import {
@@ -387,32 +387,85 @@ export default function DashboardOverviewPage() {
 
           // 4. If Bendahara or Paroki, also load financial data
           if (role !== 'SEKRETARIS') {
-            const sa = Number(profil?.saldo_awal || 0)
+            let sa = Number(profil?.saldo_awal || 0)
+            if (sa === 0) {
+              const savedManual = localStorage.getItem(`profil_manual_${targetLingkunganId}`) || localStorage.getItem(`profil_manual_${getLingkunganDbUuid(targetLingkunganId)}`)
+              if (savedManual) {
+                try {
+                  const parsed = JSON.parse(savedManual)
+                  if (parsed.saldoAwal) sa = Number(parsed.saldoAwal)
+                } catch (e) {}
+              }
+            }
             setSaldoAwal(sa)
 
-            const { data: journals } = await supabase
-              .from('jurnal_transaksi')
-              .select('*, kepala_keluarga:kk_id(nama_kk)')
-              .eq('lingkungan_id', targetLingkunganId)
-              .order('tanggal', { ascending: false })
+            const dbUuid = getLingkunganDbUuid(targetLingkunganId)
+            let combinedJournals: any[] = []
 
-            if (journals) {
-              let masuk = 0
-              let keluar = 0
-              journals.forEach((j) => {
-                const nom = Number(j.nominal) || 0
-                if (j.tipe_arus === 'MASUK') masuk += nom
-                else keluar += nom
+            // 1. Fetch from Supabase
+            try {
+              const { data: journals } = await supabase
+                .from('jurnal_transaksi')
+                .select('*, kepala_keluarga:kk_id(nama_kk)')
+                .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
+                .order('tanggal', { ascending: false })
+
+              if (journals && journals.length > 0) {
+                combinedJournals = journals
+              }
+            } catch (e) {}
+
+            // 2. Merge with localStorage journals (covers offline cache and hybrid entries)
+            try {
+              const keysToCheck = [
+                `custom_journals_${dbUuid}`,
+                `custom_journals_${targetLingkunganId}`,
+                `custom_journals_csv-${targetLingkunganId}`
+              ]
+              const allLocal: any[] = []
+              keysToCheck.forEach(k => {
+                const raw = localStorage.getItem(k)
+                if (raw) {
+                  try {
+                    const parsed = JSON.parse(raw)
+                    if (Array.isArray(parsed)) allLocal.push(...parsed)
+                  } catch (e) {}
+                }
               })
-              setTotalKasMasuk(masuk)
-              setTotalKasKeluar(keluar)
-              setRecentTransactions(journals.slice(0, 5))
-            }
+
+              const rawAll = localStorage.getItem('custom_journals_all_store')
+              if (rawAll) {
+                try {
+                  const parsedAll = JSON.parse(rawAll)
+                  if (Array.isArray(parsedAll)) {
+                    allLocal.push(...parsedAll.filter((j: any) => j.lingkungan_id === dbUuid || j.lingkungan_id === targetLingkunganId))
+                  }
+                } catch (e) {}
+              }
+
+              const jMap = new Map<string, any>()
+              combinedJournals.forEach(j => jMap.set(j.id, j))
+              allLocal.forEach(j => {
+                if (!jMap.has(j.id)) jMap.set(j.id, j)
+              })
+              combinedJournals = Array.from(jMap.values()).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+            } catch (e) {}
+
+            let masuk = 0
+            let keluar = 0
+            combinedJournals.forEach((j) => {
+              const nom = Number(j.nominal) || 0
+              if (j.tipe_arus === 'MASUK') masuk += nom
+              else keluar += nom
+            })
+            setTotalKasMasuk(masuk)
+            setTotalKasKeluar(keluar)
+            setRecentTransactions(combinedJournals.slice(0, 5))
 
             const { data: asetList } = await supabase
               .from('aset')
               .select('jumlah, harga_satuan')
-              .eq('lingkungan_id', targetLingkunganId)
+              .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
 
             if (asetList) {
               const totalVal = asetList.reduce((acc, curr) => acc + (Number(curr.jumlah || 0) * Number(curr.harga_satuan || 0)), 0)
@@ -434,12 +487,14 @@ export default function DashboardOverviewPage() {
     }
     window.addEventListener('dafuDataUpdated', handleSync)
     window.addEventListener('pengurusUpdated', handleSync)
+    window.addEventListener('customJournalsUpdated', handleSync)
     window.addEventListener('storage', handleSync)
     window.addEventListener('lingkunganChanged', handleSync)
 
     return () => {
       window.removeEventListener('dafuDataUpdated', handleSync)
       window.removeEventListener('pengurusUpdated', handleSync)
+      window.removeEventListener('customJournalsUpdated', handleSync)
       window.removeEventListener('storage', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
     }

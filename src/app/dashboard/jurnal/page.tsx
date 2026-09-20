@@ -6,7 +6,7 @@ import { UserProfile, JurnalTransaksi, KepalaKeluarga, COA } from '@/lib/types'
 import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { getAllMasterCOA, MasterCOAItem } from '@/lib/masterCoa'
 import { formatRupiah, formatDateIndo, MONTH_NAMES } from '@/lib/utils'
-import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery } from '@/lib/constants'
+import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getLingkunganDbUuid } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -30,7 +30,9 @@ import {
   Calendar,
   AlertCircle,
   HelpCircle,
-  ChevronRight
+  ChevronRight,
+  RefreshCw,
+  Cloud
 } from 'lucide-react'
 
 // Standard options from Image 5 for Uang Masuk
@@ -123,6 +125,8 @@ export default function JurnalPage() {
 
   const [submitting, setSubmitting] = useState(false)
   const [successToast, setSuccessToast] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncNotice, setSyncNotice] = useState<string | null>(null)
 
   // Double Entry Modal & Posting Modal
   const [isDeModalOpen, setIsDeModalOpen] = useState(false)
@@ -284,29 +288,150 @@ export default function JurnalPage() {
 
   const fetchJournals = async (lId: string) => {
     let list: JurnalTransaksi[] = []
+    const dbUuid = getLingkunganDbUuid(lId)
+
     try {
       const { data: journals } = await supabase
         .from('jurnal_transaksi')
         .select('*, kepala_keluarga:kk_id(nama_kk)')
-        .eq('lingkungan_id', lId)
+        .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${lId}`)
         .order('tanggal', { ascending: false })
 
-      if (journals) list = journals
+      if (journals && journals.length > 0) list = journals
     } catch (e) {}
 
     // Merge with localStorage custom journals
     try {
-      const raw = localStorage.getItem(`custom_journals_${lId}`)
-      if (raw) {
-        const localList: JurnalTransaksi[] = JSON.parse(raw)
-        const map = new Map<string, JurnalTransaksi>()
-        list.forEach(j => map.set(j.id, j))
-        localList.forEach(j => map.set(j.id, j))
-        list = Array.from(map.values()).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+      const keys = [`custom_journals_${dbUuid}`, `custom_journals_${lId}`, `custom_journals_csv-${lId}`]
+      const localList: JurnalTransaksi[] = []
+      keys.forEach(k => {
+        const raw = localStorage.getItem(k)
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw)
+            if (Array.isArray(parsed)) localList.push(...parsed)
+          } catch (e) {}
+        }
+      })
+
+      const rawAll = localStorage.getItem('custom_journals_all_store')
+      if (rawAll) {
+        try {
+          const parsedAll = JSON.parse(rawAll)
+          if (Array.isArray(parsedAll)) {
+            localList.push(...parsedAll.filter((j: any) => j.lingkungan_id === dbUuid || j.lingkungan_id === lId))
+          }
+        } catch (e) {}
       }
+
+      const map = new Map<string, JurnalTransaksi>()
+      list.forEach(j => map.set(j.id, j))
+      localList.forEach(j => {
+        if (!map.has(j.id)) map.set(j.id, j)
+      })
+      list = Array.from(map.values()).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
     } catch (e) {}
 
     setJurnalList(list)
+
+    // Background sync of offline items if available
+    setTimeout(() => {
+      syncOfflineJournalsToSupabase(list, lId)
+    }, 1200)
+
+    return list
+  }
+
+  const syncOfflineJournalsToSupabase = async (currentList: JurnalTransaksi[], lId: string) => {
+    const dbUuid = getLingkunganDbUuid(lId)
+    const offlineItems = currentList.filter(j => j.id.startsWith('jurnal-') || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(j.id))
+
+    if (offlineItems.length === 0) return { synced: 0, total: 0 }
+
+    setSyncing(true)
+    let syncedCount = 0
+    const updated = [...currentList]
+
+    for (let i = 0; i < updated.length; i++) {
+      const item = updated[i]
+      if (item.id.startsWith('jurnal-') || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id)) {
+        const validKkId = (item.kk_id && !item.kk_id.startsWith('dummy-') && item.kk_id !== 'umum' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.kk_id)) ? item.kk_id : null
+
+        const basePayload = {
+          lingkungan_id: dbUuid,
+          kk_id: validKkId,
+          tanggal: item.tanggal,
+          tipe_arus: item.tipe_arus,
+          coa_debit: item.coa_debit,
+          coa_kredit: item.coa_kredit,
+          nominal: Number(item.nominal),
+          keterangan: item.keterangan,
+          is_posted: item.is_posted || false
+        }
+
+        try {
+          const { data: res1 } = await supabase
+            .from('jurnal_transaksi')
+            .insert({
+              ...basePayload,
+              no_bukti: item.no_bukti,
+              sumber_kas: item.sumber_kas || (item.coa_debit === '1200' || item.coa_kredit === '1200' ? 'KAS' : 'BANK'),
+              sumber_setoran: item.sumber_setoran || 'SENDIRI'
+            })
+            .select('id')
+            .maybeSingle()
+
+          if (res1?.id) {
+            updated[i] = { ...item, id: res1.id, lingkungan_id: dbUuid }
+            syncedCount++
+            continue
+          }
+
+          const { data: res2 } = await supabase
+            .from('jurnal_transaksi')
+            .insert(basePayload)
+            .select('id')
+            .maybeSingle()
+
+          if (res2?.id) {
+            updated[i] = { ...item, id: res2.id, lingkungan_id: dbUuid }
+            syncedCount++
+          }
+        } catch (err) {
+          console.warn('Sync failed for item:', item.id)
+        }
+      }
+    }
+
+    setSyncing(false)
+    if (syncedCount > 0) {
+      setJurnalList(updated)
+      localStorage.setItem(`custom_journals_${dbUuid}`, JSON.stringify(updated))
+      localStorage.setItem(`custom_journals_${lId}`, JSON.stringify(updated))
+      localStorage.setItem('custom_journals_all_store', JSON.stringify(updated))
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('customJournalsUpdated'))
+        window.dispatchEvent(new Event('storage'))
+      }
+      setSyncNotice(`Berhasil menyinkronkan ${syncedCount} transaksi ke Database Supabase!`)
+      setTimeout(() => setSyncNotice(null), 4000)
+    }
+    return { synced: syncedCount, total: offlineItems.length }
+  }
+
+  const handleManualSync = async () => {
+    if (!lingkunganId) return
+    setSyncing(true)
+    const res = await syncOfflineJournalsToSupabase(jurnalList, lingkunganId)
+    setSyncing(false)
+    if (res.synced > 0) {
+      setSuccessToast(`Sinkronisasi berhasil! ${res.synced} transaksi kini tersimpan di database.`)
+    } else if (res.total === 0) {
+      setSuccessToast('Semua transaksi sudah sinkron dengan database.')
+    } else {
+      alert('Belum berhasil tersambung ke Supabase. Pastikan NEXT_PUBLIC_SUPABASE_ANON_KEY di .env.local telah diisi.')
+    }
+    setTimeout(() => setSuccessToast(null), 4000)
   }
 
   // Filter journals by selected month and year
@@ -359,7 +484,6 @@ export default function JurnalPage() {
     const m = String(isNaN(d.getMonth()) ? 9 : d.getMonth() + 1).padStart(2, '0')
     const y = isNaN(d.getFullYear()) ? '2026' : String(d.getFullYear())
 
-    // Hitung nomor urut dari jurnal yang ada di bulan & tahun yang sama
     const matchCount = jurnalList.filter(j => {
       const jd = new Date(j.tanggal)
       const jm = String(isNaN(jd.getMonth()) ? 9 : jd.getMonth() + 1).padStart(2, '0')
@@ -408,11 +532,75 @@ export default function JurnalPage() {
     const finalNoBukti = noBuktiCustom.trim() || autoDocNumber
 
     const kkObj = kkList.find(k => k.id === step3KkId)
-    const displayKet = step5Keterangan.trim() || (step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
+    const rawKet = step5Keterangan.trim() || (step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
+    const displayKet = `[${finalNoBukti}] [${selectedRekening}] ${rawKet}`
 
-    const payload = {
-      lingkungan_id: lingkunganId || 'default-lingkungan',
-      kk_id: (step3KkId && step3KkId !== 'umum') ? step3KkId : null,
+    const dbLingkunganId = getLingkunganDbUuid(lingkunganId)
+    const validKkId = (step3KkId && !step3KkId.startsWith('dummy-') && step3KkId !== 'umum' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(step3KkId)) ? step3KkId : null
+
+    let createdId = 'jurnal-' + Date.now()
+    let savedToCloud = false
+
+    // 1. Attempt insert to Supabase with extra columns
+    try {
+      const fullPayload = {
+        lingkungan_id: dbLingkunganId,
+        kk_id: validKkId,
+        tanggal: step4Tanggal,
+        tipe_arus: step1Arus,
+        coa_debit: coaDebit,
+        coa_kredit: coaKredit,
+        nominal: step4NominalNumeric,
+        keterangan: displayKet,
+        is_posted: false,
+        no_bukti: finalNoBukti,
+        sumber_kas: selectedRekening,
+        sumber_setoran: step1Arus === 'MASUK' ? sumberSetoran : undefined
+      }
+
+      const { data: createdData, error: err1 } = await supabase
+        .from('jurnal_transaksi')
+        .insert(fullPayload)
+        .select('*, kepala_keluarga:kk_id(nama_kk)')
+        .maybeSingle()
+
+      if (createdData?.id) {
+        createdId = createdData.id
+        savedToCloud = true
+      } else {
+        // Fallback to base columns only
+        const basePayload = {
+          lingkungan_id: dbLingkunganId,
+          kk_id: validKkId,
+          tanggal: step4Tanggal,
+          tipe_arus: step1Arus,
+          coa_debit: coaDebit,
+          coa_kredit: coaKredit,
+          nominal: step4NominalNumeric,
+          keterangan: displayKet,
+          is_posted: false
+        }
+        const { data: baseData, error: err2 } = await supabase
+          .from('jurnal_transaksi')
+          .insert(basePayload)
+          .select('*, kepala_keluarga:kk_id(nama_kk)')
+          .maybeSingle()
+
+        if (baseData?.id) {
+          createdId = baseData.id
+          savedToCloud = true
+        } else if (err2) {
+          console.warn('Supabase insert notice (stored in local offline cache):', err2.message)
+        }
+      }
+    } catch (e) {
+      console.warn('Supabase offline/unreachable:', e)
+    }
+
+    const newTx: JurnalTransaksi = {
+      id: createdId,
+      lingkungan_id: dbLingkunganId,
+      kk_id: validKkId,
       tanggal: step4Tanggal,
       tipe_arus: step1Arus,
       coa_debit: coaDebit,
@@ -422,47 +610,32 @@ export default function JurnalPage() {
       is_posted: false,
       no_bukti: finalNoBukti,
       sumber_kas: selectedRekening,
-      sumber_setoran: step1Arus === 'MASUK' ? sumberSetoran : undefined
-    }
-
-    let createdId = 'jurnal-' + Date.now()
-    try {
-      const { data: createdData } = await supabase
-        .from('jurnal_transaksi')
-        .insert(payload)
-        .select('*, kepala_keluarga:kk_id(nama_kk)')
-        .single()
-
-      if (createdData?.id) createdId = createdData.id
-    } catch (e) {}
-
-    const newTx: JurnalTransaksi = {
-      id: createdId,
-      lingkungan_id: payload.lingkungan_id,
-      kk_id: payload.kk_id,
-      tanggal: payload.tanggal,
-      tipe_arus: payload.tipe_arus,
-      coa_debit: payload.coa_debit,
-      coa_kredit: payload.coa_kredit,
-      nominal: payload.nominal,
-      keterangan: payload.keterangan,
-      is_posted: false,
-      no_bukti: finalNoBukti,
-      sumber_kas: selectedRekening,
       sumber_setoran: step1Arus === 'MASUK' ? sumberSetoran : undefined,
-      kepala_keluarga: kkObj ? { id: kkObj.id, lingkungan_id: payload.lingkungan_id, nama_kk: kkObj.nama_kk, alamat: kkObj.alamat, is_biduk: kkObj.is_biduk } : undefined
+      kepala_keluarga: kkObj ? { id: kkObj.id, lingkungan_id: dbLingkunganId, nama_kk: kkObj.nama_kk, alamat: kkObj.alamat, is_biduk: kkObj.is_biduk } : undefined
     }
 
-    // Save to local storage cache for immediate persistence
-    if (lingkunganId) {
-      try {
-        const existing = localStorage.getItem(`custom_journals_${lingkunganId}`)
+    // Save to local storage under all relevant keys
+    try {
+      const keysToUpdate = [`custom_journals_${dbLingkunganId}`]
+      if (lingkunganId && lingkunganId !== dbLingkunganId) keysToUpdate.push(`custom_journals_${lingkunganId}`)
+      
+      keysToUpdate.forEach(k => {
+        const existing = localStorage.getItem(k)
         const list = existing ? JSON.parse(existing) : []
         list.unshift(newTx)
-        localStorage.setItem(`custom_journals_${lingkunganId}`, JSON.stringify(list))
+        localStorage.setItem(k, JSON.stringify(list))
+      })
+
+      const rawAll = localStorage.getItem('custom_journals_all_store')
+      const allList = rawAll ? JSON.parse(rawAll) : []
+      allList.unshift(newTx)
+      localStorage.setItem('custom_journals_all_store', JSON.stringify(allList))
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('customJournalsUpdated'))
         window.dispatchEvent(new Event('storage'))
-      } catch (e) {}
-    }
+      }
+    } catch (e) {}
 
     setJurnalList(prev => [newTx, ...prev])
     setSubmitting(false)
@@ -476,9 +649,12 @@ export default function JurnalPage() {
     setStep4NominalInput('Rp 0')
     setStep5Keterangan('')
     setNoBuktiCustom('')
-    setStep5Keterangan('')
 
-    setSuccessToast('Transaksi kas berhasil dicatat dan masuk ke jurnal!')
+    if (savedToCloud) {
+      setSuccessToast('Transaksi kas berhasil dicatat dan langsung tersimpan ke Database Cloud Supabase!')
+    } else {
+      setSuccessToast('Transaksi kas berhasil dicatat dan tersimpan di sistem!')
+    }
     setTimeout(() => setSuccessToast(null), 3500)
   }
 
@@ -494,15 +670,27 @@ export default function JurnalPage() {
       await supabase.from('jurnal_transaksi').delete().eq('id', id)
     } catch (e) {}
 
-    if (lingkunganId) {
-      try {
-        const raw = localStorage.getItem(`custom_journals_${lingkunganId}`)
+    const dbUuid = getLingkunganDbUuid(lingkunganId)
+    try {
+      const keys = [`custom_journals_${dbUuid}`]
+      if (lingkunganId && lingkunganId !== dbUuid) keys.push(`custom_journals_${lingkunganId}`)
+      keys.forEach(k => {
+        const raw = localStorage.getItem(k)
         if (raw) {
           const list = JSON.parse(raw).filter((j: any) => j.id !== id)
-          localStorage.setItem(`custom_journals_${lingkunganId}`, JSON.stringify(list))
+          localStorage.setItem(k, JSON.stringify(list))
         }
-      } catch (e) {}
-    }
+      })
+      const rawAll = localStorage.getItem('custom_journals_all_store')
+      if (rawAll) {
+        const list = JSON.parse(rawAll).filter((j: any) => j.id !== id)
+        localStorage.setItem('custom_journals_all_store', JSON.stringify(list))
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('customJournalsUpdated'))
+        window.dispatchEvent(new Event('storage'))
+      }
+    } catch (e) {}
 
     setJurnalList(prev => prev.filter(j => j.id !== id))
   }
@@ -611,7 +799,18 @@ export default function JurnalPage() {
             </Select>
           </div>
 
-          <div className="flex items-center gap-2 pt-2 sm:pt-4">
+          <div className="flex items-center gap-2 pt-2 sm:pt-4 flex-wrap">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={syncing}
+              onClick={handleManualSync}
+              className="border-emerald-300 text-emerald-800 hover:bg-emerald-50 font-bold rounded-xl h-11 px-4 text-xs cursor-pointer shadow-2xs flex items-center gap-1.5"
+              title="Sinkronisasi transaksi offline / lokal ke Database Supabase"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Menyinkronkan...' : 'Sinkron ke Cloud DB'}
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -631,8 +830,8 @@ export default function JurnalPage() {
           </div>
         </div>
 
-        {/* Status Badge */}
-        <div className="pt-1 flex items-center gap-2">
+        {/* Status Badge & Sync notice */}
+        <div className="pt-1 flex items-center justify-between gap-2 flex-wrap">
           {isMonthPosted ? (
             <span className="inline-flex items-center gap-1.5 text-xs bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-full font-bold">
               <Lock className="w-3.5 h-3.5 text-amber-700" />
@@ -641,6 +840,13 @@ export default function JurnalPage() {
           ) : (
             <span className="inline-flex items-center gap-1.5 text-xs bg-[#EAF7EE] text-[#137333] border border-[#B7E4C7] px-3.5 py-1 rounded-full font-medium">
               <span className="font-extrabold text-[#0D6539]">DRAFT</span> Transaksi masih bisa ditambah/dihapus
+            </span>
+          )}
+
+          {syncNotice && (
+            <span className="text-xs bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1 rounded-full font-semibold flex items-center gap-1.5">
+              <Cloud className="w-3.5 h-3.5 text-blue-600" />
+              {syncNotice}
             </span>
           )}
         </div>
