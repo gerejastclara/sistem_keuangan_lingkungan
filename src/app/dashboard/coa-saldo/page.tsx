@@ -23,7 +23,8 @@ import {
   Wallet,
   Coins,
   RefreshCw,
-  Database
+  Database,
+  Info
 } from 'lucide-react'
 
 const MONTH_OPTIONS = [
@@ -618,14 +619,17 @@ export default function CoaSaldoPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="newType" className="text-xs font-bold text-slate-700">Saldo Normal Akun *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="newType" className="text-xs font-bold text-slate-700">Saldo Normal Akun *</Label>
+                  <span className="text-[10px] text-slate-400">Otomatis diisi sistem</span>
+                </div>
                 <Select value={newCoaType} onValueChange={(val: any) => setNewCoaType(val)}>
-                  <SelectTrigger id="newType" className="bg-white border-slate-300 rounded-xl font-bold">
+                  <SelectTrigger id="newType" className="bg-white border-slate-300 rounded-xl font-bold text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 text-slate-900">
-                    <SelectItem value="KREDIT">KREDIT (Untuk Penerimaan)</SelectItem>
-                    <SelectItem value="DEBIT">DEBIT (Untuk Pengeluaran & Kas)</SelectItem>
+                    <SelectItem value="KREDIT">KREDIT (Standar Akun Penerimaan / Uang Masuk)</SelectItem>
+                    <SelectItem value="DEBIT">DEBIT (Standar Akun Pengeluaran / Biaya & Kas)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -639,6 +643,20 @@ export default function CoaSaldoPage() {
                   placeholder="Keterangan singkat..."
                   className="bg-white border-slate-300 rounded-xl text-xs"
                 />
+              </div>
+            </div>
+
+            {/* Kotak Panduan Ramah Awam (User Friendly Helper) */}
+            <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl flex items-start gap-2.5 text-[11px] text-blue-900 leading-relaxed">
+              <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-blue-950">Panduan Akuntansi Standar Paroki:</strong>
+                <div className="text-slate-600 mt-0.5 space-y-0.5">
+                  <div>• <strong>Penerimaan / Iuran / Kolekte (4xxx):</strong> Saldo normal bertambah di <strong>KREDIT</strong>.</div>
+                  <div>• <strong>Pengeluaran / Biaya Operasional (5xxx):</strong> Saldo normal bertambah di <strong>DEBIT</strong>.</div>
+                  <div>• <strong>Kas & Rekening Bank (1xxx):</strong> Saldo normal uang ada di <strong>DEBIT</strong> (saat uang masuk didebit, saat uang keluar dikredit).</div>
+                  <div className="text-[10px] text-blue-700 italic pt-0.5">* Pilihan saldo normal di atas sudah otomatis disesuaikan dengan Kategori Akun yang Anda pilih.</div>
+                </div>
               </div>
             </div>
 
