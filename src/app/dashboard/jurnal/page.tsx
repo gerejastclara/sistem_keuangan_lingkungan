@@ -333,9 +333,33 @@ export default function JurnalPage() {
       const map = new Map<string, JurnalTransaksi>()
       list.forEach(j => map.set(j.id, j))
       localList.forEach(j => {
-        if (!map.has(j.id)) map.set(j.id, j)
+        if (!map.has(j.id)) {
+          map.set(j.id, j)
+        } else {
+          // Jika dari Supabase kepala_keluarga kosong tapi di local ada, pertahankan dari local
+          const existing = map.get(j.id)!
+          if (!existing.kepala_keluarga?.nama_kk && j.kepala_keluarga?.nama_kk) {
+            existing.kepala_keluarga = j.kepala_keluarga
+          }
+        }
       })
       list = Array.from(map.values()).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+
+      // Sinkronkan nama KK dari tx_kk cache atau kkList
+      list.forEach(j => {
+        if (!j.kepala_keluarga?.nama_kk) {
+          const cached = typeof window !== 'undefined' ? localStorage.getItem(`tx_kk_${j.id}`) : null
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached)
+              j.kepala_keluarga = { id: parsed.id, nama_kk: parsed.nama_kk, lingkungan_id: j.lingkungan_id } as any
+            } catch (e) {}
+          } else if (j.kk_id) {
+            const found = kkList.find(k => k.id === j.kk_id)
+            if (found) j.kepala_keluarga = { id: found.id, nama_kk: found.nama_kk, lingkungan_id: j.lingkungan_id } as any
+          }
+        }
+      })
     } catch (e) {}
 
     setJurnalList(list)
@@ -483,22 +507,21 @@ export default function JurnalPage() {
   const currentDebitName = step1Arus === 'MASUK' ? kasBankNama : (step2Jenis === '5350' && step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
   const currentKreditName = step1Arus === 'MASUK' ? (step2Jenis === '4900' && step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun) : kasBankNama
 
-  // Helper generate kode unik dokumen: BKM, BBM, BKK, BBK
+  // Helper generate kode unik dokumen otomatis: BKM, BBM, BKK, BBK
   const generateDocNumber = (arus: 'MASUK' | 'KELUAR', rek: 'KAS' | 'BANK', tgl: string) => {
     const prefix = arus === 'MASUK' ? (rek === 'KAS' ? 'BKM' : 'BBM') : (rek === 'KAS' ? 'BKK' : 'BBK')
     const d = new Date(tgl)
     const m = String(isNaN(d.getMonth()) ? 9 : d.getMonth() + 1).padStart(2, '0')
     const y = isNaN(d.getFullYear()) ? '2026' : String(d.getFullYear())
 
-    const matchCount = jurnalList.filter(j => {
+    // Hitung seluruh transaksi di bulan & tahun ini agar nomor urut selalu naik berurutan (001, 002, 003...)
+    const monthTransactions = jurnalList.filter(j => {
       const jd = new Date(j.tanggal)
       const jm = String(isNaN(jd.getMonth()) ? 9 : jd.getMonth() + 1).padStart(2, '0')
       const jy = isNaN(jd.getFullYear()) ? '2026' : String(jd.getFullYear())
-      const isMasuk = j.tipe_arus === 'MASUK'
-      const isKas = j.sumber_kas === 'KAS' || j.coa_debit === '1200' || j.coa_kredit === '1200'
-      const jPrefix = isMasuk ? (isKas ? 'BKM' : 'BBM') : (isKas ? 'BKK' : 'BBK')
-      return jPrefix === prefix && jm === m && jy === y
-    }).length + 1
+      return jm === m && jy === y
+    })
+    const matchCount = monthTransactions.length + 1
 
     return `${prefix}/${String(matchCount).padStart(3, '0')}/${m}/${y}`
   }
@@ -535,7 +558,7 @@ export default function JurnalPage() {
     const coaKredit = currentKreditAccount
 
     const autoDocNumber = generateDocNumber(step1Arus, selectedRekening, step4Tanggal)
-    const finalNoBukti = noBuktiCustom.trim() || autoDocNumber
+    const finalNoBukti = autoDocNumber
 
     const kkObj = kkList.find(k => k.id === step3KkId)
     const rawKet = step5Keterangan.trim() || (step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
@@ -636,6 +659,10 @@ export default function JurnalPage() {
       const allList = rawAll ? JSON.parse(rawAll) : []
       allList.unshift(newTx)
       localStorage.setItem('custom_journals_all_store', JSON.stringify(allList))
+
+      if (kkObj) {
+        localStorage.setItem(`tx_kk_${createdId}`, JSON.stringify({ id: kkObj.id, nama_kk: kkObj.nama_kk, alamat: kkObj.alamat }))
+      }
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('customJournalsUpdated'))
@@ -997,14 +1024,29 @@ export default function JurnalPage() {
                   LANGKAH 3 - Nama Kepala Keluarga (KK) <span className="text-rose-500">*</span>
                 </div>
                 <Select value={step3KkId} onValueChange={(val) => setStep3KkId(val || '')}>
-                  <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm">
-                    <SelectValue placeholder="-- Pilih nama KK / umat --" />
+                  <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm w-full">
+                    <span className="truncate text-left block w-full">
+                      {step3KkId === 'umum'
+                        ? '-- Tidak spesifik / umum (Kolektif) --'
+                        : (() => {
+                            const found = kkList.find(k => k.id === step3KkId)
+                            if (!found) return '-- Pilih nama KK / umat --'
+                            return `${found.nama_kk}${found.alamat ? ` — ${found.alamat}` : ''}`
+                          })()}
+                    </span>
                   </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-60">
+                  <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-64">
                     <SelectItem value="umum">-- Tidak spesifik / umum (Kolektif) --</SelectItem>
                     {kkList.map((kk) => (
                       <SelectItem key={kk.id} value={kk.id}>
-                        {kk.nama_kk} {kk.alamat ? `(${kk.alamat})` : ''}
+                        <div className="text-left py-0.5">
+                          <div className="font-semibold text-slate-900">{kk.nama_kk}</div>
+                          {kk.alamat && (
+                            <div className="text-[11px] text-slate-500 truncate max-w-md">
+                              {kk.alamat}
+                            </div>
+                          )}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1062,11 +1104,11 @@ export default function JurnalPage() {
             </div>
           )}
 
-          {/* LANGKAH 4 - Tanggal, Jumlah uang & Nomor Bukti (Muncul setelah Langkah 3 dipilih) */}
+          {/* LANGKAH 4 - Tanggal, Jumlah uang & Nomor Bukti Otomatis */}
           {step1Arus && step2Jenis && step3KkId && (
             <div className="space-y-3 animate-fadeIn">
               <div className="text-xs font-bold text-[#18539E]">
-                LANGKAH 4 - Tanggal, Jumlah Uang & Nomor Dokumen
+                LANGKAH 4 - Tanggal, Jumlah Uang & Kode Dokumen
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
@@ -1098,22 +1140,20 @@ export default function JurnalPage() {
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="nobukti" className="text-xs font-bold text-slate-700">
+                    <Label className="text-xs font-bold text-slate-700">
                       No. Bukti / Dokumen
                     </Label>
-                    <span className="text-[10px] text-slate-400 font-mono">Kode Unik</span>
+                    <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 font-bold px-1.5 py-0.2 rounded">
+                      Otomatis Sistem
+                    </span>
                   </div>
-                  <Input
-                    id="nobukti"
-                    value={noBuktiCustom}
-                    onChange={(e) => setNoBuktiCustom(e.target.value)}
-                    placeholder={generateDocNumber(step1Arus, selectedRekening, step4Tanggal)}
-                    className="bg-white border-slate-300 text-slate-900 font-mono font-bold rounded-xl h-11 text-xs"
-                  />
+                  <div className="bg-slate-50 border border-slate-200 text-slate-900 font-mono font-bold rounded-xl h-11 px-3.5 flex items-center text-xs shadow-2xs">
+                    {generateDocNumber(step1Arus, selectedRekening, step4Tanggal)}
+                  </div>
                 </div>
               </div>
               <p className="text-[11px] text-slate-500 italic">
-                * Kode unik otomatis: <strong className="font-mono text-slate-700">{generateDocNumber(step1Arus, selectedRekening, step4Tanggal)}</strong> ({step1Arus === 'MASUK' ? (selectedRekening === 'KAS' ? 'BKM: Buku Kas Masuk' : 'BBM: Buku Bank Masuk') : (selectedRekening === 'KAS' ? 'BKK: Buku Kas Keluar' : 'BBK: Buku Bank Keluar')}). Anda bisa mengisi nomor kwitansi fisik jika ada.
+                * Kode unik otomatis dari sistem: <strong className="font-mono text-slate-700">{generateDocNumber(step1Arus, selectedRekening, step4Tanggal)}</strong> ({step1Arus === 'MASUK' ? (selectedRekening === 'KAS' ? 'BKM: Buku Kas Masuk' : 'BBM: Buku Bank Masuk') : (selectedRekening === 'KAS' ? 'BKK: Buku Kas Keluar' : 'BBK: Buku Bank Keluar')}), nomor urut berlanjut otomatis memudahkan pembedaan tiap transaksi.
               </p>
             </div>
           )}
