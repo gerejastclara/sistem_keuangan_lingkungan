@@ -800,17 +800,10 @@ export default function JurnalPage() {
           </div>
 
           <div className="flex items-center gap-2 pt-2 sm:pt-4 flex-wrap">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={syncing}
-              onClick={handleManualSync}
-              className="border-emerald-300 text-emerald-800 hover:bg-emerald-50 font-bold rounded-xl h-11 px-4 text-xs cursor-pointer shadow-2xs flex items-center gap-1.5"
-              title="Sinkronisasi transaksi offline / lokal ke Database Supabase"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'Menyinkronkan...' : 'Sinkron ke Cloud DB'}
-            </Button>
+            <span className="inline-flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-2.5 rounded-xl font-bold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Database Cloud: Terhubung Otomatis
+            </span>
             <Button
               type="button"
               variant="outline"
