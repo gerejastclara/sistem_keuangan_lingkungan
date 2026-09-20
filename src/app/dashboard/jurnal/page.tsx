@@ -799,11 +799,7 @@ export default function JurnalPage() {
             </Select>
           </div>
 
-          <div className="flex items-center gap-2 pt-2 sm:pt-4 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-2.5 rounded-xl font-bold shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Database Cloud: Terhubung Otomatis
-            </span>
+          <div className="flex items-center gap-2 pt-2 sm:pt-4">
             <Button
               type="button"
               variant="outline"
@@ -823,8 +819,8 @@ export default function JurnalPage() {
           </div>
         </div>
 
-        {/* Status Badge & Sync notice */}
-        <div className="pt-1 flex items-center justify-between gap-2 flex-wrap">
+        {/* Status Badge */}
+        <div className="pt-1 flex items-center gap-2">
           {isMonthPosted ? (
             <span className="inline-flex items-center gap-1.5 text-xs bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-full font-bold">
               <Lock className="w-3.5 h-3.5 text-amber-700" />
@@ -833,13 +829,6 @@ export default function JurnalPage() {
           ) : (
             <span className="inline-flex items-center gap-1.5 text-xs bg-[#EAF7EE] text-[#137333] border border-[#B7E4C7] px-3.5 py-1 rounded-full font-medium">
               <span className="font-extrabold text-[#0D6539]">DRAFT</span> Transaksi masih bisa ditambah/dihapus
-            </span>
-          )}
-
-          {syncNotice && (
-            <span className="text-xs bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1 rounded-full font-semibold flex items-center gap-1.5">
-              <Cloud className="w-3.5 h-3.5 text-blue-600" />
-              {syncNotice}
             </span>
           )}
         </div>
