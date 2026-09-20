@@ -2,7 +2,9 @@ export type UserRole = 'BENDAHARA' | 'SEKRETARIS' | 'PAROKI';
 
 export interface UserProfile {
   id: string;
-  email: string;
+  username: string;
+  password?: string;
+  email?: string;
   role: UserRole;
   lingkungan_id: string | null;
   lingkungan_nama?: string;

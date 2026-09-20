@@ -10,94 +10,62 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   let profile: UserProfile | null = null
   let lingkunganList: Lingkungan[] = []
 
+  // Ambil list lingkungan dari database
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: lData } = await supabase
+      .from('lingkungan')
+      .select('*')
+      .order('nama_lingkungan', { ascending: true })
 
-    if (user) {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('*, lingkungan:lingkungan_id(nama_lingkungan)')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      if (userData) {
-        profile = {
-          id: userData.id,
-          email: userData.email,
-          role: userData.role,
-          lingkungan_id: userData.lingkungan_id,
-          lingkungan_nama: userData.lingkungan?.nama_lingkungan,
-        }
-      } else {
-        profile = {
-          id: user.id,
-          email: user.email || 'bendahara@example.com',
-          role: 'BENDAHARA',
-          lingkungan_id: null,
-        }
-      }
-
-      const { data: lData } = await supabase
-        .from('lingkungan')
-        .select('*')
-        .order('nama_lingkungan', { ascending: true })
-
-      if (lData) lingkunganList = lData
+    if (lData && lData.length > 0) {
+      lingkunganList = lData
     }
   } catch (err) {
     console.log('Supabase connection error in layout:', err)
   }
 
-  // Check Demo Cookie fallback if not logged in via Supabase Auth
-  if (!profile) {
-    const demoEmail = cookieStore.get('demo_user_email')?.value
-    const demoRole = cookieStore.get('demo_user_role')?.value as any
-    const demoLingkunganId = cookieStore.get('demo_user_lingkungan_id')?.value || null
-    const demoLingkunganNama = cookieStore.get('demo_user_lingkungan_nama')?.value || null
-
-    if (demoEmail) {
-      profile = {
-        id: 'demo-user-id',
-        email: demoEmail,
-        role: demoRole || (demoEmail.includes('sekretaris') ? 'SEKRETARIS' : demoEmail.includes('paroki') ? 'PAROKI' : 'BENDAHARA'),
-        lingkungan_id: demoRole === 'PAROKI' ? null : demoLingkunganId,
-        lingkungan_nama: demoRole === 'PAROKI' ? undefined : (demoLingkunganNama || undefined),
-      }
-    } else {
-      redirect('/login')
-    }
-  }
-
-  // If lingkunganList is empty from database, populate from master list
+  // Jika lingkunganList kosong, fallback ke master list
   if (lingkunganList.length === 0) {
     const { getAllMasterLingkungan } = await import('@/lib/constants')
     lingkunganList = getAllMasterLingkungan().map(m => ({ id: m.id, nama_lingkungan: m.nama_lingkungan }))
   }
 
-  // Enforce consistent lingkungan scoping for non-PAROKI roles based on email or assigned ID
+  // Baca sesi login langsung dari cookie (berbasis username & password)
+  const sessionUsername = cookieStore.get('demo_user_username')?.value || cookieStore.get('demo_user_email')?.value
+  const sessionRole = (cookieStore.get('demo_user_role')?.value as any) || (sessionUsername?.includes('sekretaris') ? 'SEKRETARIS' : sessionUsername?.includes('paroki') ? 'PAROKI' : 'BENDAHARA')
+  const sessionLingkunganId = cookieStore.get('demo_user_lingkungan_id')?.value || null
+  const sessionLingkunganNama = cookieStore.get('demo_user_lingkungan_nama')?.value || null
+  const sessionUserId = cookieStore.get('demo_user_id')?.value || 'user-id'
+
+  if (!sessionUsername) {
+    redirect('/login')
+  }
+
+  profile = {
+    id: sessionUserId,
+    username: sessionUsername,
+    role: sessionRole,
+    lingkungan_id: sessionRole === 'PAROKI' ? null : sessionLingkunganId,
+    lingkungan_nama: sessionRole === 'PAROKI' ? undefined : (sessionLingkunganNama || undefined),
+  }
+
+  // Pastikan nama lingkungan dan id lingkungan sinkron dengan database
   if (profile && profile.role !== 'PAROKI') {
-    const { findLingkunganByQuery, getAllMasterLingkungan } = await import('@/lib/constants')
-    const matched = findLingkunganByQuery(profile.email)
-    if (matched) {
-      profile.lingkungan_id = matched.id
-      profile.lingkungan_nama = matched.nama_lingkungan
+    const isDbUuid = profile.lingkungan_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profile.lingkungan_id)
+    if (!isDbUuid || !profile.lingkungan_nama) {
+      const { findLingkunganByQuery } = await import('@/lib/constants')
+      const matched = findLingkunganByQuery(profile.username)
+      if (matched) {
+        const dbL = lingkunganList.find(l => l.nama_lingkungan.toLowerCase() === matched.nama_lingkungan.toLowerCase())
+        profile.lingkungan_id = dbL ? dbL.id : matched.id
+        profile.lingkungan_nama = matched.nama_lingkungan
 
-      // Sync demo cookies & database to immediately heal any mismatched active session
-      try {
-        cookieStore.set('demo_user_lingkungan_id', matched.id)
-        cookieStore.set('demo_user_lingkungan_nama', matched.nama_lingkungan)
-
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          await supabase.from('users').update({ lingkungan_id: matched.id }).eq('id', user.id)
-        }
-      } catch (e) {}
-    } else if (!profile.lingkungan_nama && profile.lingkungan_id) {
-      const allM = getAllMasterLingkungan()
-      const found = allM.find(l => l.id === profile?.lingkungan_id)
-      if (found) profile.lingkungan_nama = found.nama_lingkungan
+        try {
+          cookieStore.set('demo_user_lingkungan_id', profile.lingkungan_id)
+          cookieStore.set('demo_user_lingkungan_nama', profile.lingkungan_nama)
+        } catch (e) {}
+      }
     }
   }
 

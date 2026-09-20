@@ -133,11 +133,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center gap-2 bg-[#22335A] hover:bg-[#22335A]/80 p-1.5 pr-3 rounded-[7px] border border-[#2C3E66] transition-colors cursor-pointer"
             >
               <div className="w-8 h-8 rounded-[5px] bg-[#A9834F]/20 border border-[#A9834F]/30 text-[#A9834F] font-bold flex items-center justify-center text-xs shrink-0">
-                {userProfile?.email ? userProfile.email.charAt(0).toUpperCase() : 'U'}
+                {(userProfile?.username || userProfile?.email || 'U').charAt(0).toUpperCase()}
               </div>
               <div className="text-left hidden md:block">
                 <div className="text-xs font-bold text-white leading-tight truncate max-w-[140px]">
-                  {userProfile?.email ? userProfile.email.split('@')[0] : 'User'}
+                  {userProfile?.username || (userProfile?.email ? userProfile.email.split('@')[0] : 'User')}
                 </div>
                 <div className="text-[10px] text-[#8A90A3] truncate">
                   {userProfile?.role || 'BENDAHARA'}
@@ -149,7 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {showProfileMenu && (
               <div className="absolute right-0 mt-2 w-60 bg-[#16233F] border border-[#2C3E66] rounded-[10px] shadow-2xl p-2.5 z-50 text-xs">
                 <div className="p-2 border-b border-[#2C3E66] mb-1 space-y-1">
-                  <p className="font-bold text-white text-sm truncate">{userProfile?.email}</p>
+                  <p className="font-bold text-white text-sm truncate">{userProfile?.username || userProfile?.email}</p>
                   <div className="mt-1">{getRoleBadge(userProfile?.role)}</div>
                 </div>
 
