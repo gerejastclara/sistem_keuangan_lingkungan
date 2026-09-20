@@ -986,14 +986,8 @@ function DafuFormContent() {
                 const activeKriteria = kriteriaList.find((k) => k.nama === formGolongan)
                 if (!activeKriteria) return null
                 return (
-                  <div
-                    className="p-3 rounded-xl border text-xs space-y-1.5 transition-all"
-                    style={{
-                      backgroundColor: activeKriteria.bgLight || '#f8fafc',
-                      borderColor: activeKriteria.borderLight || '#e2e8f0',
-                    }}
-                  >
-                    <div className="flex items-center gap-2 font-bold" style={{ color: activeKriteria.textColor || '#1e293b' }}>
+                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-xs space-y-1.5 transition-all">
+                    <div className="flex items-center gap-2 font-bold text-slate-800">
                       <span>{activeKriteria.iconEmoji}</span>
                       <span>Panduan Indikator: {activeKriteria.nama} ({activeKriteria.subjudul})</span>
                     </div>

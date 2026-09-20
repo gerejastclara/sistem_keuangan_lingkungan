@@ -995,26 +995,26 @@ export default function DashboardOverviewPage() {
                 <span className="text-2xl font-extrabold text-slate-900">{totalKK}</span>
                 <span className="text-sm font-semibold text-slate-500">KK</span>
                 <span className="text-xs text-slate-400">/</span>
-                <span className="text-2xl font-extrabold text-blue-600">{totalJiwa}</span>
+                <span className="text-2xl font-extrabold text-slate-900">{totalJiwa}</span>
                 <span className="text-sm font-semibold text-slate-500">Jiwa Umat</span>
               </div>
             </CardContent>
           </Card>
 
           {/* Card 2: Status Terdaftar KAJ */}
-          <Card className="bg-emerald-50/50 border-emerald-200 rounded-2xl p-1 shadow-xs">
+          <Card className="bg-white border-slate-200 rounded-2xl p-1 shadow-xs">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-emerald-800">Terdaftar BIDUK KAJ</CardTitle>
-              <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500">Terdaftar BIDUK KAJ</CardTitle>
+              <div className="p-2 bg-blue-50 text-blue-700 rounded-xl">
                 <ShieldCheck className="w-4 h-4" />
               </div>
             </CardHeader>
             <CardContent>
               <div className="flex items-baseline justify-between">
-                <div className="text-2xl font-extrabold text-emerald-950">
-                  {totalJiwaKaj} <span className="text-xs font-normal text-emerald-700">Jiwa</span>
+                <div className="text-2xl font-extrabold text-slate-900">
+                  {totalJiwaKaj} <span className="text-sm font-semibold text-slate-500">Jiwa</span>
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-slate-500 font-medium">
                   {totalJiwaNonKaj} Jiwa Belum KAJ
                 </div>
               </div>

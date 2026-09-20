@@ -371,13 +371,13 @@ export default function FormStandarPage() {
                 </div>
 
                 {/* Auto-fill from Lingkungan members */}
-                <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl space-y-1.5">
-                  <Label className="text-[11px] font-bold text-emerald-900 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                  <Label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-slate-500" />
                     Tarik Otomatis dari Data Umat Lingkungan:
                   </Label>
                   <Select onValueChange={(val) => { if (val) handleSelectMemberForSakramen(String(val)) }}>
-                    <SelectTrigger className="h-8 text-xs bg-white border-emerald-300 text-slate-800">
+                    <SelectTrigger className="h-8 text-xs bg-white border-slate-300 text-slate-800">
                       <SelectValue placeholder="-- Pilih nama pemohon sakramen --" />
                     </SelectTrigger>
                     <SelectContent className="bg-white text-slate-900 border-slate-200 max-h-56">
@@ -733,9 +733,9 @@ export default function FormStandarPage() {
                   </div>
                 </div>
 
-                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1">
-                  <div className="font-bold text-amber-950 font-serif">B. REKOMENDASI PENGURUS LINGKUNGAN:</div>
-                  <p className="text-amber-900 leading-relaxed text-[11px]">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                  <div className="font-bold text-slate-800 font-serif">B. REKOMENDASI PENGURUS LINGKUNGAN:</div>
+                  <p className="text-slate-700 leading-relaxed text-[11px]">
                     {sakramenCatatan}
                   </p>
                 </div>

@@ -224,10 +224,10 @@ export default function KriteriaGolonganPage() {
       )}
 
       {/* Info Card: Cara Kerja Parameter */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/70 to-indigo-50/50 border border-blue-200/80 flex items-start gap-3.5">
-        <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-3.5">
+        <Info className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />
         <div className="text-xs text-slate-700 space-y-1">
-          <span className="font-bold text-blue-950 block text-sm">
+          <span className="font-bold text-slate-900 block text-sm">
             Sinkronisasi Otomatis dengan Modul DAFU (Input Data Umat)
           </span>
           <p className="leading-relaxed">
@@ -319,12 +319,12 @@ export default function KriteriaGolonganPage() {
                 )}
 
                 {item.rekomendasiBantuan && (
-                  <div className="p-3 bg-amber-50/60 border border-amber-200/70 rounded-xl space-y-1">
-                    <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block font-serif flex items-center gap-1">
-                      <ShieldAlert className="w-3 h-3 text-amber-700" />
+                  <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-serif flex items-center gap-1">
+                      <ShieldAlert className="w-3 h-3 text-slate-400" />
                       Rekomendasi Kebijakan / Subsidi:
                     </span>
-                    <p className="text-amber-950 font-medium leading-relaxed">
+                    <p className="text-slate-800 font-medium leading-relaxed">
                       {item.rekomendasiBantuan}
                     </p>
                   </div>
