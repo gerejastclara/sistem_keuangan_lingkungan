@@ -509,7 +509,11 @@ export default function DashboardOverviewPage() {
       (k.alamat && k.alamat.toLowerCase().includes(searchQuery.toLowerCase())) ||
       members.some(m => m.nama.toLowerCase().includes(searchQuery.toLowerCase()))
 
-    const matchesGolongan = filterGolongan === 'ALL' || gol === filterGolongan
+    const matchesGolongan =
+      filterGolongan === 'ALL' ||
+      gol === filterGolongan ||
+      (filterGolongan === 'Terduga Prasejahtera' && (gol === 'Terduga Prasejahtera' || gol === 'Terduga Pra Sejahtera')) ||
+      (filterGolongan === 'Terduga Pra Sejahtera' && (gol === 'Terduga Prasejahtera' || gol === 'Terduga Pra Sejahtera'))
     const matchesKaj =
       filterKaj === 'ALL' ||
       (filterKaj === 'BIDUK' && k.is_biduk) ||
@@ -523,6 +527,7 @@ export default function DashboardOverviewPage() {
   let totalJiwa = 0
   let totalJiwaKaj = 0
   let totalJiwaNonKaj = 0
+  let countTidakMampu = 0
   let countRentan = 0
   let countTerduga = 0
   let countSejahtera = 0
@@ -535,9 +540,10 @@ export default function DashboardOverviewPage() {
       else totalJiwaNonKaj++
     })
 
-    const gol = (golonganMap[k.id]?.golongan || 'Sejahtera') as KategoriGolongan
-    if (gol === 'Rentan Tidak Mampu') countRentan++
-    else if (gol === 'Terduga Prasejahtera') countTerduga++
+    const gol = (golonganMap[k.id]?.golongan || 'Sejahtera') as string
+    if (gol === 'Tidak Mampu') countTidakMampu++
+    else if (gol === 'Rentan Tidak Mampu') countRentan++
+    else if (gol === 'Terduga Prasejahtera' || gol === 'Terduga Pra Sejahtera') countTerduga++
     else countSejahtera++
   })
 
@@ -964,7 +970,11 @@ export default function DashboardOverviewPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                <div className="bg-red-50/80 border border-red-200/80 rounded-xl p-2">
+                  <div className="text-[11px] font-bold text-red-700 truncate">Tidak Mampu</div>
+                  <div className="text-xl font-extrabold text-red-900 mt-0.5">{countTidakMampu} <span className="text-xs font-normal">KK</span></div>
+                </div>
                 <div className="bg-rose-50/80 border border-rose-200/80 rounded-xl p-2">
                   <div className="text-[11px] font-bold text-rose-700 truncate">Rentan Tdk Mampu</div>
                   <div className="text-xl font-extrabold text-rose-900 mt-0.5">{countRentan} <span className="text-xs font-normal">KK</span></div>
@@ -1004,9 +1014,10 @@ export default function DashboardOverviewPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 text-slate-900">
                     <SelectItem value="ALL">Semua Status</SelectItem>
-                    <SelectItem value="Sejahtera">Sejahtera</SelectItem>
-                    <SelectItem value="Terduga Prasejahtera">Terduga Prasejahtera</SelectItem>
+                    <SelectItem value="Tidak Mampu">Tidak Mampu</SelectItem>
                     <SelectItem value="Rentan Tidak Mampu">Rentan Tidak Mampu</SelectItem>
+                    <SelectItem value="Terduga Prasejahtera">Terduga Prasejahtera</SelectItem>
+                    <SelectItem value="Sejahtera">Sejahtera</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1528,12 +1539,24 @@ export default function DashboardOverviewPage() {
           </div>
         </div>
 
-        {/* 3 Golongan Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* 4 Golongan Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
             <div className="space-y-0.5">
               <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                Rentan Tidak Mampu
+                Tidak Mampu
+              </div>
+              <div className="text-2xl font-extrabold text-slate-900">{countTidakMampu} <span className="text-xs font-normal text-slate-500">KK</span></div>
+            </div>
+            <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-1 rounded-md font-medium border border-slate-200">
+              Bantuan Penuh
+            </span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+            <div className="space-y-0.5">
+              <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                Rentan Tdk Mampu
               </div>
               <div className="text-2xl font-extrabold text-slate-900">{countRentan} <span className="text-xs font-normal text-slate-500">KK</span></div>
             </div>
@@ -1597,9 +1620,10 @@ export default function DashboardOverviewPage() {
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900">
                   <SelectItem value="ALL">Semua Golongan</SelectItem>
-                  <SelectItem value="MISKIN">🔴 Miskin</SelectItem>
-                  <SelectItem value="MENENGAH">🟡 Menengah</SelectItem>
-                  <SelectItem value="ATAS">🟢 Atas</SelectItem>
+                  <SelectItem value="Tidak Mampu">Tidak Mampu</SelectItem>
+                  <SelectItem value="Rentan Tidak Mampu">Rentan Tidak Mampu</SelectItem>
+                  <SelectItem value="Terduga Prasejahtera">Terduga Prasejahtera</SelectItem>
+                  <SelectItem value="Sejahtera">Sejahtera</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -28,7 +28,7 @@ export interface KepalaKeluarga {
 }
 
 export type PeranKeluarga = 'Kepala Keluarga' | 'Suami' | 'Istri' | 'Anak' | 'Orang Tua' | 'Famili Lain';
-export type KategoriGolongan = 'Sejahtera' | 'Terduga Prasejahtera' | 'Rentan Tidak Mampu';
+export type KategoriGolongan = 'Sejahtera' | 'Terduga Prasejahtera' | 'Terduga Pra Sejahtera' | 'Rentan Tidak Mampu' | 'Tidak Mampu';
 
 export interface AnggotaKeluarga {
   id: string;

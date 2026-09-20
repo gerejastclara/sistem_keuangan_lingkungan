@@ -103,6 +103,7 @@ function DafuFormContent() {
   const [submitting, setSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [filterGolongan, setFilterGolongan] = useState<'ALL' | KategoriGolongan>('ALL')
   const [expandedKkIds, setExpandedKkIds] = useState<Set<string>>(new Set())
 
   // Edit Pengurus Modal State (Khusus Sekretaris)
@@ -203,12 +204,19 @@ function DafuFormContent() {
 
   const filteredKkList = kkList.filter(k => {
     if (!k || k.id.startsWith('dummy-') || k.id.includes('dummy')) return false
-    if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase().trim()
-    return (
+    const matchesSearch = !q || (
       k.nama_kk.toLowerCase().includes(q) ||
       (k.alamat && k.alamat.toLowerCase().includes(q))
     )
+    const gol = golonganMap[k.id]?.golongan || 'Sejahtera'
+    const matchesGolongan =
+      filterGolongan === 'ALL' ||
+      gol === filterGolongan ||
+      (filterGolongan === 'Terduga Prasejahtera' && (gol === 'Terduga Prasejahtera' || gol === 'Terduga Pra Sejahtera')) ||
+      (filterGolongan === 'Terduga Pra Sejahtera' && (gol === 'Terduga Prasejahtera' || gol === 'Terduga Pra Sejahtera'))
+
+    return matchesSearch && matchesGolongan
   })
 
   useEffect(() => {
@@ -870,10 +878,19 @@ function DafuFormContent() {
                       </SelectItem>
                       <SelectItem value="Rentan Tidak Mampu" className="cursor-pointer py-2.5 px-3 rounded-lg">
                         <div className="flex items-center gap-2.5">
-                          <span className="text-base leading-none">🔴</span>
+                          <span className="text-base leading-none">🟠</span>
                           <span className="font-bold text-slate-900">Rentan Tidak Mampu</span>
                           <span className="text-xs text-slate-500 font-normal">
                             (Butuh Bantuan / Subsidi Lingkungan)
+                          </span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="Tidak Mampu" className="cursor-pointer py-2.5 px-3 rounded-lg">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-base leading-none">🔴</span>
+                          <span className="font-bold text-slate-900">Tidak Mampu</span>
+                          <span className="text-xs text-slate-500 font-normal">
+                            (Bantuan Penuh / Prioritas Khusus)
                           </span>
                         </div>
                       </SelectItem>
@@ -1055,18 +1072,34 @@ function DafuFormContent() {
           </Link>
         </CardHeader>
 
-        {/* Search Bar */}
-        <div className="p-3 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama KK atau alamat..."
-              className="pl-9 bg-white border-slate-200 text-xs h-9 rounded-xl focus:ring-emerald-500"
-            />
+        {/* Search Bar & Golongan Filter */}
+        <div className="p-3 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nama KK atau alamat..."
+                className="pl-9 bg-white border-slate-200 text-xs h-9 rounded-xl focus:ring-emerald-500"
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <Select value={filterGolongan} onValueChange={(val) => setFilterGolongan(val as any)}>
+                <SelectTrigger className="bg-white border-slate-200 text-slate-800 rounded-xl text-xs h-9">
+                  <SelectValue placeholder="Semua Golongan" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200 text-slate-900">
+                  <SelectItem value="ALL">Semua Golongan</SelectItem>
+                  <SelectItem value="Tidak Mampu">Tidak Mampu</SelectItem>
+                  <SelectItem value="Rentan Tidak Mampu">Rentan Tidak Mampu</SelectItem>
+                  <SelectItem value="Terduga Prasejahtera">Terduga Prasejahtera</SelectItem>
+                  <SelectItem value="Sejahtera">Sejahtera</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="text-xs text-slate-500 font-medium">
+          <div className="text-xs text-slate-500 font-medium whitespace-nowrap">
             Menampilkan <span className="font-bold text-slate-800">{filteredKkList.length}</span> dari {kkList.length} Keluarga
           </div>
         </div>
