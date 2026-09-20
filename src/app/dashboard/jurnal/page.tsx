@@ -371,7 +371,7 @@ export default function JurnalPage() {
           coa_debit: item.coa_debit,
           coa_kredit: item.coa_kredit,
           nominal: Number(item.nominal),
-          keterangan: item.keterangan,
+          keterangan: cleanDisplayKeterangan(item.keterangan),
           is_posted: item.is_posted || false
         }
 
