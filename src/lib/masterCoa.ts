@@ -12,6 +12,8 @@ export const DEFAULT_MASTER_COA_LIST: MasterCOAItem[] = [
   // Kas & Setara Kas (Debit Normal)
   { id: '1100', nama_akun: 'Bank', tipe: 'DEBIT', kategori: 'KAS', keterangan: 'Saldo rekening bank lingkungan' },
   { id: '1200', nama_akun: 'Kas', tipe: 'DEBIT', kategori: 'KAS', keterangan: 'Uang tunai kas kecil lingkungan' },
+  { id: '1300', nama_akun: 'Dana talangan Dahar Romo', tipe: 'DEBIT', kategori: 'KAS', keterangan: 'Bersumber dari kas lingkungan atau umat' },
+  { id: '1400', nama_akun: 'Dana talangan Santo Yusuf', tipe: 'DEBIT', kategori: 'KAS', keterangan: 'Bersumber dari kas lingkungan atau umat' },
 
   // Penerimaan (Kredit Normal - Akun 4xxx)
   { id: '4100', nama_akun: 'Iuran Kas Lingkungan', tipe: 'KREDIT', kategori: 'PENERIMAAN', keterangan: 'Iuran rutin warga lingkungan' },
@@ -93,4 +95,32 @@ export function saveCustomCOA(item: MasterCOAItem): MasterCOAItem[] {
   }
 
   return updated
+}
+
+/**
+ * Sinkronisasi seluruh COA ke database Supabase tabel `coa`
+ */
+export async function syncAllCoaToDatabase(supabase: any): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const allCoas = getAllMasterCOA()
+    const rows = allCoas.map(item => ({
+      id: item.id,
+      nama_akun: item.nama_akun,
+      tipe: item.tipe
+    }))
+
+    const { error } = await supabase
+      .from('coa')
+      .upsert(rows, { onConflict: 'id' })
+
+    if (error) {
+      console.error('Gagal upsert COA ke Supabase:', error)
+      return { success: false, count: 0, error: error.message }
+    }
+
+    return { success: true, count: rows.length }
+  } catch (err: any) {
+    console.error('Exception sinkronisasi COA:', err)
+    return { success: false, count: 0, error: err?.message || 'Gagal sinkronisasi' }
+  }
 }

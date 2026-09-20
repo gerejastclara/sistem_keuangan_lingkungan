@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   SlidersHorizontal,
   FileText,
+  HandCoins,
 } from 'lucide-react'
 import { UserRole } from '@/lib/types'
 
@@ -69,6 +70,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'Jurnal Transaksi',
       href: '/dashboard/jurnal',
       icon: Receipt,
+      roles: ['BENDAHARA', 'PAROKI'],
+    },
+    {
+      title: 'Buku Besar Talangan',
+      href: '/dashboard/dana-talangan',
+      icon: HandCoins,
       roles: ['BENDAHARA', 'PAROKI'],
     },
     {

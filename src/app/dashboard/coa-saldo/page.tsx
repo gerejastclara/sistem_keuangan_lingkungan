@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { UserProfile, COA } from '@/lib/types'
-import { getAllMasterCOA, saveCustomCOA, MasterCOAItem } from '@/lib/masterCoa'
+import { getAllMasterCOA, saveCustomCOA, syncAllCoaToDatabase, MasterCOAItem } from '@/lib/masterCoa'
 import { formatRupiah } from '@/lib/utils'
+import { findLingkunganByQuery } from '@/lib/constants'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,7 +21,9 @@ import {
   BookOpen,
   Receipt,
   Wallet,
-  Coins
+  Coins,
+  RefreshCw,
+  Database
 } from 'lucide-react'
 
 const MONTH_OPTIONS = [
@@ -65,6 +68,7 @@ export default function CoaSaldoPage() {
   const [newCoaType, setNewCoaType] = useState<'DEBIT' | 'KREDIT'>('KREDIT')
   const [newCoaCat, setNewCoaCat] = useState<'KAS' | 'PENERIMAAN' | 'PENGELUARAN'>('PENERIMAAN')
   const [newCoaDesc, setNewCoaDesc] = useState('')
+  const [syncingCoa, setSyncingCoa] = useState(false)
 
   // Format currency helper
   const formatCurrencyString = (val: number): string => {
@@ -91,10 +95,30 @@ export default function CoaSaldoPage() {
           if (uData) setUserProfile(uData)
         }
 
-        let targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
+        let rawDemoEmail = typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() || '' : ''
+        try {
+          rawDemoEmail = decodeURIComponent(rawDemoEmail)
+        } catch (e) {}
+        const effectiveEmail = user?.email || rawDemoEmail || ''
+        const effectiveRole = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_role=').pop()?.split(';').shift() : '') || ''
+
+        let targetLingkunganId: string | null = null
+
+        if (effectiveRole !== 'PAROKI' && effectiveEmail) {
+          const matched = findLingkunganByQuery(effectiveEmail)
+          if (matched) {
+            targetLingkunganId = matched.id
+          }
+        }
+
+        if (!targetLingkunganId) {
+          targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
+        }
         if (!targetLingkunganId) {
           const { data: lData } = await supabase.from('lingkungan').select('id').limit(1).maybeSingle()
-          if (lData) targetLingkunganId = lData.id
+          if (lData) {
+            targetLingkunganId = lData.id
+          }
         }
 
         setLingkunganId(targetLingkunganId)
@@ -102,6 +126,9 @@ export default function CoaSaldoPage() {
         // Load master COA (Default + Custom localStorage + Supabase)
         const masterList = getAllMasterCOA()
         setCoaList(masterList)
+
+        // Auto-sync COA ke database Supabase agar akun seperti 1200, 1300, 1400 selalu ada di DB
+        syncAllCoaToDatabase(supabase).catch(() => {})
 
         if (targetLingkunganId) {
           // Fetch Profil Lingkungan
@@ -220,21 +247,33 @@ export default function CoaSaldoPage() {
     const updated = saveCustomCOA(newCoa)
     setCoaList(updated)
 
-    // 2. Try inserting to Supabase if table accepts it
+    // 2. Upsert ke Supabase
     try {
-      await supabase.from('coa').insert({
+      await supabase.from('coa').upsert({
         id: newCoa.id,
         nama_akun: newCoa.nama_akun,
         tipe: newCoa.tipe
-      })
+      }, { onConflict: 'id' })
     } catch (e) {}
 
     setIsAddCoaOpen(false)
     setNewCoaCode('')
     setNewCoaName('')
     setNewCoaDesc('')
-    setSuccessMsg(`COA baru ${newCoa.id} - ${newCoa.nama_akun} berhasil ditambahkan!`)
+    setSuccessMsg(`COA baru ${newCoa.id} - ${newCoa.nama_akun} berhasil ditambahkan dan disinkronkan ke database!`)
     setTimeout(() => setSuccessMsg(null), 3500)
+  }
+
+  const handleSyncCoaDatabase = async () => {
+    setSyncingCoa(true)
+    const result = await syncAllCoaToDatabase(supabase)
+    setSyncingCoa(false)
+    if (result.success) {
+      setSuccessMsg(`Berhasil menyinkronkan ${result.count} akun COA ke Database Supabase!`)
+    } else {
+      setSuccessMsg(`Sinkronisasi lokal berhasil. Database: ${result.error || 'cek koneksi'}`)
+    }
+    setTimeout(() => setSuccessMsg(null), 4000)
   }
 
   const filteredCoaList = coaList.filter((item) => {
@@ -386,15 +425,30 @@ export default function CoaSaldoPage() {
             </p>
           </div>
 
-          {/* Tombol Tambahkan COA Baru (Warna Gold #A9834F, 1 plus icon) */}
-          <Button
-            type="button"
-            onClick={() => setIsAddCoaOpen(true)}
-            className="bg-[#A9834F] hover:bg-[#967443] text-white text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 cursor-pointer flex items-center gap-1.5 shadow-xs transition-all"
-          >
-            <Plus className="w-4 h-4 text-white" />
-            Tambah COA Baru
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Tombol Sinkronisasi ke Database Supabase */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSyncCoaDatabase}
+              disabled={syncingCoa}
+              className="border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold px-3.5 py-2.5 rounded-xl shrink-0 cursor-pointer flex items-center gap-1.5 shadow-xs transition-all"
+              title="Kirim dan sinkronkan semua COA ke tabel database Supabase"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${syncingCoa ? 'animate-spin' : ''}`} />
+              {syncingCoa ? 'Menyinkronkan...' : 'Sinkronkan ke Database'}
+            </Button>
+
+            {/* Tombol Tambahkan COA Baru (Warna Gold #A9834F, 1 plus icon) */}
+            <Button
+              type="button"
+              onClick={() => setIsAddCoaOpen(true)}
+              className="bg-[#A9834F] hover:bg-[#967443] text-white text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 cursor-pointer flex items-center gap-1.5 shadow-xs transition-all"
+            >
+              <Plus className="w-4 h-4 text-white" />
+              Tambah COA Baru
+            </Button>
+          </div>
         </div>
 
         {/* Search & Kategori Filter */}

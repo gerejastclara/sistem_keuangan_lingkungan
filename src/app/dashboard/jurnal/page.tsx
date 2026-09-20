@@ -45,6 +45,8 @@ const PENERIMAAN_OPTIONS = [
   { code: '4600', name: 'Bantuan dari Paroki' },
   { code: '4700', name: 'Dana APP' },
   { code: '4800', name: 'Dana Aksi Natal' },
+  { code: '1300', name: 'Pengembalian Dana Talangan Dahar Romo (1300)' },
+  { code: '1400', name: 'Pengembalian Dana Talangan Santo Yusuf (1400)' },
   { code: '4900', name: 'Penerimaan Lainnya' }
 ]
 
@@ -74,6 +76,8 @@ const PENGELUARAN_OPTIONS = [
   { code: '5310', name: 'Sumbangan Dana APP' },
   { code: '5320', name: 'Sumbangan Dana Aksi Natal' },
   { code: '5340', name: 'Sumbangan Dana PPG' },
+  { code: '1300', name: 'Penyaluran Dana Talangan Dahar Romo (1300)' },
+  { code: '1400', name: 'Penyaluran Dana Talangan Santo Yusuf (1400)' },
   { code: '5350', name: 'Pengeluaran lainnya' }
 ]
 
@@ -96,8 +100,11 @@ export default function JurnalPage() {
   const [filterArusView, setFilterArusView] = useState<'ALL' | 'MASUK' | 'KELUAR'>('ALL')
 
   // Sequential Step-by-Step Form State
-  // Step 1: Uang Masuk / Uang Keluar
+  // Step 1: Uang Masuk / Uang Keluar & Opsi Rekening Kas/Bank
   const [step1Arus, setStep1Arus] = useState<'MASUK' | 'KELUAR' | null>(null)
+  const [selectedRekening, setSelectedRekening] = useState<'KAS' | 'BANK'>('BANK')
+  const [sumberSetoran, setSumberSetoran] = useState<'SENDIRI' | 'DANA_LINGKUNGAN'>('SENDIRI')
+  const [noBuktiCustom, setNoBuktiCustom] = useState<string>('')
 
   // Step 2: Jenis Transaksi
   const [step2Jenis, setStep2Jenis] = useState<string>('')
@@ -334,12 +341,49 @@ export default function JurnalPage() {
     }
   }
 
-  // Double entry accounting accounts for current selection
-  const currentDebitAccount = step1Arus === 'MASUK' ? '1100' : (step2Jenis || '5100')
-  const currentKreditAccount = step1Arus === 'MASUK' ? (step2Jenis || '4100') : '1100'
+  // Rekening Kas / Bank yang dipilih
+  const kasBankCoa = selectedRekening === 'KAS' ? '1200' : '1100'
+  const kasBankNama = selectedRekening === 'KAS' ? 'Kas (Cash on Hand)' : 'Bank (Cash in Bank)'
 
-  const currentDebitName = step1Arus === 'MASUK' ? 'Bank' : (step2Jenis === '5350' && step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
-  const currentKreditName = step1Arus === 'MASUK' ? (step2Jenis === '4900' && step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun) : 'Bank'
+  // Double entry accounting accounts for current selection
+  const currentDebitAccount = step1Arus === 'MASUK' ? kasBankCoa : (step2Jenis || '5100')
+  const currentKreditAccount = step1Arus === 'MASUK' ? (step2Jenis || '4100') : kasBankCoa
+
+  const currentDebitName = step1Arus === 'MASUK' ? kasBankNama : (step2Jenis === '5350' && step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
+  const currentKreditName = step1Arus === 'MASUK' ? (step2Jenis === '4900' && step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun) : kasBankNama
+
+  // Helper generate kode unik dokumen: BKM, BBM, BKK, BBK
+  const generateDocNumber = (arus: 'MASUK' | 'KELUAR', rek: 'KAS' | 'BANK', tgl: string) => {
+    const prefix = arus === 'MASUK' ? (rek === 'KAS' ? 'BKM' : 'BBM') : (rek === 'KAS' ? 'BKK' : 'BBK')
+    const d = new Date(tgl)
+    const m = String(isNaN(d.getMonth()) ? 9 : d.getMonth() + 1).padStart(2, '0')
+    const y = isNaN(d.getFullYear()) ? '2026' : String(d.getFullYear())
+
+    // Hitung nomor urut dari jurnal yang ada di bulan & tahun yang sama
+    const matchCount = jurnalList.filter(j => {
+      const jd = new Date(j.tanggal)
+      const jm = String(isNaN(jd.getMonth()) ? 9 : jd.getMonth() + 1).padStart(2, '0')
+      const jy = isNaN(jd.getFullYear()) ? '2026' : String(jd.getFullYear())
+      const isMasuk = j.tipe_arus === 'MASUK'
+      const isKas = j.sumber_kas === 'KAS' || j.coa_debit === '1200' || j.coa_kredit === '1200'
+      const jPrefix = isMasuk ? (isKas ? 'BKM' : 'BBM') : (isKas ? 'BKK' : 'BBK')
+      return jPrefix === prefix && jm === m && jy === y
+    }).length + 1
+
+    return `${prefix}/${String(matchCount).padStart(3, '0')}/${m}/${y}`
+  }
+
+  // Format display helper untuk baris transaksi di tabel
+  const getDisplayNoBukti = (j: JurnalTransaksi, indexFallback: number) => {
+    if (j.no_bukti && j.no_bukti.trim()) return j.no_bukti
+    const isMasuk = j.tipe_arus === 'MASUK'
+    const isKas = j.sumber_kas === 'KAS' || j.coa_debit === '1200' || j.coa_kredit === '1200'
+    const prefix = isMasuk ? (isKas ? 'BKM' : 'BBM') : (isKas ? 'BKK' : 'BBK')
+    const d = new Date(j.tanggal)
+    const m = String(isNaN(d.getMonth()) ? 9 : d.getMonth() + 1).padStart(2, '0')
+    const y = isNaN(d.getFullYear()) ? '2026' : String(d.getFullYear())
+    return `${prefix}/${String(indexFallback).padStart(3, '0')}/${m}/${y}`
+  }
 
   const handleSaveTransaction = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -360,6 +404,9 @@ export default function JurnalPage() {
     const coaDebit = currentDebitAccount
     const coaKredit = currentKreditAccount
 
+    const autoDocNumber = generateDocNumber(step1Arus, selectedRekening, step4Tanggal)
+    const finalNoBukti = noBuktiCustom.trim() || autoDocNumber
+
     const kkObj = kkList.find(k => k.id === step3KkId)
     const displayKet = step5Keterangan.trim() || (step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
 
@@ -372,7 +419,10 @@ export default function JurnalPage() {
       coa_kredit: coaKredit,
       nominal: step4NominalNumeric,
       keterangan: displayKet,
-      is_posted: false
+      is_posted: false,
+      no_bukti: finalNoBukti,
+      sumber_kas: selectedRekening,
+      sumber_setoran: step1Arus === 'MASUK' ? sumberSetoran : undefined
     }
 
     let createdId = 'jurnal-' + Date.now()
@@ -397,6 +447,9 @@ export default function JurnalPage() {
       nominal: payload.nominal,
       keterangan: payload.keterangan,
       is_posted: false,
+      no_bukti: finalNoBukti,
+      sumber_kas: selectedRekening,
+      sumber_setoran: step1Arus === 'MASUK' ? sumberSetoran : undefined,
       kepala_keluarga: kkObj ? { id: kkObj.id, lingkungan_id: payload.lingkungan_id, nama_kk: kkObj.nama_kk, alamat: kkObj.alamat, is_biduk: kkObj.is_biduk } : undefined
     }
 
@@ -421,6 +474,8 @@ export default function JurnalPage() {
     setStep3KkId('')
     setStep4NominalNumeric(0)
     setStep4NominalInput('Rp 0')
+    setStep5Keterangan('')
+    setNoBuktiCustom('')
     setStep5Keterangan('')
 
     setSuccessToast('Transaksi kas berhasil dicatat dan masuk ke jurnal!')
@@ -605,9 +660,9 @@ export default function JurnalPage() {
 
         <form onSubmit={handleSaveTransaction} className="p-5 sm:p-6 space-y-6">
           {/* LANGKAH 1 - Uang masuk atau keluar? */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="text-xs font-bold text-[#18539E]">
-              LANGKAH 1 - Uang masuk atau keluar?
+              LANGKAH 1 - Uang masuk atau keluar & Rekening Kas
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
@@ -642,6 +697,55 @@ export default function JurnalPage() {
                 Uang Keluar
               </button>
             </div>
+
+            {/* OPSI KAS & BANK (Cash on Hand vs Cash in Bank) */}
+            {step1Arus && (
+              <div className="pt-2 pb-1 border-t border-slate-100 animate-fadeIn">
+                <div className="text-xs font-semibold text-slate-700 mb-2 flex flex-wrap items-center justify-between gap-1">
+                  <span>Pilih Rekening Media Pembukuan:</span>
+                  <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                    Buku: {step1Arus === 'MASUK' ? (selectedRekening === 'KAS' ? 'BKM (Buku Kas Masuk)' : 'BBM (Buku Bank Masuk)') : (selectedRekening === 'KAS' ? 'BKK (Buku Kas Keluar)' : 'BBK (Buku Bank Keluar)')}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRekening('KAS')}
+                    className={`py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer border ${
+                      selectedRekening === 'KAS'
+                        ? 'border-[#0D6539] bg-[#EAF7EE] text-[#0D6539] shadow-2xs ring-1 ring-[#0D6539]'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-emerald-600" />
+                      <span>KAS (Cash on Hand)</span>
+                    </div>
+                    <span className="font-mono text-[11px] bg-white/90 px-2 py-0.5 rounded border border-slate-200 text-slate-700">
+                      COA 1200
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRekening('BANK')}
+                    className={`py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer border ${
+                      selectedRekening === 'BANK'
+                        ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-2xs ring-1 ring-blue-600'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-blue-600" />
+                      <span>BANK (Cash in Bank)</span>
+                    </div>
+                    <span className="font-mono text-[11px] bg-white/90 px-2 py-0.5 rounded border border-slate-200 text-slate-700">
+                      COA 1100
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* LANGKAH 2 - Jenis transaksi apa? (Muncul setelah Langkah 1 dipilih, Persis Gambar 3 & 5) */}
@@ -698,36 +802,84 @@ export default function JurnalPage() {
 
           {/* LANGKAH 3 - Nama Kepala Keluarga (KK) (Muncul setelah Langkah 2 dipilih, Persis Gambar 3) */}
           {step1Arus && step2Jenis && (
-            <div className="space-y-1.5 animate-fadeIn">
-              <div className="text-xs font-bold text-[#18539E]">
-                LANGKAH 3 - Nama Kepala Keluarga (KK) <span className="text-rose-500">*</span>
+            <div className="space-y-3 animate-fadeIn">
+              <div className="space-y-1.5">
+                <div className="text-xs font-bold text-[#18539E]">
+                  LANGKAH 3 - Nama Kepala Keluarga (KK) <span className="text-rose-500">*</span>
+                </div>
+                <Select value={step3KkId} onValueChange={(val) => setStep3KkId(val || '')}>
+                  <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm">
+                    <SelectValue placeholder="-- Pilih nama KK / umat --" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-60">
+                    <SelectItem value="umum">-- Tidak spesifik / umum (Kolektif) --</SelectItem>
+                    {kkList.map((kk) => (
+                      <SelectItem key={kk.id} value={kk.id}>
+                        {kk.nama_kk} {kk.alamat ? `(${kk.alamat})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-slate-500 italic leading-relaxed pt-0.5">
+                  Pilih nama KK yang menyetor uang (untuk penerimaan) atau yang bertanggung jawab (untuk pengeluaran). Pilih &ldquo;Tidak spesifik / umum&rdquo; untuk transaksi kolektif.
+                </p>
               </div>
-              <Select value={step3KkId} onValueChange={(val) => setStep3KkId(val || '')}>
-                <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm">
-                  <SelectValue placeholder="-- Pilih nama KK / umat --" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-60">
-                  <SelectItem value="umum">-- Tidak spesifik / umum (Kolektif) --</SelectItem>
-                  {kkList.map((kk) => (
-                    <SelectItem key={kk.id} value={kk.id}>
-                      {kk.nama_kk} {kk.alamat ? `(${kk.alamat})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-slate-500 italic leading-relaxed pt-0.5">
-                Pilih nama KK yang menyetor uang (untuk penerimaan) atau yang bertanggung jawab (untuk pengeluaran). Pilih &ldquo;Tidak spesifik / umum&rdquo; untuk transaksi kolektif.
-              </p>
+
+              {/* Status Sumber Setoran jika Uang Masuk & KK dipilih */}
+              {step1Arus === 'MASUK' && step3KkId && step3KkId !== 'umum' && (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 animate-fadeIn">
+                  <div className="text-xs font-bold text-slate-700">
+                    Sumber Setoran Umat (Warna di Kartu Setoran):
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSumberSetoran('SENDIRI')}
+                      className={`p-2.5 rounded-lg text-xs font-bold text-left transition flex items-center justify-between border cursor-pointer ${
+                        sumberSetoran === 'SENDIRI'
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-500'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                        <span>Bayar Sendiri (Mandiri)</span>
+                      </div>
+                      <span className="text-[10px] font-normal text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                        Warna Hijau
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSumberSetoran('DANA_LINGKUNGAN')}
+                      className={`p-2.5 rounded-lg text-xs font-bold text-left transition flex items-center justify-between border cursor-pointer ${
+                        sumberSetoran === 'DANA_LINGKUNGAN'
+                          ? 'border-purple-500 bg-purple-50 text-purple-900 ring-1 ring-purple-500'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
+                        <span>Dari Dana Lingkungan</span>
+                      </div>
+                      <span className="text-[10px] font-normal text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
+                        Warna Ungu
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* LANGKAH 4 - Tanggal dan jumlah uang (Muncul setelah Langkah 3 dipilih, Persis Gambar 3) */}
+          {/* LANGKAH 4 - Tanggal, Jumlah uang & Nomor Bukti (Muncul setelah Langkah 3 dipilih) */}
           {step1Arus && step2Jenis && step3KkId && (
-            <div className="space-y-2 animate-fadeIn">
+            <div className="space-y-3 animate-fadeIn">
               <div className="text-xs font-bold text-[#18539E]">
-                LANGKAH 4 - Tanggal dan jumlah uang
+                LANGKAH 4 - Tanggal, Jumlah Uang & Nomor Dokumen
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="tgl" className="text-xs font-bold text-slate-700">
                     Tanggal <span className="text-rose-500">*</span>
@@ -754,7 +906,26 @@ export default function JurnalPage() {
                     className="bg-white border-slate-300 text-slate-900 font-bold text-base rounded-xl h-11"
                   />
                 </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="nobukti" className="text-xs font-bold text-slate-700">
+                      No. Bukti / Dokumen
+                    </Label>
+                    <span className="text-[10px] text-slate-400 font-mono">Kode Unik</span>
+                  </div>
+                  <Input
+                    id="nobukti"
+                    value={noBuktiCustom}
+                    onChange={(e) => setNoBuktiCustom(e.target.value)}
+                    placeholder={generateDocNumber(step1Arus, selectedRekening, step4Tanggal)}
+                    className="bg-white border-slate-300 text-slate-900 font-mono font-bold rounded-xl h-11 text-xs"
+                  />
+                </div>
               </div>
+              <p className="text-[11px] text-slate-500 italic">
+                * Kode unik otomatis: <strong className="font-mono text-slate-700">{generateDocNumber(step1Arus, selectedRekening, step4Tanggal)}</strong> ({step1Arus === 'MASUK' ? (selectedRekening === 'KAS' ? 'BKM: Buku Kas Masuk' : 'BBM: Buku Bank Masuk') : (selectedRekening === 'KAS' ? 'BKK: Buku Kas Keluar' : 'BBK: Buku Bank Keluar')}). Anda bisa mengisi nomor kwitansi fisik jika ada.
+              </p>
             </div>
           )}
 
@@ -887,61 +1058,86 @@ export default function JurnalPage() {
               <Table>
                 <TableHeader className="bg-slate-50/80 text-xs font-bold text-slate-700 border-b border-slate-200">
                   <TableRow>
-                    <TableHead className="w-28 text-slate-800 font-bold">Tanggal</TableHead>
-                    <TableHead className="w-28 text-slate-800 font-bold">Arus</TableHead>
+                    <TableHead className="w-36 text-slate-800 font-bold">No. Dokumen / Ref</TableHead>
+                    <TableHead className="w-24 text-slate-800 font-bold">Tanggal</TableHead>
+                    <TableHead className="w-32 text-slate-800 font-bold">Arus & Media</TableHead>
                     <TableHead className="text-slate-800 font-bold">Umat / KK</TableHead>
                     <TableHead className="text-slate-800 font-bold">Keterangan / Jenis</TableHead>
-                    <TableHead className="w-36 text-slate-800 font-bold">Jurnal DE</TableHead>
+                    <TableHead className="w-28 text-slate-800 font-bold">Jurnal DE</TableHead>
                     <TableHead className="w-32 text-right text-slate-800 font-bold">Nominal</TableHead>
-                    <TableHead className="w-16 text-center text-slate-800 font-bold">Aksi</TableHead>
+                    <TableHead className="w-12 text-center text-slate-800 font-bold">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-100 text-xs">
-                  {displayedTableJournals.map((j) => (
-                    <TableRow key={j.id} className="hover:bg-slate-50/80 transition">
-                      <TableCell className="font-mono text-slate-700 whitespace-nowrap">
-                        {formatDateIndo(j.tanggal)}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
-                            j.tipe_arus === 'MASUK'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : 'bg-rose-50 text-rose-800 border-rose-200'
-                          }`}
-                        >
-                          {j.tipe_arus === 'MASUK' ? 'Uang Masuk' : 'Uang Keluar'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-semibold text-slate-900">
-                        {j.kepala_keluarga?.nama_kk || (
-                          <span className="text-slate-500 italic">Umum / Kolektif</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-slate-800 font-medium">
-                        {j.keterangan}
-                      </TableCell>
-                      <TableCell className="font-mono text-[11px] text-slate-600">
-                        <div>D: {j.coa_debit}</div>
-                        <div>K: {j.coa_kredit}</div>
-                      </TableCell>
-                      <TableCell className={`text-right font-mono font-bold text-sm ${j.tipe_arus === 'MASUK' ? 'text-emerald-700' : 'text-rose-700'}`}>
-                        {j.tipe_arus === 'MASUK' ? '+' : '-'} {formatRupiah(Number(j.nominal))}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {!j.is_posted && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTransaction(j.id, j.is_posted)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                            title="Hapus transaksi"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {displayedTableJournals.map((j, idx) => {
+                    const docNumber = getDisplayNoBukti(j, idx + 1)
+                    const isKas = j.sumber_kas === 'KAS' || j.coa_debit === '1200' || j.coa_kredit === '1200'
+
+                    return (
+                      <TableRow key={j.id} className="hover:bg-slate-50/80 transition">
+                        <TableCell className="font-mono whitespace-nowrap">
+                          <span className="font-bold text-slate-900 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-[11px]">
+                            {docNumber}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-mono text-slate-700 whitespace-nowrap">
+                          {formatDateIndo(j.tanggal)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1 items-start">
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                j.tipe_arus === 'MASUK'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  : 'bg-rose-50 text-rose-800 border-rose-200'
+                              }`}
+                            >
+                              {j.tipe_arus === 'MASUK' ? 'Uang Masuk' : 'Uang Keluar'}
+                            </span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                              {isKas ? 'KAS (1200)' : 'BANK (1100)'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold text-slate-900">
+                          {j.kepala_keluarga?.nama_kk || (
+                            <span className="text-slate-500 italic">Umum / Kolektif</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-slate-800 font-medium">
+                          <div>{j.keterangan}</div>
+                          {j.sumber_setoran && (
+                            <span className={`inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                              j.sumber_setoran === 'DANA_LINGKUNGAN'
+                                ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                            }`}>
+                              {j.sumber_setoran === 'DANA_LINGKUNGAN' ? '• Dari Dana Lingkungan' : '• Bayar Sendiri'}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] text-slate-600">
+                          <div>D: {j.coa_debit}</div>
+                          <div>K: {j.coa_kredit}</div>
+                        </TableCell>
+                        <TableCell className={`text-right font-mono font-bold text-sm ${j.tipe_arus === 'MASUK' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                          {j.tipe_arus === 'MASUK' ? '+' : '-'} {formatRupiah(Number(j.nominal))}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {!j.is_posted && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTransaction(j.id, j.is_posted)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              title="Hapus transaksi"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -981,11 +1177,16 @@ export default function JurnalPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredJournals.map((j) => (
+                  filteredJournals.map((j, idx) => (
                     <React.Fragment key={j.id}>
                       {/* Debit row */}
                       <TableRow className="bg-white hover:bg-slate-50">
-                        <TableCell className="font-mono text-[11px] align-top">{j.tanggal}</TableCell>
+                        <TableCell className="font-mono text-[11px] align-top whitespace-nowrap">
+                          <div>{j.tanggal}</div>
+                          <div className="text-[10px] font-bold text-slate-700 font-mono mt-1 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 inline-block">
+                            {getDisplayNoBukti(j, idx + 1)}
+                          </div>
+                        </TableCell>
                         <TableCell className="font-bold text-slate-900">
                           {j.coa_debit} — {resolveCoaDetails(j.coa_debit).nama_akun}
                           <div className="text-[11px] font-normal text-slate-500 mt-0.5">{j.keterangan}</div>

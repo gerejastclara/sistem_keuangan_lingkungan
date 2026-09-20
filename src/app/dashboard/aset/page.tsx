@@ -5,19 +5,26 @@ import { createClient } from '@/utils/supabase/client'
 import { UserProfile, Aset } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
 import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery } from '@/lib/constants'
+import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import {
   Package,
   Plus,
   Trash2,
+  Pencil,
+  Printer,
+  Download,
   CheckCircle2,
   Boxes,
-  Search
+  Search,
+  Check,
+  AlertTriangle
 } from 'lucide-react'
 
 const KATEGORI_ASET_OPTIONS = [
@@ -30,6 +37,12 @@ const KATEGORI_ASET_OPTIONS = [
   'Lainnya'
 ]
 
+const KONDISI_OPTIONS = [
+  { value: 'Baik', label: 'Baik (Siap Pakai)', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  { value: 'Rusak Ringan', label: 'Rusak Ringan (Perlu Servis)', color: 'bg-amber-50 text-amber-800 border-amber-200' },
+  { value: 'Rusak Berat', label: 'Rusak Berat (Tidak Layak)', color: 'bg-rose-50 text-rose-800 border-rose-200' }
+]
+
 const YEAR_OPTIONS = Array.from({ length: 15 }, (_, i) => String(2026 - i))
 
 export default function AsetPage() {
@@ -38,19 +51,33 @@ export default function AsetPage() {
   const [loading, setLoading] = useState(true)
   const [lingkunganId, setLingkunganId] = useState<string | null>(null)
   const [lingkunganName, setLingkunganName] = useState('')
+  const [pengurus, setPengurus] = useState<PengurusLingkungan | null>(null)
 
   const [asetList, setAsetList] = useState<Aset[]>([])
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Form State (Persis Gambar 5)
+  // Form State Tambah Aset
   const [kategori, setKategori] = useState<string>('Inventaris Liturgi dan Ibadat Sabda')
   const [namaBarang, setNamaBarang] = useState<string>('')
   const [tahunBeli, setTahunBeli] = useState<string>('')
   const [jumlah, setJumlah] = useState<number>(1)
+  const [kondisi, setKondisi] = useState<string>('Baik')
   const [hargaSatuanInput, setHargaSatuanInput] = useState<string>('Rp 0')
   const [hargaSatuanNumeric, setHargaSatuanNumeric] = useState<number>(0)
 
+  // Edit / Update Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingAset, setEditingAset] = useState<Aset | null>(null)
+  const [editNama, setEditNama] = useState('')
+  const [editKategori, setEditKategori] = useState('')
+  const [editTahun, setEditTahun] = useState('')
+  const [editJumlah, setEditJumlah] = useState(1)
+  const [editKondisi, setEditKondisi] = useState('Baik')
+  const [editHargaInput, setEditHargaInput] = useState('Rp 0')
+  const [editHargaNumeric, setEditHargaNumeric] = useState(0)
+
   const [submitting, setSubmitting] = useState(false)
+  const [updating, setUpdating] = useState(false)
   const [successToast, setSuccessToast] = useState<string | null>(null)
 
   // Currency helper
@@ -64,6 +91,13 @@ export default function AsetPage() {
     const num = parseInt(raw, 10) || 0
     setHargaSatuanNumeric(num)
     setHargaSatuanInput(formatCurrency(num))
+  }
+
+  const handleEditHargaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^0-9]/g, '')
+    const num = parseInt(raw, 10) || 0
+    setEditHargaNumeric(num)
+    setEditHargaInput(formatCurrency(num))
   }
 
   useEffect(() => {
@@ -118,6 +152,16 @@ export default function AsetPage() {
         setLingkunganId(targetLingkunganId)
 
         if (targetLingkunganId) {
+          // Load profil for officers info
+          const { data: profil } = await supabase
+            .from('profil_lingkungan')
+            .select('*')
+            .eq('lingkungan_id', targetLingkunganId)
+            .maybeSingle()
+
+          const pengurusInfo = getPengurusForLingkungan(targetLingkunganId, targetLingkunganNama, profil)
+          setPengurus(pengurusInfo)
+
           await fetchAset(targetLingkunganId)
         }
       } catch (err) {
@@ -186,7 +230,8 @@ export default function AsetPage() {
       kategori: kategori,
       tahun_beli: tahunBeli ? parseInt(tahunBeli, 10) : 2026,
       jumlah: jumlah || 1,
-      harga_satuan: hargaSatuanNumeric
+      harga_satuan: hargaSatuanNumeric,
+      kondisi: kondisi || 'Baik'
     }
 
     let createdId = 'aset-' + Date.now()
@@ -207,7 +252,8 @@ export default function AsetPage() {
       kategori: payload.kategori,
       tahun_beli: payload.tahun_beli,
       jumlah: payload.jumlah,
-      harga_satuan: payload.harga_satuan
+      harga_satuan: payload.harga_satuan,
+      kondisi: payload.kondisi
     }
 
     // Save to local storage
@@ -228,10 +274,78 @@ export default function AsetPage() {
     setNamaBarang('')
     setTahunBeli('')
     setJumlah(1)
+    setKondisi('Baik')
     setHargaSatuanNumeric(0)
     setHargaSatuanInput('Rp 0')
 
     setSuccessToast(`Aset "${newAset.nama_barang}" berhasil ditambahkan ke inventaris!`)
+    setTimeout(() => setSuccessToast(null), 3500)
+  }
+
+  // Open Edit Modal
+  const handleOpenEdit = (item: Aset) => {
+    setEditingAset(item)
+    setEditNama(item.nama_barang)
+    setEditKategori(item.kategori || KATEGORI_ASET_OPTIONS[0])
+    setEditTahun(item.tahun_beli ? String(item.tahun_beli) : '')
+    setEditJumlah(Number(item.jumlah) || 1)
+    setEditKondisi(item.kondisi || 'Baik')
+    const price = Number(item.harga_satuan) || 0
+    setEditHargaNumeric(price)
+    setEditHargaInput(formatCurrency(price))
+    setIsEditModalOpen(true)
+  }
+
+  // Save Edit / Update
+  const handleUpdateAset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingAset || !editNama.trim()) {
+      alert('Nama barang wajib diisi!')
+      return
+    }
+
+    setUpdating(true)
+    const updatedFields = {
+      nama_barang: editNama.trim(),
+      kategori: editKategori,
+      tahun_beli: editTahun ? parseInt(editTahun, 10) : 2026,
+      jumlah: editJumlah || 1,
+      harga_satuan: editHargaNumeric,
+      kondisi: editKondisi || 'Baik'
+    }
+
+    try {
+      await supabase
+        .from('aset')
+        .update(updatedFields)
+        .eq('id', editingAset.id)
+    } catch (e) {}
+
+    const updatedAset: Aset = {
+      ...editingAset,
+      ...updatedFields
+    }
+
+    // Update in state
+    setAsetList(prev => prev.map(a => a.id === editingAset.id ? updatedAset : a))
+
+    // Update in localStorage
+    if (lingkunganId) {
+      try {
+        const raw = localStorage.getItem(`custom_aset_${lingkunganId}`)
+        if (raw) {
+          const list: Aset[] = JSON.parse(raw)
+          const newList = list.map(a => a.id === editingAset.id ? updatedAset : a)
+          localStorage.setItem(`custom_aset_${lingkunganId}`, JSON.stringify(newList))
+          window.dispatchEvent(new Event('storage'))
+        }
+      } catch (e) {}
+    }
+
+    setUpdating(false)
+    setIsEditModalOpen(false)
+    setEditingAset(null)
+    setSuccessToast(`Data aset "${updatedAset.nama_barang}" berhasil diperbarui!`)
     setTimeout(() => setSuccessToast(null), 3500)
   }
 
@@ -248,75 +362,110 @@ export default function AsetPage() {
         if (raw) {
           const list = JSON.parse(raw).filter((a: any) => a.id !== id)
           localStorage.setItem(`custom_aset_${lingkunganId}`, JSON.stringify(list))
+          window.dispatchEvent(new Event('storage'))
         }
       } catch (e) {}
     }
 
     setAsetList(prev => prev.filter(a => a.id !== id))
+    setSuccessToast(`Aset "${nama}" berhasil dihapus dari inventaris!`)
+    setTimeout(() => setSuccessToast(null), 3500)
   }
 
-  const filteredAsetList = asetList.filter((a) => {
-    const q = searchQuery.toLowerCase()
-    return (
-      a.nama_barang.toLowerCase().includes(q) ||
-      (a.kategori && a.kategori.toLowerCase().includes(q)) ||
-      (a.tahun_beli && String(a.tahun_beli).includes(q))
-    )
-  })
+  const handlePrint = () => {
+    window.print()
+  }
+
+  const filteredAsetList = asetList.filter((item) =>
+    item.nama_barang.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.kategori && item.kategori.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (item.kondisi && item.kondisi.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#18539E]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-16">
+    <div className="space-y-6 max-w-5xl mx-auto pb-16">
       {/* Toast Notification */}
       {successToast && (
-        <div className="p-4 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200 text-sm font-bold flex items-center gap-2 shadow-xs transition-all">
+        <div className="p-4 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200 text-sm font-bold flex items-center gap-2 shadow-xs transition-all print:hidden">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
           {successToast}
         </div>
       )}
 
-      {/* TOP 2 SUMMARY METRIC CARDS (Persis Gambar 5) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Card 1: Total Item Aset */}
-        <div className="bg-[#F0F6FE]/70 border border-[#BAE0FD] rounded-2xl p-5 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-600">Total Item Aset</div>
-          <div className="text-2xl font-black text-[#18539E] mt-1.5">{totalItemCount}</div>
+      {/* HEADER MODUL & ACTION BUTTONS */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+        <div>
+          <div className="flex items-center gap-2">
+            <Package className="w-6 h-6 text-[#18539E]" />
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight font-serif">
+              Daftar Aset & Inventaris
+            </h1>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Manajemen inventaris aset milik lingkungan {formatNamaLingkungan(lingkunganName)}
+          </p>
         </div>
 
-        {/* Card 2: Total Nilai Aset */}
-        <div className="bg-[#F0F6FE]/70 border border-[#BAE0FD] rounded-2xl p-5 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-600">Total Nilai Aset</div>
-          <div className="text-2xl font-black text-[#18539E] mt-1.5">{formatRupiah(totalNilaiAset)}</div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            onClick={handlePrint}
+            className="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl h-10 px-4 text-xs flex items-center gap-1.5 shadow-2xs cursor-pointer"
+          >
+            <Printer className="w-4 h-4 text-white" />
+            Cetak Daftar Aset (PDF)
+          </Button>
         </div>
       </div>
 
-      {/* FORM: TAMBAH ASET BARU (Persis Gambar 5) */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-        {/* Header Form */}
+      {/* 2 SUMMARY METRIC BOXES */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 print:hidden">
+        {/* Box 1: Total Unit Barang */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs">
+          <div className="text-xs font-medium text-slate-500">Total Unit Barang Inventaris</div>
+          <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1 font-mono">
+            {totalItemCount} <span className="text-sm font-normal text-slate-500">Unit</span>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1">Dari {asetList.length} jenis barang inventaris</p>
+        </div>
+
+        {/* Box 2: Total Nilai Aset */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs">
+          <div className="text-xs font-medium text-slate-500">Total Nilai Estimasi Aset</div>
+          <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1 font-mono">
+            {formatRupiah(totalNilaiAset)}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1">Akumulasi seluruh barang inventaris lingkungan</p>
+        </div>
+      </div>
+
+      {/* FORM INPUT ASET BARU */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden print:hidden">
         <div className="p-5 pb-4 border-b border-slate-100 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-extrabold text-base shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-[#F0F5FD] text-[#18539E] flex items-center justify-center font-extrabold text-base shrink-0">
             +
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Tambah Aset Baru</h3>
-            <p className="text-xs text-slate-500">Isi data barang inventaris</p>
+            <h3 className="text-sm font-bold text-slate-900">Input Data Aset Baru</h3>
+            <p className="text-xs text-slate-500">Catat inventaris barang baru milik lingkungan</p>
           </div>
         </div>
 
         <form onSubmit={handleSaveAset} className="p-5 sm:p-6 space-y-4">
           {/* Field 1: Kategori */}
           <div className="space-y-1.5">
-            <Label htmlFor="kategori" className="text-xs font-bold text-slate-700">Kategori</Label>
-            <Select value={kategori} onValueChange={(val) => setKategori(val || 'Lainnya')}>
+            <Label htmlFor="kategori" className="text-xs font-bold text-slate-700">Kategori Inventaris *</Label>
+            <Select value={kategori} onValueChange={(val) => setKategori(val || '')}>
               <SelectTrigger id="kategori" className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium">
-                <SelectValue placeholder="Pilih Kategori" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200 text-slate-900">
                 {KATEGORI_ASET_OPTIONS.map((cat) => (
@@ -337,14 +486,14 @@ export default function AsetPage() {
               id="namaBarang"
               value={namaBarang}
               onChange={(e) => setNamaBarang(e.target.value)}
-              placeholder="Contoh: Sound System Portable"
+              placeholder="Contoh: Sound System Portable / Lilin Perarakan"
               required
               className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm focus:ring-blue-500"
             />
           </div>
 
-          {/* Row 3: Tahun Pembelian & Jumlah (Unit) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Row 3: Tahun Pembelian, Jumlah, & Kondisi */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="tahunBeli" className="text-xs font-bold text-slate-700">Tahun Pembelian</Label>
               <Select value={tahunBeli} onValueChange={(val) => setTahunBeli(val || '')}>
@@ -372,6 +521,22 @@ export default function AsetPage() {
                 className="bg-white border-slate-300 text-slate-900 font-bold rounded-xl h-11 text-sm"
               />
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="kondisi" className="text-xs font-bold text-slate-700">Kondisi Aset *</Label>
+              <Select value={kondisi} onValueChange={(val) => setKondisi(val || 'Baik')}>
+                <SelectTrigger id="kondisi" className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200 text-slate-900">
+                  {KONDISI_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Field 4: Harga Satuan (Rp) */}
@@ -381,6 +546,7 @@ export default function AsetPage() {
               id="hargaSatuan"
               value={hargaSatuanInput}
               onChange={handleHargaChange}
+              placeholder="Rp 0"
               className="bg-white border-slate-300 text-slate-900 font-bold rounded-xl h-11 text-sm"
             />
           </div>
@@ -398,9 +564,22 @@ export default function AsetPage() {
         </form>
       </div>
 
-      {/* BOX DAFTAR ASET YANG TELAH DITAMBAHKAN (List Daftar Aset) */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden space-y-4 p-5 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+      {/* HEADER CETAK PDF (Hanya Tampil Saat Print) */}
+      <div className="hidden print:block text-center pb-4 border-b-2 border-slate-800 mb-6">
+        <h2 className="text-lg font-bold text-slate-900 uppercase tracking-wide">
+          PAROKI BEKASI UTARA — GEREJA SANTA CLARA
+        </h2>
+        <h3 className="text-base font-bold text-slate-800">
+          DAFTAR INVENTARIS & ASET LINGKUNGAN
+        </h3>
+        <p className="text-xs text-slate-600 mt-1">
+          Lingkungan: <strong>{formatNamaLingkungan(lingkunganName)}</strong> | Dicetak per: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+        </p>
+      </div>
+
+      {/* BOX DAFTAR ASET YANG TELAH DITAMBAHKAN */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden space-y-4 p-5 sm:p-6 print:border-none print:p-0 print:shadow-none">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 print:hidden">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#18539E] flex items-center justify-center shrink-0">
               <Package className="w-4 h-4" />
@@ -419,31 +598,32 @@ export default function AsetPage() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari aset..."
+              placeholder="Cari nama, kategori, kondisi..."
               className="pl-9 bg-slate-50 border-slate-200 text-xs rounded-xl h-9 text-slate-900"
             />
           </div>
         </div>
 
         {/* Tabel Aset */}
-        <div className="border border-slate-200 rounded-xl overflow-x-auto">
+        <div className="border border-slate-200 rounded-xl overflow-x-auto print:border-slate-400">
           <Table>
-            <TableHeader className="bg-slate-50 text-xs font-bold text-slate-700 border-b border-slate-200">
+            <TableHeader className="bg-slate-50 text-xs font-bold text-slate-700 border-b border-slate-200 print:bg-slate-100 print:text-black">
               <TableRow>
                 <TableHead className="w-12 text-center font-bold text-slate-800">No</TableHead>
                 <TableHead className="font-bold text-slate-800">Nama Barang</TableHead>
                 <TableHead className="font-bold text-slate-800">Kategori</TableHead>
                 <TableHead className="w-20 text-center font-bold text-slate-800">Tahun</TableHead>
                 <TableHead className="w-20 text-center font-bold text-slate-800">Jumlah</TableHead>
+                <TableHead className="w-28 text-center font-bold text-slate-800">Kondisi</TableHead>
                 <TableHead className="w-28 text-right font-bold text-slate-800">Harga (Rp)</TableHead>
                 <TableHead className="w-32 text-right font-bold text-slate-800">Total Nilai</TableHead>
-                <TableHead className="w-16 text-center font-bold text-slate-800">Aksi</TableHead>
+                <TableHead className="w-20 text-center font-bold text-slate-800 print:hidden">Aksi</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-slate-100 text-xs">
+            <TableBody className="divide-y divide-slate-100 text-xs print:divide-slate-300">
               {filteredAsetList.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-slate-400">
+                  <TableCell colSpan={9} className="text-center py-10 text-slate-400">
                     Belum ada barang inventaris aset yang ditambahkan.
                   </TableCell>
                 </TableRow>
@@ -452,6 +632,8 @@ export default function AsetPage() {
                   const qty = Number(item.jumlah) || 1
                   const price = Number(item.harga_satuan) || 0
                   const total = qty * price
+                  const itemKondisi = item.kondisi || 'Baik'
+
                   return (
                     <TableRow key={item.id} className="hover:bg-slate-50/70 transition">
                       <TableCell className="text-center font-mono text-slate-500">{idx + 1}</TableCell>
@@ -467,21 +649,42 @@ export default function AsetPage() {
                       <TableCell className="text-center font-bold text-slate-900">
                         {qty} Unit
                       </TableCell>
+                      <TableCell className="text-center">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          itemKondisi === 'Baik'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : itemKondisi === 'Rusak Ringan'
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : 'bg-rose-50 text-rose-800 border-rose-200'
+                        }`}>
+                          {itemKondisi}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-right font-mono text-slate-700">
                         {price > 0 ? price.toLocaleString('id-ID') : '—'}
                       </TableCell>
                       <TableCell className="text-right font-mono font-bold text-slate-900">
                         {total > 0 ? total.toLocaleString('id-ID') : '—'}
                       </TableCell>
-                      <TableCell className="text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteAset(item.id, item.nama_barang)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                          title="Hapus aset"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <TableCell className="text-center print:hidden">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(item)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                            title="Edit / Update aset"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAset(item.id, item.nama_barang)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                            title="Hapus aset"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
@@ -490,7 +693,142 @@ export default function AsetPage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Tanda Tangan Cetak PDF */}
+        <div className="hidden print:grid grid-cols-2 gap-8 pt-12 pb-6 px-6 text-xs text-center border-t border-slate-300 mt-8">
+          <div>
+            <div className="text-slate-600">Mengetahui,</div>
+            <div className="font-bold text-slate-900 mt-1">Ketua Lingkungan</div>
+            <div className="h-16"></div>
+            <div className="font-bold underline text-slate-900">
+              ({pengurus?.ketua_nama || '....................................'})
+            </div>
+          </div>
+          <div>
+            <div className="text-slate-600">Bekasi, ........................ 2026</div>
+            <div className="font-bold text-slate-900 mt-1">Bendahara Lingkungan</div>
+            <div className="h-16"></div>
+            <div className="font-bold underline text-slate-900">
+              ({pengurus?.bendahara_nama || '....................................'})
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* MODAL DIALOG UPDATE / EDIT ASET */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-lg bg-white border-slate-200 text-slate-900 rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900 font-bold text-lg flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-blue-600" />
+              Update / Edit Data Aset
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Perbarui informasi barang inventaris, jumlah unit, dan kondisi kelayakan barang.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateAset} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700">Nama Barang *</Label>
+              <Input
+                value={editNama}
+                onChange={(e) => setEditNama(e.target.value)}
+                required
+                className="bg-white border-slate-300 text-slate-900 rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700">Kategori Inventaris *</Label>
+              <Select value={editKategori} onValueChange={(val) => setEditKategori(val || '')}>
+                <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200 text-slate-900">
+                  {KATEGORI_ASET_OPTIONS.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700">Tahun Pembelian</Label>
+                <Select value={editTahun} onValueChange={(val) => setEditTahun(val || '')}>
+                  <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl">
+                    <SelectValue placeholder="-- Tahun --" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 text-slate-900">
+                    {YEAR_OPTIONS.map((yr) => (
+                      <SelectItem key={yr} value={yr}>
+                        {yr}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700">Jumlah (Unit)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={editJumlah}
+                  onChange={(e) => setEditJumlah(parseInt(e.target.value, 10) || 1)}
+                  className="bg-white border-slate-300 text-slate-900 font-bold rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700">Kondisi Barang *</Label>
+                <Select value={editKondisi} onValueChange={(val) => setEditKondisi(val || 'Baik')}>
+                  <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl font-bold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 text-slate-900">
+                    {KONDISI_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700">Harga Satuan (Rp)</Label>
+              <Input
+                value={editHargaInput}
+                onChange={handleEditHargaChange}
+                className="bg-white border-slate-300 text-slate-900 font-bold rounded-xl"
+              />
+            </div>
+
+            <DialogFooter className="pt-3 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditModalOpen(false)}
+                className="rounded-xl border-slate-300 text-slate-700"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={updating}
+                className="bg-[#A9834F] hover:bg-[#967443] text-white font-bold rounded-xl"
+              >
+                {updating ? 'Menyimpan...' : 'Perbarui Aset'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -97,6 +97,9 @@ export interface JurnalTransaksi {
   nominal: number;
   keterangan: string | null;
   is_posted: boolean;
+  no_bukti?: string | null;
+  sumber_kas?: 'KAS' | 'BANK';
+  sumber_setoran?: 'SENDIRI' | 'DANA_LINGKUNGAN';
   // Joined details
   kepala_keluarga?: KepalaKeluarga;
   account_debit?: COA;
@@ -111,4 +114,6 @@ export interface Aset {
   tahun_beli: number | null;
   jumlah: number;
   harga_satuan: number;
+  kondisi?: 'Baik' | 'Rusak Ringan' | 'Rusak Berat' | string;
 }
+
