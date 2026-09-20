@@ -138,6 +138,12 @@ export default function JurnalPage() {
     return 'Rp ' + val.toLocaleString('id-ID')
   }
 
+  // Helper untuk membersihkan prefix nomor dokumen [BKM/...] [KAS] dari keterangan
+  const cleanDisplayKeterangan = (ket: string | undefined | null): string => {
+    if (!ket) return ''
+    return ket.replace(/^(\[[^\]]+\]\s*)+/g, '').trim()
+  }
+
   const handleNominalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9]/g, '')
     const num = parseInt(raw, 10) || 0
@@ -533,7 +539,7 @@ export default function JurnalPage() {
 
     const kkObj = kkList.find(k => k.id === step3KkId)
     const rawKet = step5Keterangan.trim() || (step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
-    const displayKet = `[${finalNoBukti}] [${selectedRekening}] ${rawKet}`
+    const displayKet = rawKet
 
     const dbLingkunganId = getLingkunganDbUuid(lingkunganId)
     const validKkId = (step3KkId && !step3KkId.startsWith('dummy-') && step3KkId !== 'umum' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(step3KkId)) ? step3KkId : null
@@ -703,18 +709,21 @@ export default function JurnalPage() {
     }
 
     const headers = ['No', 'Tanggal', 'Tipe Arus', 'Jenis Transaksi', 'Keterangan', 'Nama KK / Umat', 'Akun Debit', 'Akun Kredit', 'Nominal (Rp)', 'Status']
-    const rows = filteredJournals.map((j, idx) => [
-      idx + 1,
-      j.tanggal,
-      j.tipe_arus,
-      j.keterangan || (j.tipe_arus === 'MASUK' ? 'Penerimaan' : 'Pengeluaran'),
-      `"${(j.keterangan || '').replace(/"/g, '""')}"`,
-      `"${(j.kepala_keluarga?.nama_kk || 'Umum / Kolektif').replace(/"/g, '""')}"`,
-      j.coa_debit,
-      j.coa_kredit,
-      j.nominal,
-      j.is_posted ? 'POSTED' : 'DRAFT'
-    ])
+    const rows = filteredJournals.map((j, idx) => {
+      const cleanKet = cleanDisplayKeterangan(j.keterangan) || (j.tipe_arus === 'MASUK' ? 'Penerimaan' : 'Pengeluaran')
+      return [
+        idx + 1,
+        j.tanggal,
+        j.tipe_arus,
+        cleanKet,
+        `"${cleanKet.replace(/"/g, '""')}"`,
+        `"${(j.kepala_keluarga?.nama_kk || 'Umum / Kolektif').replace(/"/g, '""')}"`,
+        j.coa_debit,
+        j.coa_kredit,
+        j.nominal,
+        j.is_posted ? 'POSTED' : 'DRAFT'
+      ]
+    })
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const encodedUri = encodeURI(csvContent)
@@ -742,14 +751,6 @@ export default function JurnalPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16">
-      {/* Toast Notification */}
-      {successToast && (
-        <div className="p-4 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200 text-sm font-bold flex items-center gap-2 shadow-xs transition-all">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          {successToast}
-        </div>
-      )}
-
       {/* 4 SUMMARY METRIC BOXES (Estetik & Bersih Tanpa Warna Neon) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Box 1: Saldo Awal (A) */}
@@ -1247,11 +1248,10 @@ export default function JurnalPage() {
                 <TableHeader className="bg-slate-50/80 text-xs font-bold text-slate-700 border-b border-slate-200">
                   <TableRow>
                     <TableHead className="w-36 text-slate-800 font-bold">No. Dokumen / Ref</TableHead>
-                    <TableHead className="w-24 text-slate-800 font-bold">Tanggal</TableHead>
-                    <TableHead className="w-32 text-slate-800 font-bold">Arus & Media</TableHead>
+                    <TableHead className="w-28 text-slate-800 font-bold">Tanggal</TableHead>
+                    <TableHead className="w-36 text-slate-800 font-bold">Arus & Rekening</TableHead>
                     <TableHead className="text-slate-800 font-bold">Umat / KK</TableHead>
                     <TableHead className="text-slate-800 font-bold">Keterangan / Jenis</TableHead>
-                    <TableHead className="w-28 text-slate-800 font-bold">Jurnal DE</TableHead>
                     <TableHead className="w-32 text-right text-slate-800 font-bold">Nominal</TableHead>
                     <TableHead className="w-12 text-center text-slate-800 font-bold">Aksi</TableHead>
                   </TableRow>
@@ -1260,6 +1260,7 @@ export default function JurnalPage() {
                   {displayedTableJournals.map((j, idx) => {
                     const docNumber = getDisplayNoBukti(j, idx + 1)
                     const isKas = j.sumber_kas === 'KAS' || j.coa_debit === '1200' || j.coa_kredit === '1200'
+                    const displayKetClean = cleanDisplayKeterangan(j.keterangan) || (j.tipe_arus === 'MASUK' ? 'Penerimaan Kas' : 'Pengeluaran Kas')
 
                     return (
                       <TableRow key={j.id} className="hover:bg-slate-50/80 transition">
@@ -1272,19 +1273,24 @@ export default function JurnalPage() {
                           {formatDateIndo(j.tanggal)}
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-col gap-1 items-start">
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                j.tipe_arus === 'MASUK'
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                  : 'bg-rose-50 text-rose-800 border-rose-200'
-                              }`}
-                            >
-                              {j.tipe_arus === 'MASUK' ? 'Uang Masuk' : 'Uang Keluar'}
-                            </span>
-                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                              {isKas ? 'KAS (1200)' : 'BANK (1100)'}
-                            </span>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  j.tipe_arus === 'MASUK'
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : 'bg-rose-50 text-rose-800 border-rose-200'
+                                }`}
+                              >
+                                {j.tipe_arus === 'MASUK' ? 'Uang Masuk' : 'Uang Keluar'}
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                {isKas ? 'KAS' : 'BANK'}
+                              </span>
+                            </div>
+                            <div className="text-[10px] font-mono text-slate-400">
+                              D: {j.coa_debit} • K: {j.coa_kredit}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="font-semibold text-slate-900">
@@ -1293,7 +1299,7 @@ export default function JurnalPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-slate-800 font-medium">
-                          <div>{j.keterangan}</div>
+                          <div className="font-semibold text-slate-900">{displayKetClean}</div>
                           {j.sumber_setoran && (
                             <span className={`inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
                               j.sumber_setoran === 'DANA_LINGKUNGAN'
@@ -1303,10 +1309,6 @@ export default function JurnalPage() {
                               {j.sumber_setoran === 'DANA_LINGKUNGAN' ? '• Dari Dana Lingkungan' : '• Bayar Sendiri'}
                             </span>
                           )}
-                        </TableCell>
-                        <TableCell className="font-mono text-[11px] text-slate-600">
-                          <div>D: {j.coa_debit}</div>
-                          <div>K: {j.coa_kredit}</div>
                         </TableCell>
                         <TableCell className={`text-right font-mono font-bold text-sm ${j.tipe_arus === 'MASUK' ? 'text-emerald-700' : 'text-rose-700'}`}>
                           {j.tipe_arus === 'MASUK' ? '+' : '-'} {formatRupiah(Number(j.nominal))}
@@ -1377,7 +1379,7 @@ export default function JurnalPage() {
                         </TableCell>
                         <TableCell className="font-bold text-slate-900">
                           {j.coa_debit} — {resolveCoaDetails(j.coa_debit).nama_akun}
-                          <div className="text-[11px] font-normal text-slate-500 mt-0.5">{j.keterangan}</div>
+                          <div className="text-[11px] font-normal text-slate-500 mt-0.5">{cleanDisplayKeterangan(j.keterangan)}</div>
                         </TableCell>
                         <TableCell className="text-center font-mono text-[11px]">{j.coa_debit}</TableCell>
                         <TableCell className="text-right font-mono font-bold text-rose-700">
