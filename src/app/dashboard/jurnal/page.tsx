@@ -79,9 +79,10 @@ const PENGELUARAN_OPTIONS = [
   { code: '5310', name: 'Sumbangan Dana APP' },
   { code: '5320', name: 'Sumbangan Dana Aksi Natal' },
   { code: '5340', name: 'Sumbangan Dana PPG' },
+  { code: '5350', name: 'Kolekte yg disetor ke Paroki' },
   { code: '1300', name: 'Penyaluran Dana Talangan Dahar Romo (1300)' },
   { code: '1400', name: 'Penyaluran Dana Talangan Santo Yusuf (1400)' },
-  { code: '5350', name: 'Pengeluaran lainnya' }
+  { code: '5900', name: 'Pengeluaran lainnya' }
 ]
 
 export default function JurnalPage() {
@@ -508,7 +509,7 @@ export default function JurnalPage() {
   const currentDebitAccount = step1Arus === 'MASUK' ? kasBankCoa : (step2Jenis || '5100')
   const currentKreditAccount = step1Arus === 'MASUK' ? (step2Jenis || '4100') : kasBankCoa
 
-  const currentDebitName = step1Arus === 'MASUK' ? kasBankNama : (step2Jenis === '5350' && step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
+  const currentDebitName = step1Arus === 'MASUK' ? kasBankNama : (step2Jenis === '5900' && step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
   const currentKreditName = step1Arus === 'MASUK' ? (step2Jenis === '4900' && step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun) : kasBankNama
 
   // Helper generate kode unik dokumen otomatis: BKM, BBM, BKK, BBK
@@ -989,43 +990,75 @@ export default function JurnalPage() {
             )}
           </div>
 
-          {/* LANGKAH 2 - Jenis transaksi apa? (Muncul setelah Langkah 1 dipilih, Persis Gambar 3 & 5) */}
+          {/* LANGKAH 2 - Jenis transaksi apa? (Ditampilkan COA Akun untuk Bendahara) */}
           {step1Arus && (
             <div className="space-y-2 animate-fadeIn">
-              <div className="text-xs font-bold text-slate-700">
-                LANGKAH 2 - Jenis transaksi apa?
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <span>LANGKAH 2 - Jenis transaksi apa?</span>
+                  <span className="text-[10px] bg-slate-100 border border-slate-300 text-slate-700 px-1.5 py-0.5 rounded font-mono font-semibold">
+                    COA
+                  </span>
+                </div>
+                {step2Jenis && (
+                  <span className="font-mono text-[11px] font-bold text-slate-800 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded">
+                    Kode COA: {step2Jenis}
+                  </span>
+                )}
               </div>
               <Select
                 value={step2Jenis}
                 onValueChange={(val) => {
                   setStep2Jenis(val || '')
-                  if (val !== '4900' && val !== '5350') {
+                  if (val !== '4900' && val !== '5900') {
                     setStep2ManualJenis('')
                   }
                 }}
               >
                 <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium">
-                  <SelectValue placeholder="-- Pilih jenis --" />
+                  {(() => {
+                    const activeList = step1Arus === 'MASUK' ? PENERIMAAN_OPTIONS : PENGELUARAN_OPTIONS
+                    const matched = activeList.find((i) => i.code === step2Jenis)
+                    if (!matched) return <SelectValue placeholder="-- Pilih jenis transaksi & COA --" />
+                    return (
+                      <div className="flex items-center gap-2 text-slate-900 font-medium truncate">
+                        <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 px-1.5 py-0.5 rounded shrink-0">
+                          {matched.code}
+                        </span>
+                        <span className="truncate">{matched.name}</span>
+                      </div>
+                    )
+                  })()}
                 </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-64">
+                <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-72">
                   {step1Arus === 'MASUK' ? (
                     PENERIMAAN_OPTIONS.map((item) => (
                       <SelectItem key={item.code} value={item.code}>
-                        {item.name}
+                        <div className="flex items-center gap-2 py-0.5">
+                          <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 px-1.5 py-0.5 rounded shrink-0">
+                            {item.code}
+                          </span>
+                          <span className="font-medium">{item.name}</span>
+                        </div>
                       </SelectItem>
                     ))
                   ) : (
                     PENGELUARAN_OPTIONS.map((item) => (
                       <SelectItem key={item.code} value={item.code}>
-                        {item.name}
+                        <div className="flex items-center gap-2 py-0.5">
+                          <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 px-1.5 py-0.5 rounded shrink-0">
+                            {item.code}
+                          </span>
+                          <span className="font-medium">{item.name}</span>
+                        </div>
                       </SelectItem>
                     ))
                   )}
                 </SelectContent>
               </Select>
 
-              {/* Input Manual jika memilih Penerimaan Lainnya atau Pengeluaran Lainnya */}
-              {(step2Jenis === '4900' || step2Jenis === '5350') && (
+              {/* Input Manual jika memilih Penerimaan Lainnya (4900) atau Pengeluaran Lainnya (5900) */}
+              {(step2Jenis === '4900' || step2Jenis === '5900') && (
                 <div className="pt-1 animate-fadeIn">
                   <Input
                     value={step2ManualJenis}

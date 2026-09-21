@@ -46,7 +46,8 @@ export const TRANSACTION_TYPES: TransactionTypeOption[] = [
   { code: '5310', name: 'Sumbangan Dana Aksi Natal', category: 'KELUAR', defaultCoaDebit: '5310', defaultCoaKredit: '1100' },
   { code: '5320', name: 'Sumbangan Dana PPG', category: 'KELUAR', defaultCoaDebit: '5320', defaultCoaKredit: '1100' },
   { code: '5340', name: 'Sumbangan Kematian / St. Yusuf', category: 'KELUAR', defaultCoaDebit: '5340', defaultCoaKredit: '1100' },
-  { code: '5350', name: 'Pengeluaran Lainnya', category: 'KELUAR', defaultCoaDebit: '5350', defaultCoaKredit: '1100' }
+  { code: '5350', name: 'Kolekte yg disetor ke Paroki', category: 'KELUAR', defaultCoaDebit: '5350', defaultCoaKredit: '1100' },
+  { code: '5900', name: 'Pengeluaran Lainnya', category: 'KELUAR', defaultCoaDebit: '5900', defaultCoaKredit: '1100' }
 ];
 
 export function getDoubleEntryMapping(typeCode: string, arus: 'MASUK' | 'KELUAR') {
@@ -57,5 +58,5 @@ export function getDoubleEntryMapping(typeCode: string, arus: 'MASUK' | 'KELUAR'
   // Default fallbacks
   return arus === 'MASUK'
     ? { coaDebit: '1100', coaKredit: typeCode || '4900' }
-    : { coaDebit: typeCode || '5350', coaKredit: '1100' };
+    : { coaDebit: typeCode || '5900', coaKredit: '1100' };
 }

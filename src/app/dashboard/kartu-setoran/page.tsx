@@ -542,19 +542,25 @@ export default function KartuSetoranPage() {
               </div>
             </div>
 
-            {/* Matriks 12 Bulan Kartu Setoran */}
-            <div className="border border-slate-200 rounded-xl overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-slate-50 text-[11px] font-bold text-slate-700 border-b border-slate-200">
-                  <TableRow>
-                    <TableHead className="w-10 text-center font-bold text-slate-800">No</TableHead>
-                    <TableHead className="min-w-[180px] font-bold text-slate-800">Kepala Keluarga</TableHead>
+            {/* Matriks 12 Bulan Kartu Setoran dengan Freeze Header Bulan */}
+            <div className="border border-slate-200 rounded-xl overflow-x-auto overflow-y-auto max-h-[640px] relative shadow-xs scrollbar-thin">
+              <Table className="border-collapse">
+                <TableHeader className="sticky top-0 z-20 bg-slate-100 border-b-2 border-slate-300 shadow-xs">
+                  <TableRow className="bg-slate-100 hover:bg-slate-100">
+                    <TableHead className="sticky top-0 left-0 z-30 bg-slate-100 w-12 text-center font-bold text-slate-800 border-r border-slate-200">
+                      No
+                    </TableHead>
+                    <TableHead className="sticky top-0 left-12 z-30 bg-slate-100 min-w-[200px] font-bold text-slate-800 border-r border-slate-300 shadow-xs">
+                      Kepala Keluarga
+                    </TableHead>
                     {SHORT_MONTHS.map((m) => (
-                      <TableHead key={m} className="w-16 text-center font-bold text-slate-700 p-2">
+                      <TableHead key={m} className="w-16 text-center font-bold text-slate-800 p-2 bg-slate-100">
                         {m}
                       </TableHead>
                     ))}
-                    <TableHead className="w-28 text-right font-bold text-slate-800 pr-3">Total (Rp)</TableHead>
+                    <TableHead className="w-28 text-right font-bold text-slate-800 pr-3 bg-slate-100">
+                      Total (Rp)
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-100 text-xs">
@@ -563,11 +569,11 @@ export default function KartuSetoranPage() {
                     let totalKk = 0
 
                     return (
-                      <TableRow key={kk.id} className="hover:bg-slate-50/70 transition">
-                        <TableCell className="text-center font-mono text-slate-400 text-[11px]">
+                      <TableRow key={kk.id} className="hover:bg-slate-50/90 transition group">
+                        <TableCell className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 text-center font-mono text-slate-500 text-[11px] border-r border-slate-100">
                           {idx + 1}
                         </TableCell>
-                        <TableCell className="font-bold text-slate-900">
+                        <TableCell className="sticky left-12 z-10 bg-white group-hover:bg-slate-50 font-bold text-slate-900 border-r border-slate-300 shadow-xs">
                           {kk.nama_kk}
                         </TableCell>
                         {Array.from({ length: 12 }, (_, i) => {
@@ -614,9 +620,9 @@ export default function KartuSetoranPage() {
 
                   {/* Baris Setoran Umum / Kolektif jika ada */}
                   {setoranMap.has('umum') && (
-                    <TableRow className="bg-slate-50/60 hover:bg-slate-50 transition border-t border-slate-200">
-                      <TableCell className="text-center font-mono text-slate-400 text-[11px]">-</TableCell>
-                      <TableCell className="font-bold text-slate-700 italic">
+                    <TableRow className="bg-slate-50/70 hover:bg-slate-50 transition border-t border-slate-200 group">
+                      <TableCell className="sticky left-0 z-10 bg-slate-50 group-hover:bg-slate-100 text-center font-mono text-slate-400 text-[11px] border-r border-slate-200">-</TableCell>
+                      <TableCell className="sticky left-12 z-10 bg-slate-50 group-hover:bg-slate-100 font-bold text-slate-700 italic border-r border-slate-300 shadow-xs">
                         Umum / Kolektif Lingkungan
                       </TableCell>
                       {Array.from({ length: 12 }, (_, i) => {

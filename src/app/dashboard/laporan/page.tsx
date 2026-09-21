@@ -106,7 +106,8 @@ const PENGELUARAN_STRUCTURE: PengeluaranGroup[] = [
       { code: '5310', name: 'Sumbangan Dana APP' },
       { code: '5320', name: 'Sumbangan Dana Aksi Natal' },
       { code: '5340', name: 'Sumbangan Dana PPG' },
-      { code: '5350', name: 'Pengeluaran lainnya' }
+      { code: '5350', name: 'Kolekte yg disetor ke Paroki' },
+      { code: '5900', name: 'Pengeluaran lainnya' }
     ]
   }
 ]
