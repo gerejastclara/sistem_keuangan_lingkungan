@@ -17,29 +17,59 @@ import {
   RotateCcw,
   Sparkles,
   Pencil,
+  Search,
+  ExternalLink,
+  Users,
+  BookOpen,
+  Info,
+  Check,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery } from '@/lib/constants'
+import { formatNamaLingkungan, getAllMasterLingkungan } from '@/lib/constants'
 import { getPengurusForLingkungan } from '@/lib/pengurusData'
 import { createClient } from '@/utils/supabase/client'
 import { KepalaKeluarga, AnggotaKeluarga } from '@/lib/types'
 import { ensureDummyKksForLingkungan, getDummyAnggotaForKk } from '@/lib/dummyData'
-
-type TabType = 'KOP_SURAT' | 'SAKRAMEN' | 'BERITA_ACARA'
+import { KOP_SURAT_FORMS, FormItemDef, FormCategory } from '@/lib/kopSuratForms'
 
 export default function FormStandarPage() {
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState<TabType>('KOP_SURAT')
 
   // Lingkungan & Profile State
   const [lingkunganId, setLingkunganId] = useState<string>('')
   const [lingkunganName, setLingkunganName] = useState<string>('')
   const [kkList, setKkList] = useState<KepalaKeluarga[]>([])
   const [anggotaMap, setAnggotaMap] = useState<Record<string, AnggotaKeluarga[]>>({})
+
+  // Form selection & Category Filter
+  const [selectedCategory, setSelectedCategory] = useState<FormCategory>('SEMUA')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedFormId, setSelectedFormId] = useState<string>('FORM10A')
+
+  // Active form definition
+  const currentFormDef = useMemo(() => {
+    return KOP_SURAT_FORMS.find((f) => f.id === selectedFormId) || KOP_SURAT_FORMS[0]
+  }, [selectedFormId])
+
+  // Kop Surat Style Selection ('PAROKI' | 'LINGKUNGAN' | 'KATEKESE')
+  const [kopType, setKopType] = useState<'PAROKI' | 'LINGKUNGAN' | 'KATEKESE'>('LINGKUNGAN')
+
+  // Form field dynamic values
+  const [formValues, setFormValues] = useState<Record<string, string>>({})
+
+  // Reset/sync form values when selected form changes
+  useEffect(() => {
+    const initVals: Record<string, string> = {}
+    currentFormDef.fields.forEach((fld) => {
+      initVals[fld.key] = fld.defaultValue || ''
+    })
+    setFormValues(initVals)
+    setKopType(currentFormDef.defaultKopType)
+  }, [selectedFormId, currentFormDef])
 
   // Load Lingkungan & Data
   useEffect(() => {
@@ -95,8 +125,18 @@ export default function FormStandarPage() {
 
   // Flat members list for applicant selector
   const allMembers = useMemo(() => {
-    const list: { id: string; nama: string; nama_kk: string; peran?: string; alamat?: string }[] = []
+    const list: {
+      id: string
+      nama: string
+      nama_kk: string
+      peran?: string
+      alamat?: string
+      nik?: string
+      tgl_lahir?: string
+    }[] = []
+
     kkList.forEach((kk) => {
+      const kkExt = kk as KepalaKeluarga & { nomor_kk?: string }
       if (kk.nama_kk) {
         list.push({
           id: `kk-${kk.id}`,
@@ -104,10 +144,12 @@ export default function FormStandarPage() {
           nama_kk: kk.nama_kk,
           peran: 'Kepala Keluarga',
           alamat: kk.alamat || undefined,
+          nik: kkExt.nomor_kk || undefined,
         })
       }
       const mems = anggotaMap[kk.id] || []
       mems.forEach((m) => {
+        const mExt = m as AnggotaKeluarga & { nik?: string; tanggal_lahir?: string }
         if (m.nama && m.nama !== kk.nama_kk) {
           list.push({
             id: m.id,
@@ -115,6 +157,8 @@ export default function FormStandarPage() {
             nama_kk: kk.nama_kk,
             peran: m.peran,
             alamat: kk.alamat || undefined,
+            nik: mExt.nik || undefined,
+            tgl_lahir: mExt.tanggal_lahir || undefined,
           })
         }
       })
@@ -122,54 +166,67 @@ export default function FormStandarPage() {
     return list.sort((a, b) => a.nama.localeCompare(b.nama))
   }, [kkList, anggotaMap])
 
-  // TAB 1: KOP & SURAT STATE
-  const [suratNomor, setSuratNomor] = useState('014/SKR-LKG/SC/IX/2026')
-  const [suratPerihal, setSuratPerihal] = useState('Surat Pengantar Administrasi Lingkungan')
-  const [suratLampiran, setSuratLampiran] = useState('1 (Satu) Berkas')
-  const [suratTanggal, setSuratTanggal] = useState('Bekasi, 20 September 2026')
-  const [suratTujuan, setSuratTujuan] = useState('Yth. Pastor Kepala Paroki Santa Clara\nBekasi Utara')
-  const [suratIsi, setSuratIsi] = useState(
-    'Dengan hormat,\n\nBersama surat ini, kami Dewan Pengurus Lingkungan menerangkan dengan sebenarnya bahwa warga yang bersangkutan adalah umat Katolik yang berdomisili dan aktif dalam persekutuan doa serta kegiatan di lingkungan kami.\n\nSurat pengantar ini diterbitkan sebagai kelengkapan berkas administrasi gerejawi. Demikian surat pengantar ini kami sampaikan, atas perhatian dan kerja sama Romo serta Sekretariat Paroki kami ucapkan terima kasih.\n\nBerkah Dalem,'
-  )
+  // Filtered forms list
+  const filteredForms = useMemo(() => {
+    return KOP_SURAT_FORMS.filter((form) => {
+      const matchCat = selectedCategory === 'SEMUA' || form.category === selectedCategory
+      const matchQuery =
+        !searchQuery ||
+        form.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        form.shortTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        form.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        form.description.toLowerCase().includes(searchQuery.toLowerCase())
+      return matchCat && matchQuery
+    })
+  }, [selectedCategory, searchQuery])
 
-  // TAB 2: PELAYANAN SAKRAMEN STATE
-  const [sakramenType, setSakramenType] = useState('BAPTIS_BAYI')
-  const [sakramenNama, setSakramenNama] = useState('')
-  const [sakramenNamaKk, setSakramenNamaKk] = useState('')
-  const [sakramenTempatLahir, setSakramenTempatLahir] = useState('Bekasi, 12 Agustus 2025')
-  const [sakramenAlamat, setSakramenAlamat] = useState('')
-  const [sakramenNamaAyah, setSakramenNamaAyah] = useState('')
-  const [sakramenNamaIbu, setSakramenNamaIbu] = useState('')
-  const [sakramenWaliBaptis, setSakramenWaliBaptis] = useState('Bpk. Yohanes Paulus')
-  const [sakramenCatatan, setSakramenCatatan] = useState('Telah mengikuti rekoleksi dan pembekalan orang tua & wali baptis.')
-
-  const handleSelectMemberForSakramen = (memberId: string) => {
+  // Handle autofill when selecting member
+  const handleAutofillMember = (memberId: string) => {
     const mem = allMembers.find((m) => m.id === memberId)
-    if (mem) {
-      setSakramenNama(mem.nama)
-      setSakramenNamaKk(mem.nama_kk)
-      if (mem.alamat) setSakramenAlamat(mem.alamat)
-      setSakramenNamaAyah(mem.nama_kk)
-    }
-  }
+    if (!mem) return
 
-  // TAB 3: BERITA ACARA STATE
-  const [baType, setBaType] = useState('SERAH_TERIMA_JABATAN')
-  const [baHariTanggal, setBaHariTanggal] = useState('Minggu, 20 September 2026')
-  const [baTempat, setBaTempat] = useState('Ruang Rapat Lingkungan St. Clara')
-  const [baPihak1, setBaPihak1] = useState(pengurus.ketua_nama || 'FX Wisnu Ardianto')
-  const [baJabatan1, setBaJabatan1] = useState('Ketua Lingkungan Periode Demisioner')
-  const [baPihak2, setBaPihak2] = useState('Petrus Stefanus Wijaya')
-  const [baJabatan2, setBaJabatan2] = useState('Ketua Lingkungan Terpilih Periode Baru')
-  const [baSaksi1, setBaSaksi1] = useState(pengurus.sekretaris_nama || 'Ignatius Sugeng')
-  const [baSaksi2, setBaSaksi2] = useState(pengurus.bendahara_nama || 'Maria Bernadette')
-  const [baPoinKeputusan, setBaPoinKeputusan] = useState(
-    '1. Pihak Pertama telah menyerahkan seluruh inventaris aset fisik lingkungan dan buku kas keuangan dalam keadaan lengkap.\n2. Saldo kas riil saat serah terima adalah sebesar kas tercatat dan telah diverifikasi bersama seluruh tim formatur.\n3. Pihak Kedua resmi mengemban tugas pastoral terhitung sejak penandatanganan berita acara ini.'
-  )
+    setFormValues((prev) => {
+      const updated = { ...prev }
+      currentFormDef.fields.forEach((fld) => {
+        if (fld.autoFillKey === 'nama' && !updated[fld.key]) {
+          updated[fld.key] = mem.nama
+        }
+        if (fld.autoFillKey === 'nama_kk' && !updated[fld.key]) {
+          updated[fld.key] = mem.nama_kk
+        }
+        if (fld.autoFillKey === 'alamat' && mem.alamat && !updated[fld.key]) {
+          updated[fld.key] = mem.alamat
+        }
+        if (fld.autoFillKey === 'nik' && mem.nik && !updated[fld.key]) {
+          updated[fld.key] = mem.nik
+        }
+        if (fld.autoFillKey === 'tgl_lahir' && mem.tgl_lahir && !updated[fld.key]) {
+          updated[fld.key] = mem.tgl_lahir
+        }
+        if (fld.autoFillKey === 'nama_ayah' && !updated[fld.key]) {
+          updated[fld.key] = mem.nama_kk
+        }
+      })
+      return updated
+    })
+  }
 
   const handlePrint = () => {
     window.print()
   }
+
+  const handleFieldChange = (key: string, val: string) => {
+    setFormValues((prev) => ({ ...prev, [key]: val }))
+  }
+
+  const currentDateFormatted = useMemo(() => {
+    const d = new Date()
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ]
+    return `Bekasi, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`
+  }, [])
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -188,7 +245,7 @@ export default function FormStandarPage() {
             top: 0;
             width: 100%;
             margin: 0;
-            padding: 30px;
+            padding: 24px;
             box-shadow: none !important;
             border: none !important;
           }
@@ -203,18 +260,31 @@ export default function FormStandarPage() {
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#F6EFE2] text-[#5A4423] border border-[#A9834F]/30 font-serif">
             <Stamp className="w-3.5 h-3.5 text-[#A9834F]" />
-            Sekretariat Lingkungan
+            Sekretariat Gereja Santa Clara — Paroki Bekasi Utara
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2 font-serif">
             <FileText className="w-6 h-6 text-emerald-600" />
-            Form Standar Administrasi Sekretariat
+            Modul Formulir & Kop Surat Standar Sekretariat
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
-            Kop surat resmi, template formulir pelayanan sakramen, dan berita acara lingkungan siap cetak dokumen A4
+            Koleksi 21 format formulir resmi Keuskupan Agung Jakarta & Paroki Santa Clara, siap isi otomatis dan cetak format A4
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
+          {currentFormDef.pdfFileName && (
+            <a
+              href={`/kop-surat-asli/${encodeURIComponent(currentFormDef.pdfFileName)}`}
+              download={currentFormDef.pdfFileName}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-xs transition"
+              title="Unduh blanko PDF asli yang ada di folder Kop Surat"
+            >
+              <Download className="w-4 h-4 text-slate-600" />
+              <span>Blanko PDF Asli</span>
+            </a>
+          )}
           <Button
             onClick={handlePrint}
             size="sm"
@@ -226,439 +296,408 @@ export default function FormStandarPage() {
         </div>
       </div>
 
-      {/* Tab Selectors */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 no-print overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveTab('KOP_SURAT')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-            activeTab === 'KOP_SURAT'
-              ? 'bg-emerald-700 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <Building className="w-4 h-4" />
-          1. Kop Surat & Surat Pengantar
-        </button>
+      {/* Category Pills & Form Quick Filter (No Print) */}
+      <div className="space-y-3 no-print">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Category Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('SEMUA')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
+                selectedCategory === 'SEMUA'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              Semua ({KOP_SURAT_FORMS.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('PENGANTAR')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
+                selectedCategory === 'PENGANTAR'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <Building className="w-3.5 h-3.5" />
+              Surat Pengantar & Lingkungan
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('SAKRAMEN')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
+                selectedCategory === 'SAKRAMEN'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5" />
+              Pelayanan Sakramen
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('DATA_KK')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
+                selectedCategory === 'DATA_KK'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              Kependudukan & BIDUK
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('LITURGI_INTERNAL')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
+                selectedCategory === 'LITURGI_INTERNAL'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <ScrollText className="w-3.5 h-3.5" />
+              Liturgi & Internal
+            </button>
+          </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('SAKRAMEN')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-            activeTab === 'SAKRAMEN'
-              ? 'bg-emerald-700 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <Award className="w-4 h-4" />
-          2. Formulir Pelayanan Sakramen
-        </button>
+          {/* Search Bar */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari jenis formulir..."
+              className="h-9 pl-9 text-xs bg-white border-slate-300 rounded-xl"
+            />
+          </div>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('BERITA_ACARA')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-            activeTab === 'BERITA_ACARA'
-              ? 'bg-emerald-700 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <ScrollText className="w-4 h-4" />
-          3. Berita Acara Resmi
-        </button>
+        {/* Horizontal Form Carousel / Grid */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+          {filteredForms.map((form) => {
+            const isSelected = form.id === selectedFormId
+            return (
+              <button
+                key={form.id}
+                type="button"
+                onClick={() => setSelectedFormId(form.id)}
+                className={`text-left p-2.5 rounded-xl border transition cursor-pointer shrink-0 w-60 sm:w-64 ${
+                  isSelected
+                    ? 'bg-emerald-50/80 border-emerald-500 shadow-xs ring-1 ring-emerald-500/30'
+                    : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                    {form.code.split('---')[0].trim()}
+                  </span>
+                  {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                </div>
+                <div className="font-bold text-xs text-slate-900 truncate" title={form.title}>
+                  {form.shortTitle}
+                </div>
+                <div className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">
+                  {form.description}
+                </div>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* MAIN TWO-COLUMN WORKSPACE: LEFT EDITOR, RIGHT LIVE PREVIEW */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN: FORM SETTINGS & CONTROLS (NO-PRINT) */}
         <div className="lg:col-span-5 space-y-4 no-print">
-          {/* TAB 1 CONTROLS */}
-          {activeTab === 'KOP_SURAT' && (
-            <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
-              <CardHeader className="p-4 border-b border-slate-100">
-                <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <Pencil className="w-4 h-4 text-emerald-600" />
-                  Editor Surat Resmi Lingkungan
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-400">
-                  Sesuaikan perihal, nomor surat, dan isi surat keluar
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3 text-xs">
-                <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-slate-700">Nomor Surat</Label>
-                  <Input
-                    value={suratNomor}
-                    onChange={(e) => setSuratNomor(e.target.value)}
-                    className="h-9 text-xs bg-white border-slate-300 font-mono"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700">Lampiran</Label>
-                    <Input
-                      value={suratLampiran}
-                      onChange={(e) => setSuratLampiran(e.target.value)}
-                      className="h-9 text-xs bg-white border-slate-300"
-                    />
+          {/* Form Header Info Card */}
+          <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
+            <CardHeader className="p-4 border-b border-slate-100">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-0.5">
+                  <div className="text-[10px] font-mono font-bold text-emerald-700 uppercase tracking-wider">
+                    {currentFormDef.code}
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700">Tempat & Tanggal</Label>
-                    <Input
-                      value={suratTanggal}
-                      onChange={(e) => setSuratTanggal(e.target.value)}
-                      className="h-9 text-xs bg-white border-slate-300"
-                    />
-                  </div>
+                  <CardTitle className="text-sm font-bold text-slate-900 leading-snug">
+                    {currentFormDef.title}
+                  </CardTitle>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-slate-700">Perihal / Hal</Label>
-                  <Input
-                    value={suratPerihal}
-                    onChange={(e) => setSuratPerihal(e.target.value)}
-                    className="h-9 text-xs bg-white border-slate-300 font-semibold"
-                  />
+              </div>
+              <CardDescription className="text-xs text-slate-500 pt-1">
+                {currentFormDef.description}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 space-y-3.5 text-xs">
+              {/* Kop Surat Header Type Toggle */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                  <span>Format Kop Surat:</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Sesuai file kop surat asli</span>
+                </Label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setKopType('LINGKUNGAN')}
+                    className={`p-2 rounded-lg text-center text-[11px] font-bold border transition ${
+                      kopType === 'LINGKUNGAN'
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-800'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    Kop Lingkungan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setKopType('PAROKI')}
+                    className={`p-2 rounded-lg text-center text-[11px] font-bold border transition ${
+                      kopType === 'PAROKI'
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-800'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    Kop Paroki
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setKopType('KATEKESE')}
+                    className={`p-2 rounded-lg text-center text-[11px] font-bold border transition ${
+                      kopType === 'KATEKESE'
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-800'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    Kop Katekese
+                  </button>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-slate-700">Tujuan Surat (Kepada Yth.)</Label>
-                  <textarea
-                    rows={2}
-                    value={suratTujuan}
-                    onChange={(e) => setSuratTujuan(e.target.value)}
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-slate-700">Isi Naskah Surat</Label>
-                  <textarea
-                    rows={8}
-                    value={suratIsi}
-                    onChange={(e) => setSuratIsi(e.target.value)}
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed font-sans"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
 
-          {/* TAB 2 CONTROLS */}
-          {activeTab === 'SAKRAMEN' && (
-            <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
-              <CardHeader className="p-4 border-b border-slate-100">
-                <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-emerald-600" />
-                  Pengaturan Formulir Sakramen
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-400">
-                  Pilih jenis sakramen dan pilih umat untuk isi data instan
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3 text-xs">
-                <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-slate-700">Jenis Pelayanan Sakramen</Label>
-                  <Select value={sakramenType} onValueChange={(val) => val && setSakramenType(val)}>
-                    <SelectTrigger className="h-9 text-xs bg-white border-slate-300 font-bold">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white text-slate-900 border-slate-200">
-                      <SelectItem value="BAPTIS_BAYI">Sakramen Baptis Bayi / Anak</SelectItem>
-                      <SelectItem value="BAPTIS_DEWASA">Sakramen Baptis Dewasa / Krisma</SelectItem>
-                      <SelectItem value="KOMUNI_PERTAMA">Sakramen Ekaristi / Komuni Pertama</SelectItem>
-                      <SelectItem value="PERKAWINAN">Penyelidikan Kanonik Perkawinan</SelectItem>
-                      <SelectItem value="PENGURAPAN_ORANG_SAKIT">Sakramen Pengurapan Orang Sakit (Viaticum)</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* Auto-fill from Lingkungan database */}
+              <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1.5">
+                <Label className="text-[11px] font-bold text-amber-950 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  Isi Cepat dari Basis Data Umat {formatNamaLingkungan(lingkunganName)}:
+                </Label>
+                <Select onValueChange={(val) => { if (val) handleAutofillMember(String(val)) }}>
+                  <SelectTrigger className="h-8 text-xs bg-white border-amber-300 text-slate-800">
+                    <SelectValue placeholder="-- Pilih nama warga lingkungan --" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-slate-900 border-slate-200 max-h-56">
+                    {allMembers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.nama} ({m.peran || 'Umat'} • KK: {m.nama_kk})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-amber-800/80">
+                  Memilih umat akan otomatis mengisi nama, alamat, orang tua, tgl lahir, dan KK ke formulir.
+                </p>
+              </div>
+
+              {/* Dynamic Form Input Fields */}
+              <div className="space-y-3 pt-1">
+                <div className="font-bold text-slate-800 text-[11px] border-b border-slate-100 pb-1">
+                  Data Isian Dokumen:
                 </div>
 
-                {/* Auto-fill from Lingkungan members */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {currentFormDef.fields.map((fld) => {
+                    const val = formValues[fld.key] ?? ''
+                    const spanClass = fld.gridSpan === 2 ? 'col-span-2' : 'col-span-1'
+
+                    if (fld.type === 'textarea') {
+                      return (
+                        <div key={fld.key} className={`${spanClass} space-y-1`}>
+                          <Label className="text-[11px] font-semibold text-slate-700">{fld.label}</Label>
+                          <textarea
+                            rows={3}
+                            value={val}
+                            onChange={(e) => handleFieldChange(fld.key, e.target.value)}
+                            placeholder={fld.placeholder}
+                            className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed font-sans"
+                          />
+                        </div>
+                      )
+                    }
+
+                    if (fld.type === 'select' && fld.options) {
+                      return (
+                        <div key={fld.key} className={`${spanClass} space-y-1`}>
+                          <Label className="text-[11px] font-semibold text-slate-700">{fld.label}</Label>
+                          <Select
+                            value={val}
+                            onValueChange={(newVal) => newVal && handleFieldChange(fld.key, newVal)}
+                          >
+                            <SelectTrigger className="h-8 text-xs bg-white border-slate-300 font-medium">
+                              <SelectValue placeholder="Pilih opsi..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white text-slate-900 border-slate-200">
+                              {fld.options.map((opt) => (
+                                <SelectItem key={opt} value={opt}>
+                                  {opt}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <div key={fld.key} className={`${spanClass} space-y-1`}>
+                        <Label className="text-[11px] font-semibold text-slate-700">{fld.label}</Label>
+                        <Input
+                          value={val}
+                          onChange={(e) => handleFieldChange(fld.key, e.target.value)}
+                          placeholder={fld.placeholder}
+                          className="h-8 text-xs bg-white border-slate-300"
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Syarat & Lampiran info box */}
+              {currentFormDef.syarat && currentFormDef.syarat.length > 0 && (
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-                  <Label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-slate-500" />
-                    Tarik Otomatis dari Data Umat Lingkungan:
-                  </Label>
-                  <Select onValueChange={(val) => { if (val) handleSelectMemberForSakramen(String(val)) }}>
-                    <SelectTrigger className="h-8 text-xs bg-white border-slate-300 text-slate-800">
-                      <SelectValue placeholder="-- Pilih nama pemohon sakramen --" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white text-slate-900 border-slate-200 max-h-56">
-                      {allMembers.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.nama} ({m.peran || 'Umat'} • KK: {m.nama_kk})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-slate-700">Nama Calon Penerima Sakramen</Label>
-                  <Input
-                    value={sakramenNama}
-                    onChange={(e) => setSakramenNama(e.target.value)}
-                    placeholder="Contoh: Maria Gabriella Putri"
-                    className="h-9 text-xs bg-white border-slate-300 font-bold text-slate-900"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700">Tempat & Tgl Lahir</Label>
-                    <Input
-                      value={sakramenTempatLahir}
-                      onChange={(e) => setSakramenTempatLahir(e.target.value)}
-                      className="h-9 text-xs bg-white border-slate-300"
-                    />
+                  <div className="font-bold text-[11px] text-slate-800 flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-blue-600" />
+                    Ketentuan & Syarat Lampiran Berkas:
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700">Nama Kepala Keluarga</Label>
-                    <Input
-                      value={sakramenNamaKk}
-                      onChange={(e) => setSakramenNamaKk(e.target.value)}
-                      className="h-9 text-xs bg-white border-slate-300"
-                    />
-                  </div>
+                  <ul className="list-disc list-inside text-[10px] text-slate-600 space-y-0.5">
+                    {currentFormDef.syarat.map((s, idx) => (
+                      <li key={idx}>{s}</li>
+                    ))}
+                  </ul>
                 </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700">Nama Ayah Kandung</Label>
-                    <Input
-                      value={sakramenNamaAyah}
-                      onChange={(e) => setSakramenNamaAyah(e.target.value)}
-                      placeholder="Ayah..."
-                      className="h-9 text-xs bg-white border-slate-300"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700">Nama Ibu Kandung</Label>
-                    <Input
-                      value={sakramenNamaIbu}
-                      onChange={(e) => setSakramenNamaIbu(e.target.value)}
-                      placeholder="Ibu..."
-                      className="h-9 text-xs bg-white border-slate-300"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-slate-700">Alamat Tempat Tinggal</Label>
-                  <Input
-                    value={sakramenAlamat}
-                    onChange={(e) => setSakramenAlamat(e.target.value)}
-                    placeholder="Contoh: Jl. Duta Harapan Blok B3 No. 12"
-                    className="h-9 text-xs bg-white border-slate-300"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-slate-700">Nama Wali Baptis / Saksi</Label>
-                  <Input
-                    value={sakramenWaliBaptis}
-                    onChange={(e) => setSakramenWaliBaptis(e.target.value)}
-                    placeholder="Nama wali rohani..."
-                    className="h-9 text-xs bg-white border-slate-300"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-slate-700">Catatan Rekomendasi</Label>
-                  <textarea
-                    rows={2}
-                    value={sakramenCatatan}
-                    onChange={(e) => setSakramenCatatan(e.target.value)}
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* TAB 3 CONTROLS */}
-          {activeTab === 'BERITA_ACARA' && (
-            <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
-              <CardHeader className="p-4 border-b border-slate-100">
-                <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <ScrollText className="w-4 h-4 text-emerald-600" />
-                  Editor Berita Acara Lingkungan
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-400">
-                  Format resmi pengesahan serah terima jabatan, rapat, atau pemilihan ketua
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3 text-xs">
-                <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-slate-700">Jenis Berita Acara</Label>
-                  <Select value={baType} onValueChange={(val) => val && setBaType(val)}>
-                    <SelectTrigger className="h-9 text-xs bg-white border-slate-300 font-bold">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white text-slate-900 border-slate-200">
-                      <SelectItem value="SERAH_TERIMA_JABATAN">Serah Terima Jabatan Pengurus (DPL)</SelectItem>
-                      <SelectItem value="PEMILIHAN_KETUA">Hasil Pemilihan Ketua Lingkungan Baru</SelectItem>
-                      <SelectItem value="RAPAT_PLENO">Musyawarah Warga & Verifikasi Keuangan</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700">Hari & Tanggal</Label>
-                    <Input
-                      value={baHariTanggal}
-                      onChange={(e) => setBaHariTanggal(e.target.value)}
-                      className="h-9 text-xs bg-white border-slate-300"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700">Tempat Pelaksanaan</Label>
-                    <Input
-                      value={baTempat}
-                      onChange={(e) => setBaTempat(e.target.value)}
-                      className="h-9 text-xs bg-white border-slate-300"
-                    />
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <div className="font-bold text-slate-800">Para Pihak / Pejabat:</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-slate-500">Nama Pihak Pertama</Label>
-                      <Input
-                        value={baPihak1}
-                        onChange={(e) => setBaPihak1(e.target.value)}
-                        className="h-8 text-xs bg-white border-slate-300 font-semibold"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-slate-500">Jabatan Pihak 1</Label>
-                      <Input
-                        value={baJabatan1}
-                        onChange={(e) => setBaJabatan1(e.target.value)}
-                        className="h-8 text-xs bg-white border-slate-300"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-slate-500">Nama Pihak Kedua</Label>
-                      <Input
-                        value={baPihak2}
-                        onChange={(e) => setBaPihak2(e.target.value)}
-                        className="h-8 text-xs bg-white border-slate-300 font-semibold"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-slate-500">Jabatan Pihak 2</Label>
-                      <Input
-                        value={baJabatan2}
-                        onChange={(e) => setBaJabatan2(e.target.value)}
-                        className="h-8 text-xs bg-white border-slate-300"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700">Nama Saksi 1</Label>
-                    <Input
-                      value={baSaksi1}
-                      onChange={(e) => setBaSaksi1(e.target.value)}
-                      className="h-8 text-xs bg-white border-slate-300"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700">Nama Saksi 2</Label>
-                    <Input
-                      value={baSaksi2}
-                      onChange={(e) => setBaSaksi2(e.target.value)}
-                      className="h-8 text-xs bg-white border-slate-300"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-[11px] font-semibold text-slate-700">Poin Kesepakatan / Putusan</Label>
-                  <textarea
-                    rows={5}
-                    value={baPoinKeputusan}
-                    onChange={(e) => setBaPoinKeputusan(e.target.value)}
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none font-sans"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* RIGHT COLUMN: LIVE PREVIEW & OFFICIAL PRINT SHEET (A4 FORMAT) */}
         <div className="lg:col-span-7">
           <div
             id="print-document-area"
-            className="bg-white rounded-2xl border border-slate-200/90 shadow-lg p-8 sm:p-12 space-y-6 text-slate-900 font-serif min-h-[800px]"
+            className="bg-white rounded-2xl border border-slate-200/90 shadow-lg p-8 sm:p-12 space-y-5 text-slate-900 font-serif min-h-[850px]"
           >
-            {/* KOP SURAT RESMI RESMI GEREJA & LINGKUNGAN */}
-            <div className="border-b-4 border-double border-slate-900 pb-3">
-              <div className="flex items-center justify-between gap-4">
-                <img
-                  src="/logo-st-clara.jpg"
-                  alt="Logo Gereja Santa Clara"
-                  className="w-20 h-20 rounded-full object-cover border border-slate-300 shrink-0 shadow-xs"
-                />
-                <div className="text-center flex-1 space-y-0.5">
-                  <div className="text-xs font-bold tracking-widest uppercase text-slate-800">
-                    KEUSKUPAN AGUNG JAKARTA • DEKANAT BEKASI
-                  </div>
-                  <div className="text-base sm:text-lg font-black tracking-wide uppercase text-slate-950">
-                    PAROKI SANTA CLARA — BEKASI UTARA
-                  </div>
-                  <div className="text-sm sm:text-base font-extrabold uppercase text-[#A9834F]">
-                    PENGURUS {formatNamaLingkungan(lingkunganName).toUpperCase()}
-                  </div>
-                  <div className="text-[10px] text-slate-600 font-sans italic pt-0.5">
-                    Sekretariat: Gereja Santa Clara, Jl. Lingkar Utara RT.001/RW.025, Harapan Baru, Bekasi Utara
-                  </div>
+            {/* KOP SURAT RESMI PAROKI / LINGKUNGAN / KATEKESE (SESUAI FILE PDF ASLI) */}
+            <div className="border-b-2 border-black pb-2 mb-4">
+              <div className="flex items-center gap-4">
+                {/* Logo Paroki Asli */}
+                <div className="shrink-0 w-20 h-20 flex items-center justify-center">
+                  <img
+                    src="/logo-kop-paroki.png"
+                    alt="Logo Paroki Santa Clara"
+                    className="max-h-20 max-w-20 object-contain"
+                    onError={(e) => {
+                      // Fallback to high-res JPG if needed
+                      ;(e.currentTarget as HTMLImageElement).src = '/logo-st-clara.jpg'
+                    }}
+                  />
                 </div>
-                <div className="w-20 shrink-0 hidden sm:block"></div>
+
+                {/* Header Text Berdasarkan Format Kop Resmi */}
+                <div className="flex-1">
+                  {kopType === 'KATEKESE' ? (
+                    <div>
+                      <div className="text-sm sm:text-base font-black tracking-wider uppercase text-slate-900 font-sans">
+                        S E K S I &nbsp;&nbsp; S A N T A &nbsp; C L A R A
+                      </div>
+                      <div className="text-base sm:text-lg font-black tracking-widest uppercase text-slate-950 font-sans">
+                        K A T E K E S E
+                      </div>
+                      <div className="text-[11px] text-slate-800 font-sans leading-tight pt-1">
+                        Pastoran &amp; Sekretariat : Jl. Lingkar Utara RT 03 RW 06 Kel. Harapan Baru Bekasi Utara
+                      </div>
+                      <div className="text-[10px] text-slate-700 font-sans leading-tight">
+                        Narahubung : Whatsapp : Sekretariat 0819-1188-9980 / Katekese : 0851-8310-4061
+                      </div>
+                    </div>
+                  ) : kopType === 'LINGKUNGAN' ? (
+                    <div>
+                      <div className="text-xs sm:text-sm font-black tracking-normal uppercase text-slate-900 font-sans">
+                        PENGURUS GEREJA DAN DANA PAPA SANTA CLARA
+                      </div>
+                      <div className="text-sm sm:text-base font-black tracking-wide uppercase text-slate-950 font-sans">
+                        DEWAN PENGURUS {formatNamaLingkungan(lingkunganName).toUpperCase()}
+                      </div>
+                      <div className="text-[11px] text-slate-800 font-sans leading-tight pt-1">
+                        Pastoran &amp; Sekretariat : Jl. Lingkar Utara RT 03 RW 06 Kel. Harapan Baru Bekasi Utara
+                      </div>
+                      <div className="text-[10px] text-slate-700 font-sans leading-tight">
+                        Telp. 021-8870327, e-mail : parokisantaklara@gmail.com
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-sm sm:text-base font-black tracking-normal uppercase text-slate-900 font-sans">
+                        Pengurus Gereja dan Dana Papa SANTA CLARA
+                      </div>
+                      <div className="text-sm sm:text-base font-black tracking-normal uppercase text-slate-900 font-sans">
+                        Pengurus Dewan Paroki
+                      </div>
+                      <div className="text-[11px] text-slate-800 font-sans leading-tight pt-1">
+                        Pastoran &amp; Sekretariat : Jl. Lingkar Utara RT 03 RW 06 Kel. Harapan Baru Bekasi Utara
+                      </div>
+                      <div className="text-[10px] text-slate-700 font-sans leading-tight">
+                        Telp. 021-8870327, e-mail : parokisantaklara@gmail.com
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* TAB 1 CONTENT: SURAT RESMI */}
-            {activeTab === 'KOP_SURAT' && (
-              <div className="space-y-6 text-xs text-slate-900 pt-2 font-sans">
-                {/* Meta Surat Bar */}
+            {/* DOCUMENT TITLE & OFFICIAL CODE */}
+            <div className="text-center space-y-1 pb-2">
+              <h2 className="text-sm sm:text-base font-black uppercase tracking-wide font-sans underline">
+                {currentFormDef.title}
+              </h2>
+              <div className="text-[10px] sm:text-[11px] font-sans text-slate-700 font-semibold tracking-tight">
+                {currentFormDef.code} --- Paroki : Bekasi Utara - St. Clara
+              </div>
+              {formValues.nomor_surat && (
+                <div className="text-xs font-mono font-bold text-slate-900 pt-0.5">
+                  Nomor : {formValues.nomor_surat}
+                </div>
+              )}
+            </div>
+
+            {/* DOKUMEN RENDERER BERDASARKAN JENIS FORMULIR */}
+
+            {/* 1. KASUS SURAT DINAS BEBAS */}
+            {selectedFormId === 'SURAT_DINAS' && (
+              <div className="space-y-5 text-xs text-slate-900 font-sans pt-1">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <div>
-                      <span className="font-semibold w-20 inline-block font-serif">Nomor</span>: {suratNomor}
+                      <span className="font-semibold w-20 inline-block font-serif">Nomor</span>: {formValues.nomor_surat || '018/SKR-LKG/SC/IX/2026'}
                     </div>
                     <div>
-                      <span className="font-semibold w-20 inline-block font-serif">Lampiran</span>: {suratLampiran}
+                      <span className="font-semibold w-20 inline-block font-serif">Lampiran</span>: {formValues.lampiran || '1 (Satu) Berkas'}
                     </div>
                     <div>
                       <span className="font-semibold w-20 inline-block font-serif">Perihal</span>:{' '}
-                      <span className="font-bold underline">{suratPerihal}</span>
+                      <span className="font-bold underline">{formValues.perihal}</span>
                     </div>
                   </div>
-
-                  <div className="text-right italic font-medium">{suratTanggal}</div>
+                  <div className="text-right italic font-medium">{currentDateFormatted}</div>
                 </div>
 
-                {/* Tujuan Surat */}
                 <div className="space-y-1 pt-2">
                   <div className="font-semibold font-serif">Kepada Yth.</div>
                   <div className="whitespace-pre-line leading-relaxed font-bold text-slate-900">
-                    {suratTujuan}
+                    {formValues.tujuan}
                   </div>
                 </div>
 
-                {/* Isi Surat */}
                 <div className="pt-2 whitespace-pre-line leading-relaxed text-justify text-slate-800 text-[13px]">
-                  {suratIsi}
+                  {formValues.isi_naskah}
                 </div>
 
-                {/* Kolom Tanda Tangan */}
                 <div className="pt-10 grid grid-cols-2 text-center gap-8">
                   <div className="space-y-16">
                     <div className="font-bold font-serif">
@@ -676,7 +715,7 @@ export default function FormStandarPage() {
                     <div className="font-bold font-serif">Sekretaris Lingkungan</div>
                     <div className="space-y-0.5">
                       <div className="font-bold underline text-slate-950 text-sm">
-                        {pengurus.sekretaris_nama || 'Ignatius Stefanus Sugeng'}
+                        {pengurus.sekretaris_nama || 'Ignatius Sugeng'}
                       </div>
                       <div className="text-[11px] text-slate-500 font-sans">Sekretaris Lingkungan</div>
                     </div>
@@ -685,112 +724,30 @@ export default function FormStandarPage() {
               </div>
             )}
 
-            {/* TAB 2 CONTENT: FORMULIR PELAYANAN SAKRAMEN */}
-            {activeTab === 'SAKRAMEN' && (
-              <div className="space-y-5 text-xs text-slate-900 pt-1 font-sans">
-                <div className="text-center space-y-1 pb-2">
-                  <h2 className="text-base sm:text-lg font-black uppercase tracking-wide font-serif underline">
-                    SURAT PERMOHONAN PELAYANAN SAKRAMEN
-                  </h2>
-                  <div className="text-[11px] font-bold text-[#A9834F] uppercase tracking-wider">
-                    {sakramenType === 'BAPTIS_BAYI' && 'Sakramen Baptis Bayi / Anak'}
-                    {sakramenType === 'BAPTIS_DEWASA' && 'Sakramen Baptis Dewasa / Penerimaan Resmi'}
-                    {sakramenType === 'KOMUNI_PERTAMA' && 'Sakramen Komuni Pertama (Ekaristi Maha Kudus)'}
-                    {sakramenType === 'PERKAWINAN' && 'Penyelidikan Kanonik Sakramen Perkawinan'}
-                    {sakramenType === 'PENGURAPAN_ORANG_SAKIT' && 'Sakramen Pengurapan Orang Sakit (Viaticum)'}
-                  </div>
-                </div>
-
-                <div className="space-y-2 border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                  <div className="font-bold text-slate-800 font-serif mb-2">A. DATA PRIBADI PEMOHON / UMAT:</div>
-                  <div className="grid grid-cols-3 gap-2 py-1 border-b border-slate-200">
-                    <span className="text-slate-500">Nama Lengkap</span>
-                    <span className="col-span-2 font-bold text-slate-950">: {sakramenNama || '— (Belum diisi)'}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 py-1 border-b border-slate-200">
-                    <span className="text-slate-500">Tempat, Tanggal Lahir</span>
-                    <span className="col-span-2">: {sakramenTempatLahir}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 py-1 border-b border-slate-200">
-                    <span className="text-slate-500">Nama Kepala Keluarga</span>
-                    <span className="col-span-2">: {sakramenNamaKk || '—'}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 py-1 border-b border-slate-200">
-                    <span className="text-slate-500">Nama Orang Tua (Ayah / Ibu)</span>
-                    <span className="col-span-2">: {sakramenNamaAyah || '—'} & {sakramenNamaIbu || '—'}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 py-1 border-b border-slate-200">
-                    <span className="text-slate-500">Alamat Tempat Tinggal</span>
-                    <span className="col-span-2">: {sakramenAlamat || 'Sesuai Data Lingkungan'}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 py-1 border-b border-slate-200">
-                    <span className="text-slate-500">Nama Wali / Saksi Baptis</span>
-                    <span className="col-span-2 font-semibold text-emerald-800">: {sakramenWaliBaptis}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 py-1">
-                    <span className="text-slate-500">Lingkungan / Wilayah</span>
-                    <span className="col-span-2">: {formatNamaLingkungan(lingkunganName)}</span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                  <div className="font-bold text-slate-800 font-serif">B. REKOMENDASI PENGURUS LINGKUNGAN:</div>
-                  <p className="text-slate-700 leading-relaxed text-[11px]">
-                    {sakramenCatatan}
-                  </p>
-                </div>
-
-                {/* Signature Grid */}
-                <div className="pt-8 grid grid-cols-3 text-center gap-4 text-[11px]">
-                  <div className="space-y-14">
-                    <div>Pemohon / Orang Tua</div>
-                    <div className="font-bold underline text-slate-950">{sakramenNamaAyah || sakramenNama || 'Pemohon'}</div>
-                  </div>
-                  <div className="space-y-14">
-                    <div>Ketua Lingkungan</div>
-                    <div className="font-bold underline text-slate-950">{pengurus.ketua_nama || 'FX Wisnu Ardianto'}</div>
-                  </div>
-                  <div className="space-y-14">
-                    <div>Mengetahui Pastor Paroki</div>
-                    <div className="font-bold underline text-slate-950">Pastor Paroki St. Clara</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 3 CONTENT: BERITA ACARA */}
-            {activeTab === 'BERITA_ACARA' && (
-              <div className="space-y-5 text-xs text-slate-900 pt-1 font-sans">
-                <div className="text-center space-y-1 pb-1">
-                  <h2 className="text-base sm:text-lg font-black uppercase tracking-wide font-serif underline">
-                    BERITA ACARA RESMI LINGKUNGAN
-                  </h2>
-                  <div className="text-[11px] font-bold text-[#A9834F] uppercase tracking-wider">
-                    Nomor: BA-{Date.now().toString().slice(-6)}/{formatNamaLingkungan(lingkunganName).replace(/\s+/g, '-').toUpperCase()}/2026
-                  </div>
-                </div>
-
+            {/* 2. KASUS BERITA ACARA */}
+            {selectedFormId === 'BERITA_ACARA' && (
+              <div className="space-y-4 text-xs text-slate-900 font-sans pt-1">
                 <p className="leading-relaxed text-justify text-slate-800">
-                  Pada hari ini <strong>{baHariTanggal}</strong>, bertempat di <strong>{baTempat}</strong>, 
-                  telah diselenggarakan acara resmi <strong>{baType.replace(/_/g, ' ')}</strong> untuk 
+                  Pada hari ini <strong>{formValues.hari_tanggal || 'Minggu, 20 September 2026'}</strong>, bertempat di <strong>{formValues.tempat || 'Gereja Santa Clara'}</strong>, 
+                  telah diselenggarakan acara resmi <strong>{formValues.jenis_acara}</strong> untuk 
                   <strong> {formatNamaLingkungan(lingkunganName)}</strong>, Paroki Santa Clara Bekasi Utara, oleh dan antara:
                 </p>
 
-                <div className="space-y-2 border border-slate-200 rounded-xl p-3.5 bg-slate-50/50">
+                <div className="space-y-2 border border-slate-300 rounded-lg p-3 bg-slate-50/60">
                   <div className="grid grid-cols-3 gap-1">
                     <span className="font-bold text-slate-700">1. PIHAK PERTAMA</span>
-                    <span className="col-span-2 font-bold text-slate-950">: {baPihak1} ({baJabatan1})</span>
+                    <span className="col-span-2 font-bold text-slate-950">: {formValues.pihak1_nama} ({formValues.pihak1_jabatan})</span>
                   </div>
                   <div className="grid grid-cols-3 gap-1">
                     <span className="font-bold text-slate-700">2. PIHAK KEDUA</span>
-                    <span className="col-span-2 font-bold text-slate-950">: {baPihak2} ({baJabatan2})</span>
+                    <span className="col-span-2 font-bold text-slate-950">: {formValues.pihak2_nama} ({formValues.pihak2_jabatan})</span>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <div className="font-bold text-slate-900 font-serif">POIN KESEPAKATAN DAN PUTUSAN:</div>
-                  <div className="p-3.5 bg-white border border-slate-200 rounded-xl whitespace-pre-line leading-relaxed text-slate-800">
-                    {baPoinKeputusan}
+                  <div className="p-3 bg-white border border-slate-300 rounded-lg whitespace-pre-line leading-relaxed text-slate-800">
+                    {formValues.poin_keputusan}
                   </div>
                 </div>
 
@@ -799,26 +756,143 @@ export default function FormStandarPage() {
                   kemuliaan Tuhan dan pelayanan umat di Lingkungan Santa Clara.
                 </p>
 
-                {/* Signatures */}
-                <div className="pt-6 grid grid-cols-2 text-center gap-6">
+                <div className="pt-4 grid grid-cols-2 text-center gap-6">
                   <div className="space-y-12">
-                    <div>Pihak Pertama</div>
-                    <div className="font-bold underline text-slate-950">{baPihak1}</div>
+                    <div className="font-bold">Pihak Pertama</div>
+                    <div className="font-bold underline text-slate-950">{formValues.pihak1_nama}</div>
                   </div>
                   <div className="space-y-12">
-                    <div>Pihak Kedua</div>
-                    <div className="font-bold underline text-slate-950">{baPihak2}</div>
+                    <div className="font-bold">Pihak Kedua</div>
+                    <div className="font-bold underline text-slate-950">{formValues.pihak2_nama}</div>
                   </div>
                 </div>
 
-                <div className="pt-2 grid grid-cols-2 text-center gap-6 border-t border-slate-100">
+                <div className="pt-2 grid grid-cols-2 text-center gap-6 border-t border-slate-200">
                   <div className="space-y-12">
-                    <div>Saksi I (Sekretaris)</div>
-                    <div className="font-bold underline text-slate-800">{baSaksi1}</div>
+                    <div className="font-bold">Saksi I (Sekretaris)</div>
+                    <div className="font-bold underline text-slate-800">{formValues.saksi1}</div>
                   </div>
                   <div className="space-y-12">
-                    <div>Saksi II (Bendahara)</div>
-                    <div className="font-bold underline text-slate-800">{baSaksi2}</div>
+                    <div className="font-bold">Saksi II (Bendahara)</div>
+                    <div className="font-bold underline text-slate-800">{formValues.saksi2}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. KASUS FORMULIR UMUM / SAKRAMEN / BIDUK / PERUBAHAN KK */}
+            {selectedFormId !== 'SURAT_DINAS' && selectedFormId !== 'BERITA_ACARA' && (
+              <div className="space-y-4 text-xs text-slate-900 font-sans pt-1">
+                {/* Intro statement for pengantar/keterangan */}
+                {selectedFormId === 'FORM10A' && (
+                  <div className="space-y-1 text-slate-800">
+                    <div className="flex justify-between pb-1">
+                      <span>Nama Ketua Lingkungan : <strong>{pengurus.ketua_nama || 'FX Wisnu Ardianto'}</strong></span>
+                      <span>Lingkungan/Wilayah : <strong>{formatNamaLingkungan(lingkunganName)}</strong></span>
+                    </div>
+                    <p className="text-justify pt-1">
+                      Menerangkan dengan sesungguhnya bahwa :
+                    </p>
+                  </div>
+                )}
+
+                {selectedFormId === 'FORM09' && (
+                  <p className="leading-relaxed text-justify text-slate-800">
+                    Salam Damai Kristus,<br />
+                    Dengan ini kami, Ketua/Pengurus <strong>{formatNamaLingkungan(lingkunganName)}</strong>, Paroki Santa Clara Bekasi Utara menerangkan bahwa Saudara/i kami ini bermaksud ingin melangsungkan pernikahan secara Gereja Katolik:
+                  </p>
+                )}
+
+                {selectedFormId === 'FORM10' && (
+                  <div className="space-y-1 text-slate-800">
+                    <div className="flex justify-between pb-1">
+                      <span>Ketua Lingkungan : <strong>{pengurus.ketua_nama || 'FX Wisnu Ardianto'}</strong></span>
+                      <span>Lingkungan / Wilayah : <strong>{formatNamaLingkungan(lingkunganName)}</strong></span>
+                    </div>
+                    <p className="text-justify pt-1">
+                      Menerangkan dengan sesungguhnya bahwa :
+                    </p>
+                  </div>
+                )}
+
+                {(selectedFormId === 'FORM05' || selectedFormId === 'FORM05A') && (
+                  <p className="leading-relaxed text-justify text-slate-800">
+                    Yang bertanda tangan di bawah ini :
+                  </p>
+                )}
+
+                {/* Render field table cleanly */}
+                <div className="border border-slate-300 rounded-lg overflow-hidden divide-y divide-slate-200">
+                  {currentFormDef.fields.map((fld) => {
+                    const val = formValues[fld.key]
+                    if (!val && fld.type === 'textarea') return null
+
+                    return (
+                      <div key={fld.key} className="grid grid-cols-12 p-2.5 bg-white items-start text-[11px]">
+                        <div className="col-span-4 font-semibold text-slate-700">
+                          {fld.label}
+                        </div>
+                        <div className="col-span-8 text-slate-900 font-medium whitespace-pre-line">
+                          : {val || '—'}
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  <div className="grid grid-cols-12 p-2.5 bg-slate-50 items-start text-[11px]">
+                    <div className="col-span-4 font-semibold text-slate-700">
+                      Lingkungan / Paroki
+                    </div>
+                    <div className="col-span-8 text-slate-900 font-medium">
+                      : {formatNamaLingkungan(lingkunganName)} — Paroki Santa Clara Bekasi Utara
+                    </div>
+                  </div>
+                </div>
+
+                {/* Formal concluding statement */}
+                {selectedFormId === 'FORM10A' && (
+                  <p className="leading-relaxed text-justify text-slate-700 pt-1 text-[11px]">
+                    Demikianlah surat pengantar ini kami buat untuk permintaan surat keterangan/pengantar dari Paroki Bekasi Utara dan untuk dipakai sebagaimana mestinya. Atas perhatian dan kerja samanya kami ucapkan terima kasih.
+                  </p>
+                )}
+
+                {selectedFormId === 'FORM09' && (
+                  <p className="leading-relaxed text-justify text-slate-700 pt-1 text-[11px]">
+                    Maka kami mohon kesediaan Pastor untuk memberikan pelayanan Penyelidikan Kanonik dan persiapan perkawinan yang bersangkutan. Atas bantuan dan kerja sama Pastor kami ucapkan banyak terima kasih.
+                  </p>
+                )}
+
+                {/* Signature Blocks */}
+                <div className="pt-6">
+                  <div className="text-right italic text-[11px] mb-4">
+                    {currentDateFormatted}
+                  </div>
+
+                  <div className="grid grid-cols-3 text-center gap-4 text-[11px]">
+                    <div className="space-y-14">
+                      <div>Pemohon / Yang Bersangkutan</div>
+                      <div className="font-bold underline text-slate-950">
+                        {formValues.nama_lengkap || formValues.nama_calon || formValues.nama_anak || formValues.nama_kk || formValues.nama_mempelai || formValues.nama_ortu || formValues.penanggung_jawab || 'Pemohon'}
+                      </div>
+                    </div>
+
+                    <div className="space-y-14">
+                      <div>
+                        Ketua {formatNamaLingkungan(lingkunganName)}
+                      </div>
+                      <div className="font-bold underline text-slate-950">
+                        {pengurus.ketua_nama || 'FX Wisnu Ardianto'}
+                      </div>
+                    </div>
+
+                    <div className="space-y-14">
+                      <div>
+                        Mengetahui,<br />Sekretariat / Pastor Paroki
+                      </div>
+                      <div className="font-bold underline text-slate-950">
+                        Paroki Santa Clara
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
