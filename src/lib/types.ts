@@ -99,7 +99,7 @@ export interface JurnalTransaksi {
   is_posted: boolean;
   no_bukti?: string | null;
   sumber_kas?: 'KAS' | 'BANK';
-  sumber_setoran?: 'SENDIRI' | 'DANA_LINGKUNGAN';
+  sumber_setoran?: 'SENDIRI' | 'PAROKI' | 'DANA_LINGKUNGAN' | 'ORANG_LAIN' | string;
   // Joined details
   kepala_keluarga?: KepalaKeluarga;
   account_debit?: COA;
