@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { getAllMasterCOA } from '@/lib/masterCoa'
 import {
   CreditCard,
   Download,
@@ -29,14 +30,32 @@ import {
 
 const JENIS_KARTU_OPTIONS = [
   { code: '4100', name: 'Kas Lingkungan (KL) — COA 4100', labelShort: 'Kas Lingkungan' },
+  { code: '4110', name: 'Kolekte Ibadat Sabda — COA 4110', labelShort: 'Kolekte Ibadat Sabda' },
   { code: '4120', name: 'Sumbangan Dahar Romo — COA 4120', labelShort: 'Dahar Romo' },
   { code: '4200', name: 'Sumbangan ASAK — COA 4200', labelShort: 'ASAK' },
   { code: '4300', name: 'Iuran Dana Kematian / St. Yusuf — COA 4300', labelShort: 'Dana Kematian / St. Yusuf' },
+  { code: '4400', name: 'Kolekte Misa Lingkungan — COA 4400', labelShort: 'Kolekte Misa Lingkungan' },
   { code: '4500', name: 'Sumbangan Umat — COA 4500', labelShort: 'Sumbangan Umat' },
+  { code: '4600', name: 'Bantuan dari Paroki — COA 4600', labelShort: 'Bantuan dari Paroki' },
   { code: '4700', name: 'Dana APP — COA 4700', labelShort: 'Dana APP' },
   { code: '4800', name: 'Dana Aksi Natal — COA 4800', labelShort: 'Aksi Natal' },
   { code: '4900', name: 'Penerimaan Lainnya — COA 4900', labelShort: 'Penerimaan Lainnya' }
 ]
+
+function getDynamicJenisKartuOptions(): Array<{ code: string; name: string; labelShort: string }> {
+  try {
+    const master = getAllMasterCOA()
+    const penerimaanList = master.filter(c => c.kategori === 'PENERIMAAN')
+    if (penerimaanList.length > 0) {
+      return penerimaanList.map(c => ({
+        code: c.id,
+        name: `${c.nama_akun} — COA ${c.id}`,
+        labelShort: c.nama_akun
+      }))
+    }
+  } catch (e) {}
+  return JENIS_KARTU_OPTIONS
+}
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
 
@@ -80,6 +99,7 @@ export default function KartuSetoranPage() {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Filter State
+  const [kartuOptions, setKartuOptions] = useState<Array<{ code: string; name: string; labelShort: string }>>(JENIS_KARTU_OPTIONS)
   const [selectedCoa, setSelectedCoa] = useState<string>('4100')
   const [selectedYear, setSelectedYear] = useState<number>(2026)
 
@@ -264,18 +284,22 @@ export default function KartuSetoranPage() {
     }
 
     loadData()
+    setKartuOptions(getDynamicJenisKartuOptions())
 
     const handleSync = () => {
+      setKartuOptions(getDynamicJenisKartuOptions())
       loadData()
     }
     window.addEventListener('customJournalsUpdated', handleSync)
     window.addEventListener('storage', handleSync)
     window.addEventListener('lingkunganChanged', handleSync)
+    window.addEventListener('coaListUpdated', handleSync)
 
     return () => {
       window.removeEventListener('customJournalsUpdated', handleSync)
       window.removeEventListener('storage', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
+      window.removeEventListener('coaListUpdated', handleSync)
     }
   }, [supabase])
 
@@ -404,7 +428,7 @@ export default function KartuSetoranPage() {
     }
   })
 
-  const selectedCoaObj = JENIS_KARTU_OPTIONS.find(c => c.code === selectedCoa) || JENIS_KARTU_OPTIONS[0]
+  const selectedCoaObj = kartuOptions.find(c => c.code === selectedCoa) || kartuOptions[0] || { code: selectedCoa, name: `COA ${selectedCoa}`, labelShort: `COA ${selectedCoa}` }
   const totalKkCount = uniqueKkIdsWithSetoran.size
 
   // Handler buka modal status/talangan
@@ -532,7 +556,7 @@ export default function KartuSetoranPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900">
-                  {JENIS_KARTU_OPTIONS.map((opt) => (
+                  {kartuOptions.map((opt) => (
                     <SelectItem key={opt.code} value={opt.code}>
                       {opt.name}
                     </SelectItem>
