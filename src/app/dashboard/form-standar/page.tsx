@@ -56,6 +56,32 @@ function DottedField({
   )
 }
 
+// Underline field with solid line for Katekumen style
+function UnderlineField({
+  label,
+  value,
+  suffix,
+  className = '',
+}: {
+  label: string
+  value?: string
+  suffix?: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={`flex items-baseline gap-1.5 text-[11px] leading-relaxed text-black ${className}`}>
+      <span className="shrink-0 font-medium">{label}</span>
+      <span className="shrink-0">:</span>
+      <div className="flex-1 relative flex items-baseline overflow-hidden border-b border-black min-h-[17px] mx-1">
+        <span className="font-semibold text-black px-1 z-10 bg-white whitespace-pre-wrap">
+          {value || ''}
+        </span>
+      </div>
+      {suffix && <span className="shrink-0">{suffix}</span>}
+    </div>
+  )
+}
+
 export default function FormStandarPage() {
   const supabase = createClient()
 
@@ -208,7 +234,7 @@ export default function FormStandarPage() {
     setFormValues((prev) => {
       const updated = { ...prev }
       currentFormDef.fields.forEach((fld) => {
-        if ((fld.autoFillKey === 'nama' || fld.key === 'nama_sendiri' || fld.key === 'nama_anak') && !updated[fld.key]) {
+        if ((fld.autoFillKey === 'nama' || fld.key === 'nama_sendiri' || fld.key === 'nama_anak' || fld.key === 'nama_calon') && !updated[fld.key]) {
           updated[fld.key] = mem.nama
         }
         if (fld.autoFillKey === 'nama_kk' && !updated[fld.key]) {
@@ -226,7 +252,7 @@ export default function FormStandarPage() {
         if (fld.autoFillKey === 'nama_ayah' && !updated[fld.key]) {
           updated[fld.key] = mem.nama_kk
         }
-        if (fld.key === 'wilayah_lingkungan' && !updated[fld.key]) {
+        if ((fld.key === 'wilayah_lingkungan' || fld.key === 'lingkungan') && !updated[fld.key]) {
           updated[fld.key] = formatNamaLingkungan(lingkunganName)
         }
       })
@@ -620,27 +646,29 @@ export default function FormStandarPage() {
 
                 {/* Header Text Tengah */}
                 <div className="flex-1 pt-1">
-                  {kopType === 'KATEKESE' ? (
+                  {selectedFormId === 'FORM02' || kopType === 'KATEKESE' ? (
                     <div>
-                      <div className="text-sm sm:text-base font-black tracking-widest uppercase text-black font-sans">
-                        S E K S I &nbsp;&nbsp; S A N T A &nbsp; C L A R A
+                      <div className="text-base sm:text-lg font-sans font-bold tracking-[0.3em] uppercase text-black">
+                        S E K S I
                       </div>
-                      <div className="text-base sm:text-lg font-black tracking-widest uppercase text-black font-sans">
+                      <div className="border-b-2 border-black my-0.5 w-full"></div>
+                      <div className="text-base sm:text-lg font-sans font-bold tracking-[0.3em] uppercase text-black">
                         K A T E K E S E
                       </div>
                       <div className="text-[10px] sm:text-[11px] text-black font-sans leading-tight pt-1">
-                        Pastoran &amp; Sekretariat : Jl. Lingkar Utara RT 03 RW 06 Kel. Harapan Baru Bekasi Utara
+                        Pastoran &amp; Sekretariat &nbsp;&nbsp;: &nbsp;Jl. Lingkar Utara RT 03 RW 06 Kel. Harapan Baru Bekasi Utara
                       </div>
-                      <div className="text-[10px] text-black font-sans leading-tight">
-                        Narahubung : Whatsapp : Sekretariat 0819-1188-9980 / Katekese : 0851-8310-4061
+                      <div className="text-[10px] sm:text-[11px] text-black font-sans leading-tight">
+                        Narahubung &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;Whatsapp : Sekretariat 0819-1188-9980 / Katekese : 0851-8310-4061
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <div className="inline-block border-b border-black pb-0.5 text-base sm:text-lg font-serif font-bold text-black leading-tight">
+                      <div className="text-base sm:text-lg font-serif font-bold text-black leading-tight">
                         Pengurus Gereja dan Dana Papa
                       </div>
-                      <div className="text-base sm:text-lg font-serif font-bold text-black leading-tight pt-0.5">
+                      <div className="border-b border-black my-0.5 w-full"></div>
+                      <div className="text-base sm:text-lg font-serif font-bold text-black leading-tight">
                         {kopType === 'LINGKUNGAN'
                           ? `Dewan Pengurus ${formatNamaLingkungan(lingkunganName).toUpperCase()}`
                           : 'Pengurus Dewan Paroki'}
@@ -648,7 +676,7 @@ export default function FormStandarPage() {
                       <div className="text-[10px] sm:text-[11px] text-black font-sans leading-tight pt-1">
                         Pastoran &amp; Sekretariat &nbsp;&nbsp;: &nbsp;Jl. Lingkar Utara RT 03 RW 06 Kel. Harapan Baru Bekasi Utara
                       </div>
-                      <div className="text-[10px] text-black font-sans leading-tight">
+                      <div className="text-[10px] sm:text-[11px] text-black font-sans leading-tight">
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Telp. 021-8870327, e-mail : parokisantaklara@gmail.com
                       </div>
                     </div>
@@ -669,289 +697,545 @@ export default function FormStandarPage() {
 
             {/* 2. BODY FORMULIR DALAM BINGKAI PERSEGI HITAM (SAMA PERSIS DOKUMEN ASLI) */}
             <div className="border border-black p-4 sm:p-5 space-y-3 text-black">
-              {/* Form Title & Official Code */}
-              <div className="text-center space-y-0.5 pb-1">
-                <div className="font-serif italic font-bold text-base sm:text-lg leading-tight">
-                  {currentFormDef.title}
-                </div>
-                <div className="font-sans font-bold text-xs sm:text-sm tracking-tight">
-                  {currentFormDef.code} --- Paroki : Bekasi Utara – St. Clara
-                </div>
-              </div>
-
-              {/* FORM 01: SAKRAMEN BAPTIS BAYI / ANAK */}
-              {selectedFormId === 'FORM01' && (
+              {/* KHUSUS FORM 02: PENDAFTARAN CALON KATEKUMEN (SAMA PERSIS DOKUMEN ASLI) */}
+              {selectedFormId === 'FORM02' ? (
                 <div className="space-y-3 text-[11px]">
-                  {/* Syarat & Lampiran Box */}
+                  {/* Top Header Row with Title Box & No. Berkas Box */}
+                  <div className="flex items-stretch gap-2 pb-1">
+                    <div className="flex-1 border border-black p-2.5 text-center flex items-center justify-center">
+                      <div className="font-bold text-sm sm:text-base uppercase tracking-wide">
+                        FORMULIR PENDAFTARAN CALON KATEKUMEN
+                      </div>
+                    </div>
+                    <div className="w-24 sm:w-28 border border-black p-1.5 text-center flex flex-col justify-center shrink-0">
+                      <div className="font-bold text-xs leading-tight">No.</div>
+                      <div className="font-bold text-xs leading-tight">Berkas</div>
+                      <div className="font-mono text-[10px] font-semibold text-slate-800 pt-0.5">
+                        {formValues.no_berkas || '..................'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4-Column Checklist Table matching Image 1 */}
+                  <div className="space-y-1">
+                    <div className="font-serif italic font-bold text-[11px]">
+                      Silakan centang pada pilihan yang sesuai:
+                    </div>
+                    <div className="border border-black overflow-hidden">
+                      <table className="w-full text-[10px] border-collapse">
+                        <thead>
+                          <tr className="border-b border-black bg-slate-50 text-center font-bold">
+                            <th className="border-r border-black p-1.5 w-1/4">Usia</th>
+                            <th className="border-r border-black p-1.5 w-1/4">Status Perkawinan</th>
+                            <th className="border-r border-black p-1.5 w-1/4">Agama Sebelumnya</th>
+                            <th className="p-1.5 w-1/4">Domisili Asal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="align-top">
+                            {/* Usia */}
+                            <td className="border-r border-black p-2 space-y-1">
+                              {['7 – 10 Tahun', '11 – 14 Tahun', '15 – 17 Tahun', '18 – 59 Tahun', '60 Tahun ke atas'].map((u) => (
+                                <div key={u} className="flex items-center gap-1.5">
+                                  <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold">
+                                    {formValues.usia_kategori === u ? '✓' : ''}
+                                  </span>
+                                  <span>{u}</span>
+                                </div>
+                              ))}
+                            </td>
+
+                            {/* Status Perkawinan */}
+                            <td className="border-r border-black p-2 space-y-1">
+                              {['Lajang', 'Menikah', 'Cerai Hidup', 'Cerai Mati'].map((s) => (
+                                <div key={s} className="flex items-center gap-1.5">
+                                  <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold">
+                                    {formValues.status_perkawinan === s ? '✓' : ''}
+                                  </span>
+                                  <span>{s}</span>
+                                </div>
+                              ))}
+                            </td>
+
+                            {/* Agama Sebelumnya */}
+                            <td className="border-r border-black p-2 space-y-3">
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold">
+                                  {formValues.agama_sebelumnya === 'Kristen Protestan' ? '✓' : ''}
+                                </span>
+                                <span>Kristen Protestan</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold">
+                                  {formValues.agama_sebelumnya !== 'Kristen Protestan' ? '✓' : ''}
+                                </span>
+                                <span>Selain Kristen Protestan</span>
+                              </div>
+                            </td>
+
+                            {/* Domisili Asal */}
+                            <td className="p-2 space-y-3">
+                              <div className="flex items-start gap-1.5">
+                                <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                                  {formValues.domisili_asal?.includes('Santa Clara') ? '✓' : ''}
+                                </span>
+                                <span className="leading-tight">Paroki Bekasi Utara – Gereja Santa Clara</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold">
+                                  {formValues.domisili_asal === 'Luar Paroki' ? '✓' : ''}
+                                </span>
+                                <span>Luar Paroki</span>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* CATATAN Box matching Image 1 */}
                   <div className="border border-black p-2.5 text-[10px] leading-relaxed space-y-1">
-                    <div><strong>Syarat :</strong></div>
+                    <div className="font-bold">CATATAN</div>
                     <ul className="list-disc list-inside pl-1 space-y-0.5">
-                      <li>Anak berusia maksimal 7 tahun.</li>
-                      <li>Kedua orang tua dan wali baptis wajib mengikuti rekoleksi persiapan pada waktu yang ditentukan.</li>
-                    </ul>
-                    <div className="pt-0.5"><strong>Syarat wali baptis :</strong></div>
-                    <ul className="list-disc list-inside pl-1 space-y-0.5">
-                      <li>Seorang katolik yang berusia dewasa dan telah menerima Sakramen Inisiasi (Baptis, Komuni dan Penguatan)</li>
-                      <li>Bukan ayah/ibu/kakek/nenek calon Baptis</li>
-                    </ul>
-                    <div className="pt-0.5"><strong>Hal yang perlu dilampirkan :</strong></div>
-                    <ul className="list-disc list-inside pl-1 space-y-0.5">
-                      <li>Fotocopy akte kelahiran/surat tanda lahir</li>
-                      <li>Fotocopy KK Gereja</li>
-                      <li>Fotocopy akte perkawinan agama</li>
-                      <li>Fotocopy akte perkawinan sipil</li>
-                      <li>Fotocopy surat baptis wali baptis <em>(dipilih sesuai gender/jenis kelamin anak)</em>; Jika di surat baptis belum tercatatkan Sakramen Penguatan maka dilampirkan juga fotocopy sertifikat penerimaan Sakramen Penguatan</li>
-                      <li>Surat Pengantar Pastor Paroki, jika dari luar Paroki ........................................</li>
-                      <li>Surat Pernyataan Memberi Izin Anak Untuk Dibaptis <em>(apabila salah satu orang tua bukan Katolik)</em></li>
+                      <li>Bagi calon katekumen usia 7 – 10 tahun akan menerima Sakramen Baptis; usia 11 – 14 tahun akan menerima Sakramen Baptis dan Komuni Pertama</li>
+                      <li>Bagi yang sudah menikah dan perkawinannya belum diteguhkan secara Katolik, silakan mengisi formulir Pemberesan Perkawinan.</li>
+                      <li>Mohon diisi dengan tulisan yang jelas dan jujur.</li>
                     </ul>
                   </div>
 
-                  {/* DATA CALON BAPTIS */}
-                  <div className="space-y-1">
-                    <div className="font-bold text-xs">DATA CALON BAPTIS .</div>
-                    <DottedField
-                      label="1. Nama Baptis"
-                      value={formValues.nama_baptis_anak}
-                      suffix={<span className="ml-2 font-medium">({formValues.jenis_kelamin || 'L / P'})</span>}
-                    />
-                    <DottedField label="2. Nama Sendiri" value={formValues.nama_sendiri} />
+                  {/* DATA KATEKUMEN */}
+                  <div className="space-y-1 pt-1">
+                    <div className="font-bold text-xs">DATA KATEKUMEN</div>
+                    <UnderlineField label="1. Nama Lengkap" value={formValues.nama_calon} />
                     <div className="grid grid-cols-12 gap-2">
                       <div className="col-span-8">
-                        <DottedField label="3. Tempat, tgl. Lahir" value={formValues.tempat_tgl_lahir} />
+                        <UnderlineField label="2. Tempat, tanggal lahir" value={formValues.tempat_tgl_lahir} />
                       </div>
                       <div className="col-span-4">
-                        <DottedField label="Usia" value={formValues.usia_anak} />
+                        <UnderlineField label="3. Usia saat mendaftar" value={formValues.usia_saat_daftar} />
                       </div>
                     </div>
-                    <DottedField
-                      label="4. Pembaptisan"
-                      value={formValues.tgl_rencana_baptis ? `tanggal ${formValues.tgl_rencana_baptis}` : ''}
-                      suffix={<span className="ml-1 text-[10px]">( rencana )</span>}
-                    />
-                    <DottedField label="5. Nomor Induk Kependudukan (NIK) Anak" value={formValues.nik_anak} />
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-6">
+                        <UnderlineField label="4. No. HP (Telepon & WA)" value={formValues.telepon_wa} />
+                      </div>
+                      <div className="col-span-6">
+                        <UnderlineField label="5. Pekerjaan" value={formValues.pekerjaan} />
+                      </div>
+                    </div>
+                    <UnderlineField label="6. Agama sebelumnya" value={formValues.agama_asal_detail || formValues.agama_sebelumnya} />
+
+                    {/* Sub-section Protestant */}
+                    <div className="pl-4 space-y-1 pt-0.5">
+                      <div className="font-medium text-[10px]">o Bagi yang dari Kristen Protestan</div>
+                      <UnderlineField label="▪ Nama Gereja tempat dibaptis" value={formValues.nama_gereja_protestan} />
+                      <div className="grid grid-cols-12 gap-2">
+                        <div className="col-span-6">
+                          <UnderlineField label="▪ Tanggal dibaptis" value={formValues.tgl_baptis_protestan} />
+                        </div>
+                        <div className="col-span-6">
+                          <UnderlineField label="▪ Nama Pendeta yang membaptis" value={formValues.nama_pendeta} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DATA PERKAWINAN */}
+                  <div className="space-y-1 pt-1 border-t border-black">
+                    <div className="font-bold text-xs">DATA PERKAWINAN – Coret yang tidak sesuai</div>
+                    <UnderlineField label="7. Status Perkawinan" value={formValues.status_perkawinan} />
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-6">
+                        <UnderlineField label="9. Nama Lengkap Pasangan" value={formValues.nama_pasangan} />
+                      </div>
+                      <div className="col-span-6">
+                        <UnderlineField label="10. Agama Pasangan" value={formValues.agama_pasangan} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DATA DOMISILI KATEKUMEN */}
+                  <div className="space-y-1 pt-1 border-t border-black">
+                    <div className="font-bold text-xs">DATA DOMISILI KATEKUMEN</div>
+                    <UnderlineField label="14. Alamat lengkap" value={formValues.alamat} />
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-6">
+                        <UnderlineField label="15. Nomor NIK sesuai KTP/KK" value={formValues.nik} />
+                      </div>
+                      <div className="col-span-6">
+                        <UnderlineField label="16. Nama Lingkungan" value={formValues.lingkungan || formatNamaLingkungan(lingkunganName)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-6">
+                        <UnderlineField label="17. Nama Paroki sesuai domisili" value={formValues.paroki_domisili || 'Paroki Santa Clara Bekasi Utara'} />
+                      </div>
+                      <div className="col-span-6">
+                        <UnderlineField label="18. No. KK Katolik (jika ada)" value={formValues.no_kk_katolik} />
+                      </div>
+                    </div>
                   </div>
 
                   {/* DATA ORANG TUA KANDUNG */}
-                  <div className="space-y-1 pt-1">
-                    <div className="font-bold text-xs">DATA ORANG TUA KANDUNG <em>( lengkap dengan nama baptis )</em></div>
+                  <div className="space-y-1 pt-1 border-t border-black">
+                    <div className="font-bold text-xs">DATA ORANG TUA KANDUNG</div>
                     <div className="grid grid-cols-12 gap-2">
                       <div className="col-span-8">
-                        <DottedField label="1. Nama Ayah" value={formValues.nama_ayah} />
+                        <UnderlineField label="19. Nama Lengkap Ayah" value={formValues.nama_ayah} />
                       </div>
                       <div className="col-span-4">
-                        <DottedField label="Agama" value={formValues.agama_ayah || 'Katolik'} />
+                        <UnderlineField label="20. Agama Ayah" value={formValues.agama_ayah} />
                       </div>
                     </div>
                     <div className="grid grid-cols-12 gap-2">
                       <div className="col-span-8">
-                        <DottedField label="2. Nama Ibu" value={formValues.nama_ibu} />
+                        <UnderlineField label="21. Nama Lengkap Ibu" value={formValues.nama_ibu} />
                       </div>
                       <div className="col-span-4">
-                        <DottedField label="Agama" value={formValues.agama_ibu || 'Katolik'} />
-                      </div>
-                    </div>
-                    <DottedField label="3. Alamat" value={formValues.alamat} />
-                    <div className="grid grid-cols-12 gap-2">
-                      <div className="col-span-6">
-                        <DottedField label="4. Telepon" value={formValues.telepon_rumah} />
-                      </div>
-                      <div className="col-span-6">
-                        <DottedField label="HP" value={formValues.hp} />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-12 gap-2">
-                      <div className="col-span-6">
-                        <DottedField label="5. No. KK. gereja" value={formValues.no_kk_gereja} />
-                      </div>
-                      <div className="col-span-6">
-                        <DottedField label="Wilayah / Lingkungan" value={formValues.wilayah_lingkungan || formatNamaLingkungan(lingkunganName)} />
+                        <UnderlineField label="22. Agama Ibu" value={formValues.agama_ibu} />
                       </div>
                     </div>
                   </div>
 
-                  {/* WALI BAPTIS */}
-                  <div className="space-y-1 pt-1">
-                    <div className="font-bold text-xs">WALI BAPTIS <em>( lengkap dengan nama baptis )</em></div>
-                    <DottedField label="1. Nama Lengkap" value={formValues.wali_baptis} />
-                    <div className="grid grid-cols-12 gap-2">
-                      <div className="col-span-6">
-                        <DottedField label="2. Wilayah/Lingkungan" value={formValues.wali_wilayah_lingkungan} />
-                      </div>
-                      <div className="col-span-6">
-                        <DottedField label="Paroki" value={formValues.paroki_wali || 'Paroki Santa Clara Bekasi Utara'} />
-                      </div>
+                  {/* ALASAN MASUK KATOLIK */}
+                  <div className="space-y-1 pt-1 border-t border-black">
+                    <div className="font-bold text-xs">ALASAN MASUK KATOLIK :</div>
+                    <div className="border border-black p-2 min-h-[50px] whitespace-pre-wrap leading-relaxed">
+                      {formValues.alasan_masuk || ''}
                     </div>
                   </div>
 
-                  {/* Tanda Tangan 4 Kolom */}
+                  {/* TANDA TANGAN PENDAFTAR & KETUA LINGKUNGAN */}
                   <div className="pt-2">
                     <div className="text-right italic text-[10px] pb-1">
                       {currentDateFormatted}
                     </div>
-                    <div className="grid grid-cols-4 gap-2 text-center text-[10px] items-stretch">
-                      {/* Box Sekretariat */}
-                      <div className="border border-black p-2 text-left space-y-1">
-                        <div className="font-bold">Diterima pihak sekretariat</div>
-                        <div>Tanggal : ....................</div>
-                        <div>Oleh &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ....................</div>
-                      </div>
-
-                      {/* Orang Tua */}
-                      <div className="flex flex-col justify-between py-1">
-                        <div>Orangtua,</div>
-                        <div className="pt-10 font-bold underline">
-                          ( {formValues.nama_ayah || formValues.nama_ibu || '..............................'} )
-                        </div>
-                      </div>
-
-                      {/* Sie. Katekese */}
-                      <div className="flex flex-col justify-between py-1">
+                    <div className="grid grid-cols-2 gap-6 text-center text-[10px]">
+                      <div className="space-y-14">
                         <div>
-                          Mengetahui,<br />Sie. Katekese Lingkungan
+                          Tanda tangan dan nama jelas<br />
+                          <strong>Pendaftar</strong>
                         </div>
-                        <div className="pt-10 font-bold underline">
-                          ( .............................. )
+                        <div className="font-bold underline">
+                          ( {formValues.nama_calon || '...........................................'} )
                         </div>
                       </div>
 
-                      {/* Ketua Lingkungan */}
-                      <div className="flex flex-col justify-between py-1">
+                      <div className="space-y-14">
                         <div>
-                          Mengetahui<br />Ketua Lingkungan {formatNamaLingkungan(lingkunganName)}
+                          Mengetahui,<br />
+                          <strong>Ketua Lingkungan {formatNamaLingkungan(lingkunganName)}</strong>
                         </div>
-                        <div className="pt-10 font-bold underline">
-                          ( {pengurus.ketua_nama || '..............................'} )
+                        <div className="font-bold underline">
+                          ( {pengurus.ketua_nama || '...........................................'} )
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Catatan & Petugas Sekretariat */}
-                  <div className="pt-1 border-t border-black text-[9px] leading-relaxed space-y-1">
-                    <div>
-                      <strong>Catatan:</strong> Formulir dan hal-hal yang dilampirkan diserahkan setelah lengkap ke sekretariat maksimal batas tanggal yang telah ditentukan/diumumkan. Lewat dari tanggal penutupan tanggal pendaftaran maka ikut periode baptisan selanjutnya.
-                    </div>
-                    <div className="pt-0.5">
-                      <strong>Diisi oleh petugas Sekretariat Paroki :</strong><br />
-                      Dibaptis pada Tgl. ........................................ Jam .................... Oleh ................................................................
+                  {/* DOKUMEN YANG DILAMPIRKAN CHECKLIST */}
+                  <div className="pt-2 border-t border-black text-[9px] space-y-1">
+                    <div className="font-bold text-[10px]">Dokumen yang dilampirkan (dicentang oleh sekretariat Paroki) :</div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      <div>[ &nbsp; ] Fotokopi Akta Kelahiran</div>
+                      <div>[ &nbsp; ] Fotokopi surat baptis dari Gereja asal (khusus Kristen)</div>
+                      <div>[ &nbsp; ] Fotokopi KTP</div>
+                      <div>[ &nbsp; ] Fotokopi KK Pemerintah</div>
+                      <div>[ &nbsp; ] Fotokopi Surat Nikah agama</div>
+                      <div>[ &nbsp; ] Fotokopi Surat Nikah sipil</div>
+                      <div className="col-span-2">[ &nbsp; ] Surat pernyataan dari orang tua bagi yang berusia di bawah 17 tahun dan atau salah satu orang tua bukan beragama Katolik.</div>
                     </div>
                   </div>
                 </div>
-              )}
-
-              {/* FORM 10A: SURAT PENGANTAR LINGKUNGAN UMUM */}
-              {selectedFormId === 'FORM10A' && (
+              ) : (
+                /* FORM 01 & FORMULIR LAINNYA */
                 <div className="space-y-3 text-[11px]">
-                  <div className="space-y-1">
-                    <DottedField label="Nama Ketua Lingkungan" value={pengurus.ketua_nama || formValues.nama_ketua_lingkungan} />
-                    <DottedField label="Lingkungan/Wilayah" value={formatNamaLingkungan(lingkunganName)} />
-                  </div>
-
-                  <div className="pt-1">Menerangkan dengan sesungguhnya bahwa :</div>
-
-                  <div className="space-y-1">
-                    <DottedField label="Nama (lengkap)" value={formValues.nama_lengkap} />
-                    <DottedField label="Tempat, tgl. Lahir" value={formValues.tempat_tgl_lahir} />
-                    <DottedField label="Alamat tinggal" value={formValues.alamat} />
-                    <DottedField label="Nama Orangtua" value={formValues.nama_ortu} />
-                  </div>
-
-                  <div className="pt-1">
-                    <DottedField label="Adalah benar berdomisili di lingkungan" value={formatNamaLingkungan(lingkunganName)} />
-                  </div>
-
-                  <div className="space-y-1 pt-1">
-                    <div>Umat tersebut mohon dibantu untuk dibuatkan surat keterangan/ pengantar mengenai :</div>
-                    <div className="border border-black p-2 min-h-[70px] whitespace-pre-wrap font-medium">
-                      {formValues.keperluan || 'Pengurusan administrasi gerejawi / rekomendasi ke Sekretariat Paroki Santa Clara Bekasi Utara.'}
+                  {/* Form Title & Official Code */}
+                  <div className="text-center space-y-0.5 pb-1">
+                    <div className="font-serif italic font-bold text-base sm:text-lg leading-tight">
+                      {currentFormDef.title}
+                    </div>
+                    <div className="font-sans font-bold text-xs sm:text-sm tracking-tight">
+                      {currentFormDef.code} --- Paroki : Bekasi Utara – St. Clara
                     </div>
                   </div>
 
-                  <div className="text-justify leading-relaxed pt-1">
-                    Demikianlah surat pengantar ini kami buat untuk permintaan surat keterangan/pengantar dari Paroki Bekasi Utara dan untuk dipakai sebagaimana mestinya. Atas perhatian dan kerja samanya kami ucapkan terima kasih.
-                  </div>
-
-                  <div className="pt-6 flex justify-end text-center">
-                    <div className="w-64 space-y-14">
-                      <div>
-                        {currentDateFormatted}<br />
-                        Ketua Lingkungan {formatNamaLingkungan(lingkunganName)}
+                  {/* FORM 01: SAKRAMEN BAPTIS BAYI / ANAK */}
+                  {selectedFormId === 'FORM01' && (
+                    <div className="space-y-3 text-[11px]">
+                      {/* Syarat & Lampiran Box */}
+                      <div className="border border-black p-2.5 text-[10px] leading-relaxed space-y-1">
+                        <div><strong>Syarat :</strong></div>
+                        <ul className="list-disc list-inside pl-1 space-y-0.5">
+                          <li>Anak berusia maksimal 7 tahun.</li>
+                          <li>Kedua orang tua dan wali baptis wajib mengikuti rekoleksi persiapan pada waktu yang ditentukan.</li>
+                        </ul>
+                        <div className="pt-0.5"><strong>Syarat wali baptis :</strong></div>
+                        <ul className="list-disc list-inside pl-1 space-y-0.5">
+                          <li>Seorang katolik yang berusia dewasa dan telah menerima Sakramen Inisiasi (Baptis, Komuni dan Penguatan)</li>
+                          <li>Bukan ayah/ibu/kakek/nenek calon Baptis</li>
+                        </ul>
+                        <div className="pt-0.5"><strong>Hal yang perlu dilampirkan :</strong></div>
+                        <ul className="list-disc list-inside pl-1 space-y-0.5">
+                          <li>Fotocopy akte kelahiran/surat tanda lahir</li>
+                          <li>Fotocopy KK Gereja</li>
+                          <li>Fotocopy akte perkawinan agama</li>
+                          <li>Fotocopy akte perkawinan sipil</li>
+                          <li>Fotocopy surat baptis wali baptis <em>(dipilih sesuai gender/jenis kelamin anak)</em>; Jika di surat baptis belum tercatatkan Sakramen Penguatan maka dilampirkan juga fotocopy sertifikat penerimaan Sakramen Penguatan</li>
+                          <li>Surat Pengantar Pastor Paroki, jika dari luar Paroki ........................................</li>
+                          <li>Surat Pernyataan Memberi Izin Anak Untuk Dibaptis <em>(apabila salah satu orang tua bukan Katolik)</em></li>
+                        </ul>
                       </div>
-                      <div className="font-bold underline text-black">
-                        ( {pengurus.ketua_nama || '.........................................'} )
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {/* FORMULIR LAINNYA (DOKUMEN STANDAR SESUAI ASLINYA) */}
-              {selectedFormId !== 'FORM01' && selectedFormId !== 'FORM10A' && (
-                <div className="space-y-3 text-[11px]">
-                  {/* Syarat box bila ada */}
-                  {currentFormDef.syarat && currentFormDef.syarat.length > 0 && (
-                    <div className="border border-black p-2 text-[10px] leading-relaxed">
-                      <div className="font-bold">Syarat &amp; Hal yang perlu dilampirkan:</div>
-                      <ul className="list-disc list-inside pl-1 space-y-0.5">
-                        {currentFormDef.syarat.map((s, idx) => (
-                          <li key={idx}>{s}</li>
-                        ))}
-                      </ul>
+                      {/* DATA CALON BAPTIS */}
+                      <div className="space-y-1">
+                        <div className="font-bold text-xs">DATA CALON BAPTIS .</div>
+                        <DottedField
+                          label="1. Nama Baptis"
+                          value={formValues.nama_baptis_anak}
+                          suffix={<span className="ml-2 font-medium">({formValues.jenis_kelamin || 'L / P'})</span>}
+                        />
+                        <DottedField label="2. Nama Sendiri" value={formValues.nama_sendiri} />
+                        <div className="grid grid-cols-12 gap-2">
+                          <div className="col-span-8">
+                            <DottedField label="3. Tempat, tgl. Lahir" value={formValues.tempat_tgl_lahir} />
+                          </div>
+                          <div className="col-span-4">
+                            <DottedField label="Usia" value={formValues.usia_anak} />
+                          </div>
+                        </div>
+                        <DottedField
+                          label="4. Pembaptisan"
+                          value={formValues.tgl_rencana_baptis ? `tanggal ${formValues.tgl_rencana_baptis}` : ''}
+                          suffix={<span className="ml-1 text-[10px]">( rencana )</span>}
+                        />
+                        <DottedField label="5. Nomor Induk Kependudukan (NIK) Anak" value={formValues.nik_anak} />
+                      </div>
+
+                      {/* DATA ORANG TUA KANDUNG */}
+                      <div className="space-y-1 pt-1">
+                        <div className="font-bold text-xs">DATA ORANG TUA KANDUNG <em>( lengkap dengan nama baptis )</em></div>
+                        <div className="grid grid-cols-12 gap-2">
+                          <div className="col-span-8">
+                            <DottedField label="1. Nama Ayah" value={formValues.nama_ayah} />
+                          </div>
+                          <div className="col-span-4">
+                            <DottedField label="Agama" value={formValues.agama_ayah || 'Katolik'} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-12 gap-2">
+                          <div className="col-span-8">
+                            <DottedField label="2. Nama Ibu" value={formValues.nama_ibu} />
+                          </div>
+                          <div className="col-span-4">
+                            <DottedField label="Agama" value={formValues.agama_ibu || 'Katolik'} />
+                          </div>
+                        </div>
+                        <DottedField label="3. Alamat" value={formValues.alamat} />
+                        <div className="grid grid-cols-12 gap-2">
+                          <div className="col-span-6">
+                            <DottedField label="4. Telepon" value={formValues.telepon_rumah} />
+                          </div>
+                          <div className="col-span-6">
+                            <DottedField label="HP" value={formValues.hp} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-12 gap-2">
+                          <div className="col-span-6">
+                            <DottedField label="5. No. KK. gereja" value={formValues.no_kk_gereja} />
+                          </div>
+                          <div className="col-span-6">
+                            <DottedField label="Wilayah / Lingkungan" value={formValues.wilayah_lingkungan || formatNamaLingkungan(lingkunganName)} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* WALI BAPTIS */}
+                      <div className="space-y-1 pt-1">
+                        <div className="font-bold text-xs">WALI BAPTIS <em>( lengkap dengan nama baptis )</em></div>
+                        <DottedField label="1. Nama Lengkap" value={formValues.wali_baptis} />
+                        <div className="grid grid-cols-12 gap-2">
+                          <div className="col-span-6">
+                            <DottedField label="2. Wilayah/Lingkungan" value={formValues.wali_wilayah_lingkungan} />
+                          </div>
+                          <div className="col-span-6">
+                            <DottedField label="Paroki" value={formValues.paroki_wali || 'Paroki Santa Clara Bekasi Utara'} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tanda Tangan 4 Kolom */}
+                      <div className="pt-2">
+                        <div className="text-right italic text-[10px] pb-1">
+                          {currentDateFormatted}
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 text-center text-[10px] items-stretch">
+                          {/* Box Sekretariat */}
+                          <div className="border border-black p-2 text-left space-y-1">
+                            <div className="font-bold">Diterima pihak sekretariat</div>
+                            <div>Tanggal : ....................</div>
+                            <div>Oleh &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ....................</div>
+                          </div>
+
+                          {/* Orang Tua */}
+                          <div className="flex flex-col justify-between py-1">
+                            <div>Orangtua,</div>
+                            <div className="pt-10 font-bold underline">
+                              ( {formValues.nama_ayah || formValues.nama_ibu || '..............................'} )
+                            </div>
+                          </div>
+
+                          {/* Sie. Katekese */}
+                          <div className="flex flex-col justify-between py-1">
+                            <div>
+                              Mengetahui,<br />Sie. Katekese Lingkungan
+                            </div>
+                            <div className="pt-10 font-bold underline">
+                              ( .............................. )
+                            </div>
+                          </div>
+
+                          {/* Ketua Lingkungan */}
+                          <div className="flex flex-col justify-between py-1">
+                            <div>
+                              Mengetahui<br />Ketua Lingkungan {formatNamaLingkungan(lingkunganName)}
+                            </div>
+                            <div className="pt-10 font-bold underline">
+                              ( {pengurus.ketua_nama || '..............................'} )
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Catatan & Petugas Sekretariat */}
+                      <div className="pt-1 border-t border-black text-[9px] leading-relaxed space-y-1">
+                        <div>
+                          <strong>Catatan:</strong> Formulir dan hal-hal yang dilampirkan diserahkan setelah lengkap ke sekretariat maksimal batas tanggal yang telah ditentukan/diumumkan. Lewat dari tanggal penutupan tanggal pendaftaran maka ikut periode baptisan selanjutnya.
+                        </div>
+                        <div className="pt-0.5">
+                          <strong>Diisi oleh petugas Sekretariat Paroki :</strong><br />
+                          Dibaptis pada Tgl. ........................................ Jam .................... Oleh ................................................................
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  {/* Render fields with dotted lines */}
-                  <div className="space-y-1.5 pt-1">
-                    {currentFormDef.fields.map((fld) => {
-                      const val = formValues[fld.key]
-                      if (fld.type === 'textarea') {
-                        return (
-                          <div key={fld.key} className="space-y-0.5 pt-1">
-                            <div className="font-semibold">{fld.label} :</div>
-                            <div className="border border-black p-2 whitespace-pre-wrap min-h-[50px]">
-                              {val || ''}
+                  {/* FORM 10A: SURAT PENGANTAR LINGKUNGAN UMUM */}
+                  {selectedFormId === 'FORM10A' && (
+                    <div className="space-y-3 text-[11px]">
+                      <div className="space-y-1">
+                        <DottedField label="Nama Ketua Lingkungan" value={pengurus.ketua_nama || formValues.nama_ketua_lingkungan} />
+                        <DottedField label="Lingkungan/Wilayah" value={formatNamaLingkungan(lingkunganName)} />
+                      </div>
+
+                      <div className="pt-1">Menerangkan dengan sesungguhnya bahwa :</div>
+
+                      <div className="space-y-1">
+                        <DottedField label="Nama (lengkap)" value={formValues.nama_lengkap} />
+                        <DottedField label="Tempat, tgl. Lahir" value={formValues.tempat_tgl_lahir} />
+                        <DottedField label="Alamat tinggal" value={formValues.alamat} />
+                        <DottedField label="Nama Orangtua" value={formValues.nama_ortu} />
+                      </div>
+
+                      <div className="pt-1">
+                        <DottedField label="Adalah benar berdomisili di lingkungan" value={formatNamaLingkungan(lingkunganName)} />
+                      </div>
+
+                      <div className="space-y-1 pt-1">
+                        <div>Umat tersebut mohon dibantu untuk dibuatkan surat keterangan/ pengantar mengenai :</div>
+                        <div className="border border-black p-2 min-h-[70px] whitespace-pre-wrap font-medium">
+                          {formValues.keperluan || 'Pengurusan administrasi gerejawi / rekomendasi ke Sekretariat Paroki Santa Clara Bekasi Utara.'}
+                        </div>
+                      </div>
+
+                      <div className="text-justify leading-relaxed pt-1">
+                        Demikianlah surat pengantar ini kami buat untuk permintaan surat keterangan/pengantar dari Paroki Bekasi Utara dan untuk dipakai sebagaimana mestinya. Atas perhatian dan kerja samanya kami ucapkan terima kasih.
+                      </div>
+
+                      <div className="pt-6 flex justify-end text-center">
+                        <div className="w-64 space-y-14">
+                          <div>
+                            {currentDateFormatted}<br />
+                            Ketua Lingkungan {formatNamaLingkungan(lingkunganName)}
+                          </div>
+                          <div className="font-bold underline text-black">
+                            ( {pengurus.ketua_nama || '.........................................'} )
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* FORMULIR LAINNYA (DOKUMEN STANDAR SESUAI ASLINYA) */}
+                  {selectedFormId !== 'FORM01' && selectedFormId !== 'FORM10A' && selectedFormId !== 'FORM02' && (
+                    <div className="space-y-3 text-[11px]">
+                      {/* Syarat box bila ada */}
+                      {currentFormDef.syarat && currentFormDef.syarat.length > 0 && (
+                        <div className="border border-black p-2 text-[10px] leading-relaxed">
+                          <div className="font-bold">Syarat &amp; Hal yang perlu dilampirkan:</div>
+                          <ul className="list-disc list-inside pl-1 space-y-0.5">
+                            {currentFormDef.syarat.map((s, idx) => (
+                              <li key={idx}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Render fields with dotted lines */}
+                      <div className="space-y-1.5 pt-1">
+                        {currentFormDef.fields.map((fld) => {
+                          const val = formValues[fld.key]
+                          if (fld.type === 'textarea') {
+                            return (
+                              <div key={fld.key} className="space-y-0.5 pt-1">
+                                <div className="font-semibold">{fld.label} :</div>
+                                <div className="border border-black p-2 whitespace-pre-wrap min-h-[50px]">
+                                  {val || ''}
+                                </div>
+                              </div>
+                            )
+                          }
+                          return (
+                            <DottedField
+                              key={fld.key}
+                              label={fld.label}
+                              value={val}
+                            />
+                          )
+                        })}
+                      </div>
+
+                      {/* Standard Signature Block */}
+                      <div className="pt-8">
+                        <div className="text-right italic text-[10px] pb-2">
+                          {currentDateFormatted}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                          <div className="space-y-14">
+                            <div>Pemohon / Yang Bersangkutan</div>
+                            <div className="font-bold underline">
+                              ( {formValues.nama_lengkap || formValues.nama_calon || formValues.nama_sendiri || formValues.nama_kk || formValues.nama_ayah || '..............................'} )
                             </div>
                           </div>
-                        )
-                      }
-                      return (
-                        <DottedField
-                          key={fld.key}
-                          label={fld.label}
-                          value={val}
-                        />
-                      )
-                    })}
-                  </div>
 
-                  {/* Standard Signature Block */}
-                  <div className="pt-8">
-                    <div className="text-right italic text-[10px] pb-2">
-                      {currentDateFormatted}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                      <div className="space-y-14">
-                        <div>Pemohon / Yang Bersangkutan</div>
-                        <div className="font-bold underline">
-                          ( {formValues.nama_lengkap || formValues.nama_calon || formValues.nama_sendiri || formValues.nama_kk || formValues.nama_ayah || '..............................'} )
-                        </div>
-                      </div>
+                          <div className="space-y-14">
+                            <div>Ketua {formatNamaLingkungan(lingkunganName)}</div>
+                            <div className="font-bold underline">
+                              ( {pengurus.ketua_nama || '..............................'} )
+                            </div>
+                          </div>
 
-                      <div className="space-y-14">
-                        <div>Ketua {formatNamaLingkungan(lingkunganName)}</div>
-                        <div className="font-bold underline">
-                          ( {pengurus.ketua_nama || '..............................'} )
-                        </div>
-                      </div>
-
-                      <div className="space-y-14">
-                        <div>Mengetahui Sekretariat / Pastor Paroki</div>
-                        <div className="font-bold underline">
-                          ( Paroki Santa Clara )
+                          <div className="space-y-14">
+                            <div>Mengetahui Sekretariat / Pastor Paroki</div>
+                            <div className="font-bold underline">
+                              ( Paroki Santa Clara )
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
