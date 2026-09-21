@@ -40,12 +40,12 @@ export const TRANSACTION_TYPES: TransactionTypeOption[] = [
   { code: '5250', name: 'Bantuan Sosial Internal', category: 'KELUAR', defaultCoaDebit: '5250', defaultCoaKredit: '1100' },
   { code: '5260', name: 'Bantuan Sosial Eksternal', category: 'KELUAR', defaultCoaDebit: '5260', defaultCoaKredit: '1100' },
   { code: '5270', name: 'Pastoran (Dahar Romo)', category: 'KELUAR', defaultCoaDebit: '5270', defaultCoaKredit: '1100' },
-  { code: '5280', name: 'Sumbangan Dana ASAK', category: 'KELUAR', defaultCoaDebit: '5280', defaultCoaKredit: '1100' },
-  { code: '5290', name: 'Sumbangan Dana Pastoran', category: 'KELUAR', defaultCoaDebit: '5290', defaultCoaKredit: '1100' },
-  { code: '5300', name: 'Sumbangan Dana APP', category: 'KELUAR', defaultCoaDebit: '5300', defaultCoaKredit: '1100' },
-  { code: '5310', name: 'Sumbangan Dana Aksi Natal', category: 'KELUAR', defaultCoaDebit: '5310', defaultCoaKredit: '1100' },
-  { code: '5320', name: 'Sumbangan Dana PPG', category: 'KELUAR', defaultCoaDebit: '5320', defaultCoaKredit: '1100' },
-  { code: '5340', name: 'Sumbangan Kematian / St. Yusuf', category: 'KELUAR', defaultCoaDebit: '5340', defaultCoaKredit: '1100' },
+  { code: '5280', name: 'Sumbangan Kematian / St. Yusuf', category: 'KELUAR', defaultCoaDebit: '5280', defaultCoaKredit: '1100' },
+  { code: '5290', name: 'Sumbangan Dana ASAK', category: 'KELUAR', defaultCoaDebit: '5290', defaultCoaKredit: '1100' },
+  { code: '5300', name: 'Sumbangan Dana Pastoran', category: 'KELUAR', defaultCoaDebit: '5300', defaultCoaKredit: '1100' },
+  { code: '5310', name: 'Sumbangan Dana APP', category: 'KELUAR', defaultCoaDebit: '5310', defaultCoaKredit: '1100' },
+  { code: '5320', name: 'Sumbangan Dana Aksi Natal', category: 'KELUAR', defaultCoaDebit: '5320', defaultCoaKredit: '1100' },
+  { code: '5340', name: 'Sumbangan Dana PPG', category: 'KELUAR', defaultCoaDebit: '5340', defaultCoaKredit: '1100' },
   { code: '5350', name: 'Kolekte yg disetor ke Paroki', category: 'KELUAR', defaultCoaDebit: '5350', defaultCoaKredit: '1100' },
   { code: '5900', name: 'Pengeluaran Lainnya', category: 'KELUAR', defaultCoaDebit: '5900', defaultCoaKredit: '1100' }
 ];

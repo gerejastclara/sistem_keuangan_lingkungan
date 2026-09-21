@@ -52,6 +52,7 @@ export const DEFAULT_MASTER_COA_LIST: MasterCOAItem[] = [
   { id: '5300', nama_akun: 'Sumbangan Dana Pastoran', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Dukungan operasional pastoran' },
   { id: '5310', nama_akun: 'Sumbangan Dana APP', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Penyetoran kotak APP ke paroki' },
   { id: '5320', nama_akun: 'Sumbangan Dana Aksi Natal', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Penyetoran aksi Natal ke paroki' },
+  { id: '5340', nama_akun: 'Sumbangan Dana PPG', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Panitia Pembangunan Gereja' },
   { id: '5350', nama_akun: 'Kolekte yg disetor ke Paroki', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Penyetoran kolekte misa / ibadat ke paroki' },
   { id: '5900', nama_akun: 'Pengeluaran lainnya', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Pengeluaran operasional lain-lain' }
 ]
