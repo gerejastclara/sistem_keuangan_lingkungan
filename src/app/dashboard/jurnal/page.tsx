@@ -105,10 +105,10 @@ export default function JurnalPage() {
   const [searchDocQuery, setSearchDocQuery] = useState('')
 
   // Sequential Step-by-Step Form State
-  // Step 1: Uang Masuk / Uang Keluar & Opsi Rekening Kas/Bank
   const [step1Arus, setStep1Arus] = useState<'MASUK' | 'KELUAR' | null>(null)
   const [selectedRekening, setSelectedRekening] = useState<'KAS' | 'BANK'>('BANK')
-  const [sumberSetoran, setSumberSetoran] = useState<'SENDIRI' | 'DANA_LINGKUNGAN'>('SENDIRI')
+  const [sumberSetoran, setSumberSetoran] = useState<'SENDIRI' | 'PAROKI' | 'DANA_LINGKUNGAN' | 'ORANG_LAIN'>('SENDIRI')
+  const [sumberSetoranPenalang, setSumberSetoranPenalang] = useState<string>('')
   const [noBuktiCustom, setNoBuktiCustom] = useState<string>('')
 
   // Step 2: Jenis Transaksi
@@ -567,7 +567,23 @@ export default function JurnalPage() {
 
     const kkObj = kkList.find(k => k.id === step3KkId)
     const rawKet = step5Keterangan.trim() || (step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
-    const displayKet = rawKet
+    let displayKet = rawKet
+    if (step1Arus === 'MASUK') {
+      if (sumberSetoran === 'ORANG_LAIN' && sumberSetoranPenalang.trim()) {
+        const penalangTag = `(Ditalangi ${sumberSetoranPenalang.trim()})`
+        if (!displayKet.includes(penalangTag)) {
+          displayKet = `${displayKet} ${penalangTag}`.trim()
+        }
+      } else if (sumberSetoran === 'PAROKI') {
+        if (!displayKet.toLowerCase().includes('talangan paroki') && !displayKet.toLowerCase().includes('ditalangi paroki')) {
+          displayKet = `${displayKet} (Ditalangi Paroki)`.trim()
+        }
+      } else if (sumberSetoran === 'DANA_LINGKUNGAN') {
+        if (!displayKet.toLowerCase().includes('dana lingkungan') && !displayKet.toLowerCase().includes('subsidi')) {
+          displayKet = `${displayKet} (Dari Dana Lingkungan)`.trim()
+        }
+      }
+    }
 
     const dbLingkunganId = getLingkunganDbUuid(lingkunganId)
     const validKkId = (step3KkId && !step3KkId.startsWith('dummy-') && step3KkId !== 'umum' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(step3KkId)) ? step3KkId : null
@@ -683,6 +699,8 @@ export default function JurnalPage() {
     setStep2Jenis('')
     setStep2ManualJenis('')
     setStep3KkId('')
+    setSumberSetoran('SENDIRI')
+    setSumberSetoranPenalang('')
     setStep4NominalNumeric(0)
     setStep4NominalInput('Rp 0')
     setStep5Keterangan('')
@@ -1116,11 +1134,13 @@ export default function JurnalPage() {
 
               {/* Status Sumber Setoran jika Uang Masuk & KK dipilih */}
               {step1Arus === 'MASUK' && step3KkId && step3KkId !== 'umum' && (
-                <div className="p-3 bg-slate-50/60 border border-slate-200/70 rounded-xl space-y-2">
-                  <div className="text-xs font-semibold text-slate-600">
-                    Sumber Pembayaran Setoran:
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                  <div className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span>Sumber Pembayaran Setoran:</span>
+                    <span className="text-[11px] text-slate-500 font-normal">Pilih status/sumber dana setoran</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* 1. Mandiri */}
                     <button
                       type="button"
                       onClick={() => setSumberSetoran('SENDIRI')}
@@ -1132,12 +1152,31 @@ export default function JurnalPage() {
                     >
                       <span>Bayar Sendiri (Mandiri)</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'SENDIRI' ? 'bg-slate-200/90 text-slate-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                        sumberSetoran === 'SENDIRI' ? 'bg-emerald-100 text-emerald-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
                       }`}>
                         Umat Mandiri
                       </span>
                     </button>
 
+                    {/* 2. Ditalangi Paroki */}
+                    <button
+                      type="button"
+                      onClick={() => setSumberSetoran('PAROKI')}
+                      className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
+                        sumberSetoran === 'PAROKI'
+                          ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                          : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                      }`}
+                    >
+                      <span>Ditalangi Paroki</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                        sumberSetoran === 'PAROKI' ? 'bg-sky-100 text-sky-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                      }`}>
+                        Talangan Paroki
+                      </span>
+                    </button>
+
+                    {/* 3. Dari Dana Lingkungan */}
                     <button
                       type="button"
                       onClick={() => setSumberSetoran('DANA_LINGKUNGAN')}
@@ -1149,12 +1188,45 @@ export default function JurnalPage() {
                     >
                       <span>Dari Dana Lingkungan</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-slate-200/90 text-slate-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                        sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-purple-100 text-purple-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
                       }`}>
                         Disubsidi Kas
                       </span>
                     </button>
+
+                    {/* 4. Ditalangi Orang Lain */}
+                    <button
+                      type="button"
+                      onClick={() => setSumberSetoran('ORANG_LAIN')}
+                      className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
+                        sumberSetoran === 'ORANG_LAIN'
+                          ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                          : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                      }`}
+                    >
+                      <span>Ditalangi Orang Lain</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                        sumberSetoran === 'ORANG_LAIN' ? 'bg-amber-100 text-amber-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                      }`}>
+                        Talangan Donatur
+                      </span>
+                    </button>
                   </div>
+
+                  {sumberSetoran === 'ORANG_LAIN' && (
+                    <div className="pt-1.5 animate-fadeIn">
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        Nama Yang Menalangi / Donatur (Keterangan):
+                      </label>
+                      <input
+                        type="text"
+                        value={sumberSetoranPenalang}
+                        onChange={(e) => setSumberSetoranPenalang(e.target.value)}
+                        placeholder="Contoh: Bpk. Andreas / Ibu Maria / Donatur Kasih"
+                        className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-500 bg-white"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1430,8 +1502,24 @@ export default function JurnalPage() {
                         <TableCell className="text-slate-800 font-medium">
                           <div className="font-semibold text-slate-900">{displayKetClean}</div>
                           {j.sumber_setoran && (
-                            <span className="inline-block mt-1 text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/80">
-                              {j.sumber_setoran === 'DANA_LINGKUNGAN' ? 'Disubsidi Lingkungan' : 'Bayar Mandiri'}
+                            <span
+                              className={`inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded border ${
+                                j.sumber_setoran === 'DANA_LINGKUNGAN'
+                                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                  : j.sumber_setoran === 'PAROKI'
+                                  ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                  : j.sumber_setoran === 'ORANG_LAIN'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}
+                            >
+                              {j.sumber_setoran === 'DANA_LINGKUNGAN'
+                                ? 'Disubsidi Lingkungan'
+                                : j.sumber_setoran === 'PAROKI'
+                                ? 'Ditalangi Paroki'
+                                : j.sumber_setoran === 'ORANG_LAIN'
+                                ? 'Ditalangi Donatur'
+                                : 'Bayar Mandiri'}
                             </span>
                           )}
                         </TableCell>

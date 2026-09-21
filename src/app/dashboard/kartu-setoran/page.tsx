@@ -355,7 +355,8 @@ export default function KartuSetoranPage() {
       (j.keterangan || '').toLowerCase().includes('ditalangi')
     ) {
       sumber = 'ORANG_LAIN'
-      penalangNama = j.keterangan || undefined
+      const match = (j.keterangan || '').match(/\(Ditalangi\s+([^)]+)\)/i)
+      penalangNama = match ? match[1].trim() : (j.keterangan || undefined)
     }
 
     const current = kkMonths[month]
