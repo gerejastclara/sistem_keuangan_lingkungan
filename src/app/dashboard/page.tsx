@@ -734,7 +734,7 @@ export default function DashboardOverviewPage() {
             <button
               type="button"
               onClick={handleOpenEditPengurus}
-              className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#A9834F] hover:bg-[#8e6d3e] text-white px-3 py-1.5 rounded-lg shadow-xs transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg shadow-xs transition cursor-pointer"
               title="Khusus Sekretaris: Tentukan susunan Ketua, Bendahara, dan Sekretaris Lingkungan"
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -974,7 +974,7 @@ export default function DashboardOverviewPage() {
             <Button
               type="submit"
               disabled={savingPengurus}
-              className="h-9 text-xs bg-[#A9834F] hover:bg-[#8e6d3e] text-white font-bold cursor-pointer"
+              className="h-9 text-xs bg-slate-700 hover:bg-slate-800 text-white font-bold cursor-pointer rounded-xl"
             >
               {savingPengurus ? 'Menyimpan...' : 'Simpan Susunan Pengurus'}
             </Button>
@@ -1447,7 +1447,7 @@ export default function DashboardOverviewPage() {
 
         <div className="flex gap-2.5 shrink-0">
           <Link href="/dashboard/jurnal">
-            <Button className="bg-[#A9834F] hover:bg-[#967443] text-white font-bold px-4 py-2.5 rounded-xl shadow-xs cursor-pointer transition-all">
+            <Button className="bg-slate-700 hover:bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl shadow-xs cursor-pointer transition-all">
               <Receipt className="w-4 h-4 mr-2 text-white" />
               Input Jurnal
             </Button>

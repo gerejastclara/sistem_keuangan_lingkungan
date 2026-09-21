@@ -24,7 +24,8 @@ import {
   Coins,
   RefreshCw,
   Database,
-  Info
+  Info,
+  Pencil
 } from 'lucide-react'
 
 const MONTH_OPTIONS = [
@@ -70,6 +71,14 @@ export default function CoaSaldoPage() {
   const [newCoaCat, setNewCoaCat] = useState<'KAS' | 'PENERIMAAN' | 'PENGELUARAN'>('PENERIMAAN')
   const [newCoaDesc, setNewCoaDesc] = useState('')
   const [syncingCoa, setSyncingCoa] = useState(false)
+
+  // Edit COA State
+  const [isEditCoaOpen, setIsEditCoaOpen] = useState(false)
+  const [editingCoaCode, setEditingCoaCode] = useState('')
+  const [editingCoaName, setEditingCoaName] = useState('')
+  const [editingCoaType, setEditingCoaType] = useState<'DEBIT' | 'KREDIT'>('DEBIT')
+  const [editingCoaCat, setEditingCoaCat] = useState<'KAS' | 'PENERIMAAN' | 'PENGELUARAN'>('PENGELUARAN')
+  const [editingCoaDesc, setEditingCoaDesc] = useState('')
 
   // Format currency helper
   const formatCurrencyString = (val: number): string => {
@@ -265,6 +274,48 @@ export default function CoaSaldoPage() {
     setTimeout(() => setSuccessMsg(null), 3500)
   }
 
+  const handleOpenEditCOA = (item: MasterCOAItem) => {
+    setEditingCoaCode(item.id)
+    setEditingCoaName(item.nama_akun)
+    setEditingCoaType(item.tipe)
+    setEditingCoaCat(item.kategori)
+    setEditingCoaDesc(item.keterangan || '')
+    setIsEditCoaOpen(true)
+  }
+
+  const handleSaveEditCOA = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingCoaCode || !editingCoaName.trim()) {
+      alert('Nama akun COA wajib diisi!')
+      return
+    }
+
+    const updatedItem: MasterCOAItem = {
+      id: editingCoaCode,
+      nama_akun: editingCoaName.trim(),
+      tipe: editingCoaType,
+      kategori: editingCoaCat,
+      keterangan: editingCoaDesc.trim() || undefined
+    }
+
+    // 1. Simpan ke local storage
+    const updatedList = saveCustomCOA(updatedItem)
+    setCoaList(updatedList)
+
+    // 2. Upsert ke Supabase
+    try {
+      await supabase.from('coa').upsert({
+        id: updatedItem.id,
+        nama_akun: updatedItem.nama_akun,
+        tipe: updatedItem.tipe
+      }, { onConflict: 'id' })
+    } catch (err) {}
+
+    setIsEditCoaOpen(false)
+    setSuccessMsg(`Akun COA ${updatedItem.id} - ${updatedItem.nama_akun} berhasil diperbarui!`)
+    setTimeout(() => setSuccessMsg(null), 3500)
+  }
+
   const handleSyncCoaDatabase = async () => {
     setSyncingCoa(true)
     const result = await syncAllCoaToDatabase(supabase)
@@ -402,7 +453,7 @@ export default function CoaSaldoPage() {
                 <Button
                   type="submit"
                   disabled={saving}
-                  className="bg-[#A9834F] hover:bg-[#967443] text-white font-bold h-11 px-6 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
+                  className="bg-slate-700 hover:bg-slate-800 text-white font-bold h-11 px-6 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
                 >
                   <span>✓</span>
                   {saving ? 'Menyimpan Saldo Awal...' : 'Simpan Saldo Awal'}
@@ -440,11 +491,11 @@ export default function CoaSaldoPage() {
               {syncingCoa ? 'Menyinkronkan...' : 'Sinkronkan ke Database'}
             </Button>
 
-            {/* Tombol Tambahkan COA Baru (Warna Gold #A9834F, 1 plus icon) */}
+            {/* Tombol Tambahkan COA Baru */}
             <Button
               type="button"
               onClick={() => setIsAddCoaOpen(true)}
-              className="bg-[#A9834F] hover:bg-[#967443] text-white text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 cursor-pointer flex items-center gap-1.5 shadow-xs transition-all"
+              className="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 cursor-pointer flex items-center gap-1.5 shadow-xs transition-all"
             >
               <Plus className="w-4 h-4 text-white" />
               Tambah COA Baru
@@ -509,12 +560,13 @@ export default function CoaSaldoPage() {
                 <TableHead className="text-slate-800 font-bold">Nama Akun COA</TableHead>
                 <TableHead className="text-slate-800 font-bold">Kategori / Klasifikasi</TableHead>
                 <TableHead className="w-28 text-center text-slate-800 font-bold">Saldo Normal</TableHead>
+                <TableHead className="w-24 text-center text-slate-800 font-bold">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100 text-xs">
               {filteredCoaList.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-slate-400">
+                  <TableCell colSpan={5} className="text-center py-8 text-slate-400">
                     Tidak ada akun COA yang cocok dengan pencarian.
                   </TableCell>
                 </TableRow>
@@ -547,6 +599,19 @@ export default function CoaSaldoPage() {
                       <span className="text-xs font-mono font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-2.5 py-0.5 rounded-md">
                         {c.tipe}
                       </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleOpenEditCOA(c)}
+                        className="h-7 px-2 text-slate-700 hover:text-slate-950 hover:bg-slate-100 rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer border border-slate-200 shadow-2xs"
+                        title="Edit data akun COA ini"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Edit</span>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -671,9 +736,115 @@ export default function CoaSaldoPage() {
               </Button>
               <Button
                 type="submit"
-                className="bg-[#A9834F] hover:bg-[#967443] text-white font-bold rounded-xl px-5 h-10 cursor-pointer transition-all"
+                className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl px-5 h-10 cursor-pointer transition-all"
               >
                 Simpan COA Baru
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL / DIALOG EDIT COA */}
+      <Dialog open={isEditCoaOpen} onOpenChange={setIsEditCoaOpen}>
+        <DialogContent className="sm:max-w-lg bg-white border-slate-200 text-slate-900 rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900 font-bold text-lg flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-slate-700" />
+              Edit Akun COA ({editingCoaCode})
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Perbarui nama akun, klasifikasi, saldo normal, atau keterangan COA ini.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveEditCOA} className="space-y-4 py-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="editCode" className="text-xs font-bold text-slate-700">Kode Akun</Label>
+                <Input
+                  id="editCode"
+                  value={editingCoaCode}
+                  disabled
+                  className="bg-slate-100 border-slate-300 font-mono font-bold text-sm text-slate-700 cursor-not-allowed rounded-xl"
+                />
+                <p className="text-[10px] text-slate-400">Kode akun dikunci agar integritas jurnal tetap terjaga</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="editCat" className="text-xs font-bold text-slate-700">Kategori / Klasifikasi *</Label>
+                <Select
+                  value={editingCoaCat}
+                  onValueChange={(val: any) => {
+                    setEditingCoaCat(val)
+                    if (val === 'PENERIMAAN') setEditingCoaType('KREDIT')
+                    else if (val === 'PENGELUARAN' || val === 'KAS') setEditingCoaType('DEBIT')
+                  }}
+                >
+                  <SelectTrigger id="editCat" className="bg-white border-slate-300 rounded-xl font-bold text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 text-slate-900">
+                    <SelectItem value="KAS">Kas & Bank (1xxx)</SelectItem>
+                    <SelectItem value="PENERIMAAN">Penerimaan (4xxx)</SelectItem>
+                    <SelectItem value="PENGELUARAN">Pengeluaran (5xxx)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="editName" className="text-xs font-bold text-slate-700">Nama Akun COA *</Label>
+              <Input
+                id="editName"
+                value={editingCoaName}
+                onChange={(e) => setEditingCoaName(e.target.value)}
+                placeholder="Contoh: Kolekte yg disetor ke Paroki"
+                className="bg-white border-slate-300 rounded-xl font-medium text-xs text-slate-900"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="editType" className="text-xs font-bold text-slate-700">Saldo Normal Akun *</Label>
+                <Select value={editingCoaType} onValueChange={(val: any) => setEditingCoaType(val)}>
+                  <SelectTrigger id="editType" className="bg-white border-slate-300 rounded-xl font-bold text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 text-slate-900">
+                    <SelectItem value="KREDIT">KREDIT (Standar Penerimaan)</SelectItem>
+                    <SelectItem value="DEBIT">DEBIT (Standar Pengeluaran & Kas)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="editDesc" className="text-xs font-bold text-slate-700">Keterangan Tambahan</Label>
+                <Input
+                  id="editDesc"
+                  value={editingCoaDesc}
+                  onChange={(e) => setEditingCoaDesc(e.target.value)}
+                  placeholder="Keterangan singkat..."
+                  className="bg-white border-slate-300 rounded-xl text-xs"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditCoaOpen(false)}
+                className="border-slate-300 text-slate-700 rounded-xl cursor-pointer"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl px-5 h-10 cursor-pointer transition-all"
+              >
+                Simpan Perubahan
               </Button>
             </DialogFooter>
           </form>

@@ -548,7 +548,7 @@ export default function AsetPage() {
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-[#A9834F] hover:bg-[#967443] text-white font-bold h-11 px-6 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
+              className="bg-slate-700 hover:bg-slate-800 text-white font-bold h-11 px-6 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
             >
               {submitting ? 'Menyimpan...' : 'Simpan Aset'}
             </Button>
@@ -813,7 +813,7 @@ export default function AsetPage() {
               <Button
                 type="submit"
                 disabled={updating}
-                className="bg-[#A9834F] hover:bg-[#967443] text-white font-bold rounded-xl"
+                className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl"
               >
                 {updating ? 'Menyimpan...' : 'Perbarui Aset'}
               </Button>

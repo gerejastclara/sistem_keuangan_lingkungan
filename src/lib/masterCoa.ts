@@ -61,10 +61,28 @@ const CUSTOM_COA_STORAGE_KEY = 'custom_coa_list_store'
 
 export function getAllMasterCOA(): MasterCOAItem[] {
   let customList: MasterCOAItem[] = []
+  let hasOutdated5350 = false
+
   if (typeof window !== 'undefined') {
     try {
       const raw = localStorage.getItem(CUSTOM_COA_STORAGE_KEY)
-      if (raw) customList = JSON.parse(raw)
+      if (raw) {
+        customList = JSON.parse(raw)
+        // Auto-heal outdated 5350 that was previously saved as 'Pengeluaran lainnya'
+        customList = customList.map((item) => {
+          if (item.id === '5350' && (item.nama_akun.toLowerCase().includes('pengeluaran') || item.nama_akun === 'Pengeluaran lainnya')) {
+            hasOutdated5350 = true
+            return {
+              ...item,
+              nama_akun: 'Kolekte yg disetor ke Paroki',
+              tipe: 'DEBIT' as const,
+              kategori: 'PENGELUARAN' as const,
+              keterangan: 'Penyetoran kolekte misa / ibadat ke paroki'
+            }
+          }
+          return item
+        })
+      }
     } catch (e) {
       console.error('Error reading custom COA:', e)
     }
@@ -74,7 +92,40 @@ export function getAllMasterCOA(): MasterCOAItem[] {
   DEFAULT_MASTER_COA_LIST.forEach((item) => map.set(item.id, item))
   customList.forEach((item) => map.set(item.id, item))
 
-  return Array.from(map.values()).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
+  // Ensure 5350 is always Kolekte yg disetor ke Paroki if it was accidentally overridden with Pengeluaran lainnya
+  const current5350 = map.get('5350')
+  if (current5350 && current5350.nama_akun.toLowerCase().includes('pengeluaran')) {
+    map.set('5350', {
+      id: '5350',
+      nama_akun: 'Kolekte yg disetor ke Paroki',
+      tipe: 'DEBIT',
+      kategori: 'PENGELUARAN',
+      keterangan: 'Penyetoran kolekte misa / ibadat ke paroki'
+    })
+    hasOutdated5350 = true
+  }
+
+  // Ensure 5900 is always Pengeluaran lainnya if not present
+  if (!map.has('5900')) {
+    map.set('5900', {
+      id: '5900',
+      nama_akun: 'Pengeluaran lainnya',
+      tipe: 'DEBIT',
+      kategori: 'PENGELUARAN',
+      keterangan: 'Pengeluaran operasional lain-lain'
+    })
+    hasOutdated5350 = true
+  }
+
+  const result = Array.from(map.values()).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
+
+  if (hasOutdated5350 && typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(CUSTOM_COA_STORAGE_KEY, JSON.stringify(result))
+    } catch (e) {}
+  }
+
+  return result
 }
 
 export function saveCustomCOA(item: MasterCOAItem): MasterCOAItem[] {

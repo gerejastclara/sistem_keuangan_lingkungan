@@ -787,7 +787,7 @@ function DafuFormContent() {
             <Button
               type="button"
               onClick={handleOpenEditPengurus}
-              className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white font-bold rounded-xl h-11 px-4 cursor-pointer shadow-xs"
+              className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl h-11 px-4 cursor-pointer shadow-xs"
               title="Khusus Sekretaris: Tentukan Susunan Ketua, Bendahara, dan Sekretaris Lingkungan"
             >
               <ShieldCheck className="w-4 h-4 mr-1.5" />
@@ -1569,7 +1569,7 @@ function DafuFormContent() {
               <Button
                 type="submit"
                 disabled={savingPengurus}
-                className="h-9 text-xs bg-[#A9834F] hover:bg-[#8e6d3e] text-white font-bold cursor-pointer"
+                className="h-9 text-xs bg-slate-700 hover:bg-slate-800 text-white font-bold cursor-pointer rounded-xl"
               >
                 {savingPengurus ? 'Menyimpan...' : 'Simpan Susunan Pengurus'}
               </Button>

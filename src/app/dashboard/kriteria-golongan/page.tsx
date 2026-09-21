@@ -200,7 +200,7 @@ export default function KriteriaGolonganPage() {
           <Button
             onClick={handleOpenAdd}
             size="sm"
-            className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold cursor-pointer h-10 px-4 shadow-sm"
+            className="bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer h-10 px-4 shadow-sm"
           >
             <Plus className="w-4 h-4 mr-1.5" />
             Tambah Kriteria Golongan
@@ -452,7 +452,7 @@ export default function KriteriaGolonganPage() {
               </Button>
               <Button
                 type="submit"
-                className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold cursor-pointer px-5"
+                className="bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer px-5"
               >
                 {editingItem ? 'Simpan Perubahan' : 'Tambah Parameter'}
               </Button>
