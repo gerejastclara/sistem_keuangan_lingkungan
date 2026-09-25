@@ -190,133 +190,71 @@ export default function KriteriaGolonganPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 px-2 sm:px-4">
       {/* ========================================================================= */}
-      {/* KOP ATAS RESMI KEUSKUPAN AGUNG JAKARTA (KAJ)                              */}
+      {/* KOP ATAS RESMI KEUSKUPAN AGUNG JAKARTA (KAJ) - SESUAI SAMPUL ASLI DUPRAS  */}
       {/* ========================================================================= */}
-      <div className="relative overflow-hidden rounded-3xl border border-amber-900/15 bg-gradient-to-br from-[#1E293B] via-[#0F172A] to-[#0A0F1D] text-white p-6 sm:p-8 shadow-xl">
-        {/* Subtle decorative ornaments */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20"></div>
-
-        <div className="relative z-10 space-y-5">
-          {/* Header Row: Emblems & Institution Identity */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center shrink-0 shadow-inner">
-                <Landmark className="w-6 h-6 text-amber-300" />
-              </div>
-              <div>
-                <span className="text-[11px] font-black tracking-widest text-amber-400 uppercase font-serif">
-                  Keuskupan Agung Jakarta (KAJ)
-                </span>
-                <p className="text-xs text-slate-300 font-medium">
-                  Tim Sinergi Bidang Prioritas 5 & Komisi Pengembangan Sosial Ekonomi (PSE) Tahun 2025
-                </p>
-              </div>
-            </div>
-
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-white/10 border border-white/15 text-slate-200 self-start sm:self-auto backdrop-blur-sm">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Modul Sekretariat & Reksa Pastoral Umat</span>
-            </div>
+      <div className="bg-white border border-slate-300 rounded-2xl shadow-xs overflow-hidden">
+        <div className="py-10 px-6 sm:px-12 text-center space-y-7">
+          <div>
+            <h2 className="text-sm sm:text-base font-bold tracking-widest text-slate-900 uppercase">
+              PEDOMAN KONSEP
+            </h2>
           </div>
 
-          {/* Title & Pastoral Theme */}
-          <div className="space-y-2">
-            <h1 className="text-xl sm:text-3xl font-black tracking-tight text-white font-serif">
-              PEDOMAN KONSEP DATA UMAT PRA-SEJAHTERA (DUPRAS)
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              DATA UMAT PRA-SEJAHTERA
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-4xl leading-relaxed">
-              <strong className="text-amber-300">Arah Dasar KAJ 2022–2026:</strong> Nilai-nilai Ajaran Sosial Gereja — 
-              Tema Tahun 2025: <em className="text-slate-100 font-serif">&ldquo;Kepedulian Lebih kepada Saudara yang Lemah dan Miskin&rdquo;</em>.
-              Disusun secara terintegrasi dengan <strong className="text-white">BIDUK KAJ</strong> berbasis pendekatan partisipatif lingkungan.
-            </p>
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              (DUPRAS)
+            </h1>
           </div>
 
-          {/* Quick Metrics Bar: 4 Official KAJ Standards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block font-serif">
-                Garis Tidak Mampu
-              </span>
-              <p className="text-sm sm:text-base font-extrabold text-red-400 mt-0.5">
-                Rp 850.000 <span className="text-[10px] font-normal text-slate-300">/kapita/bln</span>
-              </p>
-              <span className="text-[10px] text-slate-400 block mt-0.5">
-                Susenas BPS DKI (RT: Rp 4.250.000)
-              </span>
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block font-serif">
-                Garis Rentan Tidak Mampu
-              </span>
-              <p className="text-sm sm:text-base font-extrabold text-amber-400 mt-0.5">
-                Rp 1.700.000 <span className="text-[10px] font-normal text-slate-300">/kapita/bln</span>
-              </p>
-              <span className="text-[10px] text-slate-400 block mt-0.5">
-                2x Garis Tidak Mampu (RT: Rp 8.5M)
-              </span>
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block font-serif">
-                Pendataan-1 (Tahap 1)
-              </span>
-              <p className="text-sm sm:text-base font-bold text-emerald-300 mt-0.5">
-                Skrining BIDUK
-              </p>
-              <span className="text-[10px] text-slate-400 block mt-0.5">
-                5 Data Pokok & 5 Tambahan Risiko
-              </span>
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block font-serif">
-                Pendataan-2 (Tahap 2)
-              </span>
-              <p className="text-sm sm:text-base font-bold text-sky-300 mt-0.5">
-                Survei Lapangan
-              </p>
-              <span className="text-[10px] text-slate-400 block mt-0.5">
-                Ukur Rasio Z = Y/X (Pengeluaran RT)
-              </span>
-            </div>
+          <div>
+            <h3 className="text-base sm:text-xl font-bold tracking-wide text-slate-900 uppercase">
+              KEUSKUPAN AGUNG JAKARTA
+            </h3>
           </div>
 
-          {/* Action Row */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div className="pt-8 max-w-md mx-auto text-xs sm:text-sm font-medium text-slate-800 space-y-1 leading-relaxed">
+            <p>Tim Sinergi Bidang Prioritas 5 dan</p>
+            <p>Komisi Pengembangan Sosial Ekonomi</p>
+            <p className="font-semibold text-slate-900">Tahun 2025</p>
+          </div>
+        </div>
+
+        {/* Action Toolbar */}
+        <div className="bg-slate-50 border-t border-slate-200 px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsDetailPedomanOpen(!isDetailPedomanOpen)}
+            className="border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer h-9"
+          >
+            <BookOpen className="w-3.5 h-3.5 mr-1.5 text-slate-600" />
+            {isDetailPedomanOpen ? 'Tutup Ringkasan Alur' : 'Lihat Ringkasan Alur 2 Tahap DUPRAS'}
+            {isDetailPedomanOpen ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
+          </Button>
+
+          <div className="flex items-center gap-2">
             <Button
-              type="button"
+              onClick={handleResetToDefault}
               variant="outline"
               size="sm"
-              onClick={() => setIsDetailPedomanOpen(!isDetailPedomanOpen)}
-              className="bg-white/10 hover:bg-white/20 text-slate-100 border-white/20 rounded-xl text-xs font-semibold cursor-pointer h-9"
+              className="border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer h-9"
             >
-              <BookOpen className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
-              {isDetailPedomanOpen ? 'Tutup Ringkasan Alur DUPRAS' : 'Lihat Ringkasan Alur 2 Tahap DUPRAS'}
-              {isDetailPedomanOpen ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
+              <RotateCcw className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
+              Reset 4 Baku KAJ
             </Button>
 
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={handleResetToDefault}
-                variant="outline"
-                size="sm"
-                className="bg-white/10 hover:bg-white/20 text-slate-200 border-white/20 rounded-xl text-xs font-medium cursor-pointer h-9"
-              >
-                <RotateCcw className="w-3.5 h-3.5 mr-1.5 text-slate-300" />
-                Reset 4 Baku KAJ
-              </Button>
-
-              <Button
-                onClick={handleOpenAdd}
-                size="sm"
-                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs cursor-pointer h-9 px-3.5 shadow-md"
-              >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Tambah Kriteria
-              </Button>
-            </div>
+            <Button
+              onClick={handleOpenAdd}
+              size="sm"
+              className="bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs cursor-pointer h-9 px-4 shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              Tambah Kriteria
+            </Button>
           </div>
         </div>
       </div>
@@ -325,15 +263,15 @@ export default function KriteriaGolonganPage() {
       {/* EXPANDABLE PEDOMAN DUPRAS SUMMARY (2 TAHAP PENDATAAN & TOLAK UKUR BPS)   */}
       {/* ========================================================================= */}
       {isDetailPedomanOpen && (
-        <Card className="border-amber-200/90 bg-gradient-to-b from-amber-50/60 to-white rounded-3xl shadow-sm animate-in fade-in duration-200">
-          <CardHeader className="pb-3 border-b border-amber-100">
-            <div className="flex items-center gap-2 text-amber-900 font-serif">
-              <Scale className="w-5 h-5 text-amber-700" />
-              <CardTitle className="text-base font-black">
+        <Card className="border-slate-300 bg-white rounded-2xl shadow-xs animate-in fade-in duration-150">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2 text-slate-900">
+              <Scale className="w-4 h-4 text-slate-700" />
+              <CardTitle className="text-sm sm:text-base font-bold text-slate-900">
                 Ringkasan Resmi Metodologi Pendataan DUPRAS Keuskupan Agung Jakarta
               </CardTitle>
             </div>
-            <CardDescription className="text-xs text-amber-800/80">
+            <CardDescription className="text-xs text-slate-500">
               Disarikan dari Dokumen Resmi &ldquo;Pedoman Konsep Data Umat Pra-Sejahtera (DUPRAS)&rdquo; KAJ 2025
             </CardDescription>
           </CardHeader>
