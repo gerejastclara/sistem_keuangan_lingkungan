@@ -1230,9 +1230,9 @@ function DafuFormContent() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl h-11 px-6 shadow-md cursor-pointer w-full sm:w-auto"
+                className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl h-11 px-6 shadow-xs cursor-pointer w-full sm:w-auto transition-all"
               >
-                <Save className="w-4 h-4 mr-2 text-emerald-400" />
+                <Save className="w-4 h-4 mr-2 text-white" />
                 {submitting ? 'Menyimpan...' : 'Simpan Data Lengkap'}
               </Button>
             </div>
@@ -1430,7 +1430,7 @@ function DafuFormContent() {
                                   <Button
                                     size="sm"
                                     onClick={() => populateFormForEdit(kk, anggotaMap[kk.id], golonganMap[kk.id])}
-                                    className="h-7 text-[11px] bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg cursor-pointer inline-flex items-center gap-1"
+                                    className="h-7 text-[11px] bg-slate-700 hover:bg-slate-800 text-white font-medium rounded-lg cursor-pointer inline-flex items-center gap-1 transition-all"
                                   >
                                     <Pencil className="w-3 h-3" />
                                     Edit Anggota

@@ -288,7 +288,7 @@ export default function KriteriaGolonganPage() {
             <Button
               onClick={handleOpenAdd}
               size="sm"
-              className="bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs cursor-pointer h-9 px-4 shadow-xs"
+              className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer h-9 px-4 shadow-xs transition-all"
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
               Tambah Kriteria
