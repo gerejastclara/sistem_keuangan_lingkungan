@@ -349,15 +349,21 @@ export default function KriteriaGolonganPage() {
                 <p className="text-slate-600 leading-relaxed">
                   Hanya dilakukan terhadap keluarga dengan status <strong>Terduga Pra Sejahtera</strong> melalui survei kunjungan langsung by name by address oleh Tim Pengurus Lingkungan.
                 </p>
-                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1 text-[11px]">
-                  <span className="font-bold text-amber-950 block">Formula Perhitungan Rasio Pengeluaran Riil (Z):</span>
-                  <div className="font-mono font-bold text-xs text-amber-900 bg-white p-2 rounded-lg border border-amber-200 text-center">
-                    Z = (Jumlah Pengeluaran RT per Bulan [Y]) / (Jumlah Seluruh ART [X])
-                  </div>
-                  <ul className="space-y-1 mt-1 text-slate-700">
-                    <li>• <strong>Z &ge; Rp 1.700.000,-</strong> &rarr; Tergolong <strong>SEJAHTERA</strong></li>
-                    <li>• <strong>Rp 850.000,- &lt; Z &lt; Rp 1.700.000,-</strong> &rarr; Tergolong <strong>RENTAN TIDAK MAMPU</strong></li>
-                    <li>• <strong>Z &le; Rp 850.000,-</strong> &rarr; Tergolong <strong>TIDAK MAMPU</strong></li>
+                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2 text-[11px]">
+                  <span className="font-bold text-amber-950 block">Patokan Standar Pengeluaran Keluarga:</span>
+                  <ul className="space-y-1.5 text-slate-700">
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span><strong>Di atas Rp 8.500.000,- / bln</strong> (atau &gt; Rp 1,7 jt/orang) &rarr; <strong className="text-emerald-800">SEJAHTERA</strong></span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                      <span><strong>Rp 4.250.000 - Rp 8.500.000 / bln</strong> (Rp 850rb - Rp 1,7 jt/orang) &rarr; <strong className="text-amber-800">RENTAN TIDAK MAMPU</strong></span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                      <span><strong>Di bawah Rp 4.250.000,- / bln</strong> (&lt; Rp 850rb/orang) &rarr; <strong className="text-rose-800">TIDAK MAMPU</strong></span>
+                    </li>
                   </ul>
                 </div>
               </div>

@@ -71,6 +71,44 @@ interface MemberFormItem {
   keterangan: string
 }
 
+function parseIndikatorPoints(text: string): string[] {
+  if (!text) return []
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+
+  if (lines.length > 1) {
+    return lines.map((l) => l.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean)
+  }
+
+  if (text.includes('•')) {
+    const parts = text.split('•').map((s) => s.trim()).filter(Boolean)
+    if (parts.length > 1) return parts
+  }
+
+  if (text.includes('(1)') && text.includes('(2)')) {
+    const parts = text.split(/(?=\(\d+\))/g).map((s) => s.trim()).filter(Boolean)
+    return parts
+  }
+
+  return [text]
+}
+
+function renderFormattedText(rawText: string) {
+  const parts = rawText.split(/(\*\*.*?\*\*)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={i} className="font-bold text-slate-900">
+          {part.slice(2, -2)}
+        </strong>
+      )
+    }
+    return <span key={i}>{part}</span>
+  })
+}
+
 function DafuFormContent() {
   const supabase = createClient()
   const router = useRouter()
@@ -981,21 +1019,83 @@ function DafuFormContent() {
                 </div>
               </div>
 
-              {/* Panduan Indikator Kriteria Terpilih */}
+              {/* Panduan Indikator Kriteria Terpilih (Per Poin Inti) */}
               {(() => {
                 const activeKriteria = kriteriaList.find((k) => k.nama === formGolongan)
                 if (!activeKriteria) return null
+                const points = parseIndikatorPoints(activeKriteria.indikator)
                 return (
-                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-xs space-y-1.5 transition-all">
-                    <div className="flex items-center gap-2 font-bold text-slate-800">
-                      <span>{activeKriteria.iconEmoji}</span>
-                      <span>Panduan Indikator: {activeKriteria.nama} ({activeKriteria.subjudul})</span>
+                  <div
+                    className="p-4 rounded-2xl border text-xs space-y-3 transition-all shadow-xs"
+                    style={{
+                      backgroundColor: activeKriteria.bgLight || '#f8fafc',
+                      borderColor: activeKriteria.borderLight || '#e2e8f0',
+                    }}
+                  >
+                    <div
+                      className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b"
+                      style={{ borderColor: activeKriteria.borderLight || '#e2e8f0' }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl leading-none">{activeKriteria.iconEmoji}</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-extrabold text-sm text-slate-900 font-serif">
+                            Panduan Kriteria: {activeKriteria.nama}
+                          </span>
+                          <span
+                            className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/90 border shadow-2xs"
+                            style={{
+                              color: activeKriteria.textColor || '#475569',
+                              borderColor: activeKriteria.borderLight || '#e2e8f0',
+                            }}
+                          >
+                            {activeKriteria.subjudul}
+                          </span>
+                        </div>
+                      </div>
+
+                      {activeKriteria.garisPengeluaran && (
+                        <span className="text-[11px] font-bold text-slate-700 bg-white/95 px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
+                          {activeKriteria.garisPengeluaran}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-slate-600 leading-relaxed">{activeKriteria.indikator}</p>
+
+                    {/* Poin-Poin Inti Indikator */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-serif">
+                        Poin Indikator Penilaian:
+                      </span>
+                      <ul className="space-y-2 bg-white/95 p-3 rounded-xl border border-slate-200/80">
+                        {points.map((pt, pIdx) => (
+                          <li key={pIdx} className="flex items-start gap-2.5 leading-relaxed">
+                            <span
+                              className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
+                              style={{ backgroundColor: activeKriteria.badgeColor || '#16a34a' }}
+                            />
+                            <span className="text-[11.5px] text-slate-700 leading-snug">
+                              {renderFormattedText(pt)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {activeKriteria.contohKondisi && (
+                      <div className="text-[11px] text-slate-600 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/70 flex items-start gap-1.5">
+                        <span className="font-bold text-slate-800 shrink-0">Contoh Kasus:</span>
+                        <span className="italic">&ldquo;{activeKriteria.contohKondisi}&rdquo;</span>
+                      </div>
+                    )}
+
                     {activeKriteria.rekomendasiBantuan && (
-                      <p className="text-[11px] text-slate-500 pt-0.5">
-                        <span className="font-semibold">Rekomendasi Kebijakan:</span> {activeKriteria.rekomendasiBantuan}
-                      </p>
+                      <div
+                        className="pt-2 border-t flex items-start gap-1.5 text-[11px] text-slate-600"
+                        style={{ borderColor: activeKriteria.borderLight || '#e2e8f0' }}
+                      >
+                        <span className="font-bold text-slate-800 shrink-0">Rekomendasi Kebijakan:</span>
+                        <span>{activeKriteria.rekomendasiBantuan}</span>
+                      </div>
                     )}
                   </div>
                 )

@@ -39,16 +39,15 @@ export const DEFAULT_KRITERIA_GOLONGAN: KriteriaGolonganItem[] = [
     borderLight: '#bbf7d0',
     textColor: '#15803d',
     iconEmoji: '🟢',
-    subjudul: 'Keluarga Mandiri / Berdaya (Di Atas Garis Rentan)',
-    garisPengeluaran: 'Z ≥ Rp 1.700.000,- / kapita / bln (atau ≥ Rp 8.500.000,- / RT)',
-    tahapMetode: 'Tahap 1 (Semua Data Pokok = "TIDAK") / Tahap 2 (Z ≥ Rp 1.700.000)',
-    indikator: `• **Hasil Skrining Awal:** Menjawab "TIDAK" pada seluruh 5 indikator Data Pokok kerentanan.
-• **Kondisi Tempat Tinggal:** Rumah permanen & layak (luas ≥ 8 m²/jiwa, bukan kawasan kumuh, sanitasi mandiri).
-• **Status Kepemilikan:** Rumah milik sendiri atau kontrak/sewa mandiri tanpa beban bantuan.
-• **Pekerjaan & Penghasilan:** Kepala keluarga / ART berpenghasilan teratur & bekerja tetap (≥ 40 jam/minggu).
-• **Tingkat Pengeluaran (Z):** Z ≥ Rp 1.700.000,- / kapita / bln (atau pengeluaran RT ≥ Rp 8.500.000,- / bln).
-• **Kemandirian Finansial:** Mandiri memenuhi pangan, papan, pendidikan, & kesehatan tanpa subsidi gereja.`,
-    contohKondisi: 'Karyawan tetap, profesional, wirausaha mandiri dengan penghasilan teratur, keluarga yang berkecukupan dan tidak membutuhkan subsidi sosial gereja.',
+    subjudul: 'Keluarga Mandiri / Berdaya',
+    garisPengeluaran: 'Pengeluaran keluarga di atas Rp 8.500.000,- / bulan',
+    tahapMetode: 'Keluarga Mandiri (Kecukupan Ekonomi)',
+    indikator: `• **Gaji & Penghasilan:** Penghasilan keluarga stabil dan berkecukupan (di atas Rp 8,5 juta per bulan).
+• **Kepemilikan Rumah:** Memiliki rumah tinggal sendiri yang layak & permanen (atau mampu kontrak secara mandiri).
+• **Status Pekerjaan:** Kepala keluarga atau anggota keluarga bekerja tetap (karyawan, PNS, profesional, atau wirausaha).
+• **Kebutuhan Hidup:** Mampu mencukupi kebutuhan makan, sandang, papan, pendidikan anak, dan kesehatan sendiri.
+• **Kemandirian:** Berdaya secara finansial dan tidak membutuhkan subsidi atau bantuan sosial gereja.`,
+    contohKondisi: 'Karyawan tetap swasta/BUMN, pengusaha, profesional dengan penghasilan bulanan teratur dan stabil.',
     rekomendasiBantuan: 'Tidak memerlukan subsidi ekonomi gereja. Diharapkan menjadi penopang gotong-royong, donatur iuran/kolekte lingkungan, serta penggerak solidaritas umat.',
     isDefault: true,
     urutan: 1,
@@ -61,17 +60,16 @@ export const DEFAULT_KRITERIA_GOLONGAN: KriteriaGolonganItem[] = [
     borderLight: '#fef08a',
     textColor: '#a16207',
     iconEmoji: '🟡',
-    subjudul: 'Hasil Skrining Awal (Perlu Verifikasi Pendataan-2)',
-    garisPengeluaran: 'Pengeluaran RT < Rp 8.500.000,- / bln atau terindikasi pada Data Pokok/Tambahan',
-    tahapMetode: 'Tahap 1 (Skrining Awal BIDUK Lingkungan: Minimal 1 jawaban YA/RAGU)',
-    indikator: `• **Hasil Skrining Awal:** Menjawab "YA" atau "RAGU-RAGU" pada minimal satu pertanyaan Data Pokok.
-• **Kawasan & Sanitasi:** Tinggal di kawasan kumuh, lahan tanpa legalitas, luas < 8 m²/jiwa, atau jamban bersama.
-• **Kondisi Fisik Bangunan:** Semi permanen (lantai tanah/kayu murah, dinding rumbia/tanpa plester, tanpa listrik PLN/air terlindung).
-• **Kepemilikan & Pekerjaan:** Rumah bukan milik sendiri (kontrak/sewa/numpang) dan/atau kerja serabutan (< 40 jam/minggu).
-• **Pengeluaran Rumah Tangga:** Pengeluaran keluarga < Rp 8.500.000,- / bln (indikasi awal sebelum rasio per kapita Z).
-• **Faktor Risiko Tambahan:** Anggota keluarga disabilitas, balita risiko stunting/gizi buruk, sakit menahun, atau lansia terlantar.`,
-    contohKondisi: 'Pekerja kontrak/serabutan, keluarga mengontrak di permukiman padat, buruh lepas harian, atau keluarga dengan anggota sakit kronis yang belum disurvei mendalam.',
-    rekomendasiBantuan: 'Wajib dilakukan Pendataan-2 oleh Pengurus Lingkungan (Ketua, PSE, Sekretaris) melalui survei & kunjungan langsung untuk mengumpulkan Data Pendalaman dan menghitung rasio Z.',
+    subjudul: 'Perlu Ditinjau Pengurus Lingkungan',
+    garisPengeluaran: 'Pengeluaran keluarga di bawah Rp 8.500.000,- / bulan (Perlu Ditinjau)',
+    tahapMetode: 'Perlu Verifikasi & Kunjungan Kasih',
+    indikator: `• **Gaji & Penghasilan:** Penghasilan keluarga di bawah Rp 8,5 juta per bulan dan masih belum stabil.
+• **Kepemilikan Rumah:** Belum punya rumah sendiri (masih ngontrak, sewa murah, atau numpang keluarga), atau tinggal di permukiman padat.
+• **Status Pekerjaan:** Belum ada pekerjaan tetap, pekerja kontrak, buruh harian lepas, ojek online, atau kerja serabutan.
+• **Kondisi Khusus:** Memiliki tanggungan berat seperti anggota keluarga sakit kronis menahun, anak balita, lansia, atau difabel.
+• **Tindak Lanjut:** Perlu dikunjungi oleh Pengurus Lingkungan untuk memastikan apakah membutuhkan bantuan sosial gereja.`,
+    contohKondisi: 'Pekerja kontrak, buruh harian, keluarga yang mengontrak di gang sempit, atau keluarga dengan penghasilan tidak menentu.',
+    rekomendasiBantuan: 'Wajib dikunjungi oleh Pengurus Lingkungan (Ketua, Seksi Sosial/PSE, Sekretaris) untuk melihat langsung kondisi riil keluarga.',
     isDefault: true,
     urutan: 2,
   },
@@ -83,16 +81,15 @@ export const DEFAULT_KRITERIA_GOLONGAN: KriteriaGolonganItem[] = [
     borderLight: '#fed7aa',
     textColor: '#c2410c',
     iconEmoji: '🟠',
-    subjudul: 'Waspada Kerentanan (Antara 1x s/d 2x Garis Kemiskinan)',
-    garisPengeluaran: 'Rp 850.000,- < Z < Rp 1.700.000,- / kapita / bln (RT: Rp 4.250.000 - Rp 8.500.000 / bln)',
-    tahapMetode: 'Hasil Pendataan-2 (Survei Langsung Nilai Pengeluaran Z = Y / X)',
-    indikator: `• **Tingkat Kerentanan:** Berada di atas Garis Kemiskinan, namun rentan jatuh miskin akibat inflasi, PHK, sakit keras, atau musibah.
-• **Rasio Pengeluaran Riil (Z):** Rp 850.000,- < Z < Rp 1.700.000,- / kapita / bln (Pengeluaran RT: Rp 4.250.000 - Rp 8.500.000 / bln).
-• **Kondisi Hunian:** Hunian sederhana/sewa dengan beban biaya sewa atau cicilan yang memberatkan ekonomi keluarga.
-• **Status Mata Pencaharian:** Buruh lepas, ojek online, pedagang kecil, pekerja paruh waktu (< 40 jam/mgg), atau upah tidak menentu.
-• **Beban Tanggungan:** Memiliki beban tanggungan biaya sekolah anak yang tinggi, lansia tanpa pensiun, atau biaya berobat rutin.
-• **Ketahanan Finansial:** Belum mandiri menghadapi kondisi darurat dan membutuhkan intervensi pemberdayaan ekonomi.`,
-    contohKondisi: 'Pekerja harian lepas, buruh pabrik kontrak, pengemudi ojek online, pedagang kelontong kecil, keluarga dengan lansia tanpa tunjangan pensiun atau beban cicilan mendesak.',
+    subjudul: 'Penghasilan Pas-pasan / Rentan Kesulitan',
+    garisPengeluaran: 'Pengeluaran keluarga sekitar Rp 4.250.000 - Rp 8.500.000 / bulan',
+    tahapMetode: 'Prioritas Pemberdayaan & Beasiswa',
+    indikator: `• **Gaji & Penghasilan:** Penghasilan pas-pasan (antara Rp 4,25 juta s/d Rp 8,5 juta per bulan), cukup untuk makan sehari-hari tapi sulit menabung.
+• **Kepemilikan Rumah:** Mengontrak atau sewa rumah sederhana dengan biaya sewa yang memberatkan keuangan keluarga.
+• **Status Pekerjaan:** Bekerja sebagai buruh lepas, pedagang kelontong kecil, pengemudi ojol, atau pekerja paruh waktu.
+• **Kerentanan Ekonomi:** Gaji hanya cukup untuk sehari-hari, sangat rentan berutang jika ada sakit, PHK, atau musibah keluarga.
+• **Beban Tanggungan:** Terbebani biaya pendidikan sekolah anak atau biaya perawatan lansia tanpa pensiun.`,
+    contohKondisi: 'Buruh pabrik kontrak, pedagang kecil, pengemudi online, keluarga dengan beban biaya pendidikan anak yang berat.',
     rekomendasiBantuan: 'Prioritas program pemberdayaan ekonomi umat (SABUK, Ayo Kerja, Credit Union), bantuan akses beasiswa pendidikan (ASAK / KIP), advokasi BPJS/KIS, serta subsidi sembako hari raya.',
     isDefault: true,
     urutan: 3,
@@ -105,23 +102,22 @@ export const DEFAULT_KRITERIA_GOLONGAN: KriteriaGolonganItem[] = [
     borderLight: '#fecaca',
     textColor: '#b91c1c',
     iconEmoji: '🔴',
-    subjudul: 'Bantuan Penuh & Prioritas Khusus (Di Bawah Garis Kemiskinan KAJ)',
-    garisPengeluaran: 'Z ≤ Rp 850.000,- / kapita / bln (atau ≤ Rp 4.250.000,- / RT / bln)',
-    tahapMetode: 'Hasil Pendataan-2 (Survei Langsung Nilai Pengeluaran Z = Y / X)',
-    indikator: `• **Pemenuhan Kebutuhan Dasar:** Tidak mampu mencukupi kebutuhan dasar pangan minimum (2.100 kkal/jiwa/hari) serta papan/sandang dasar.
-• **Rasio Pengeluaran Riil (Z):** Z ≤ Rp 850.000,- / kapita / bln (atau Pengeluaran RT ≤ Rp 4.250.000,- / bln) standar Susenas BPS DKI.
-• **Kondisi Fisik Hunian:** Tempat tinggal sangat tidak layak huni, menumpang tanpa kepastian, atau fasilitas sanitasi sangat buruk.
-• **Sumber Penghasilan:** Kepala keluarga tidak bekerja/menganggur, lansia hidup sebatang kara, keluarga disabilitas berat, atau janda dhuafa.
-• **Ketiadaan Aset Cadangan:** Tidak memiliki tabungan maupun aset yang dapat dijual minimal Rp 500.000,- untuk bertahan hidup.
-• **Intervensi Khusus:** Wajib menerima intervensi karitatif penuh dan santunan rutin dari Seksi Pengembangan Sosial Ekonomi (PSE).`,
-    contohKondisi: 'Lansia sebatang kara/terlantar tanpa sanak saudara, janda/duda dhuafa tanpa pencari nafkah, keluarga dengan disabilitas berat tanpa penopang nafkah, anak yatim piatu.',
+    subjudul: 'Sangat Membutuhkan Bantuan (Miskin)',
+    garisPengeluaran: 'Pengeluaran keluarga di bawah Rp 4.250.000,- / bulan',
+    tahapMetode: 'Bantuan Penuh & Prioritas Utama PSE',
+    indikator: `• **Gaji & Penghasilan:** Sangat minim di bawah Rp 4,25 juta sekeluarga (sering kesulitan memenuhi makan harian).
+• **Kepemilikan Rumah:** Tidak punya rumah tinggal sendiri, menumpang tanpa kepastian, atau kondisi hunian sangat memprihatinkan.
+• **Pencari Nafkah:** Kepala keluarga menganggur, tidak mampu bekerja, lansia hidup sebatang kara, janda dhuafa, atau difabel berat.
+• **Kondisi Ekonomi:** Tidak memiliki tabungan maupun barang berharga yang bisa dijual untuk bertahan hidup darurat.
+• **Kebutuhan Pokok:** Sangat membutuhkan uluran tangan untuk makan harian, sewa tempat berteduh, dan biaya berobat.`,
+    contohKondisi: 'Lansia sebatang kara tanpa penghasilan, keluarga dhuafa tanpa pencari nafkah, janda dengan anak kecil, penderita sakit berat terlantar.',
     rekomendasiBantuan: 'Intervensi karitatif penuh dan prioritas utama PSE Paroki: santunan kebutuhan pokok sembako rutin bulanan, advokasi darurat medis, beasiswa penuh ASAK, bedah rumah, & bebas iuran kas.',
     isDefault: true,
     urutan: 4,
   },
 ];
 
-const STORAGE_KEY = 'kriteria_golongan_dupras_kaj_v3';
+const STORAGE_KEY = 'kriteria_golongan_dupras_kaj_v4';
 const LEGACY_STORAGE_KEY = 'kriteria_golongan_custom_list';
 
 export function getKriteriaGolonganList(): KriteriaGolonganItem[] {
