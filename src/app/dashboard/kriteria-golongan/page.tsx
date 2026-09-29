@@ -47,6 +47,44 @@ const COLOR_PRESETS = [
   { name: 'Ungu (Prioritas)', badgeColor: '#9333ea', bgLight: '#faf5ff', borderLight: '#e9d5ff', textColor: '#7e22ce', iconEmoji: '🟣' },
 ]
 
+function parseIndikatorPoints(text: string): string[] {
+  if (!text) return []
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+
+  if (lines.length > 1) {
+    return lines.map((l) => l.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean)
+  }
+
+  if (text.includes('•')) {
+    const parts = text.split('•').map((s) => s.trim()).filter(Boolean)
+    if (parts.length > 1) return parts
+  }
+
+  if (text.includes('(1)') && text.includes('(2)')) {
+    const parts = text.split(/(?=\(\d+\))/g).map((s) => s.trim()).filter(Boolean)
+    return parts
+  }
+
+  return [text]
+}
+
+function renderFormattedText(rawText: string) {
+  const parts = rawText.split(/(\*\*.*?\*\*)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={i} className="font-bold text-slate-900">
+          {part.slice(2, -2)}
+        </strong>
+      )
+    }
+    return <span key={i}>{part}</span>
+  })
+}
+
 export default function KriteriaGolonganPage() {
   const [items, setItems] = useState<KriteriaGolonganItem[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -361,135 +399,144 @@ export default function KriteriaGolonganPage() {
       {/* ========================================================================= */}
       {/* 4 CARDS KRITERIA GOLONGAN (SEJAHTERA, TERDUGA, RENTAN, TIDAK MAMPU)       */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {items.map((item, idx) => (
-          <Card
-            key={item.id}
-            className="bg-white border-slate-200/90 rounded-3xl shadow-xs hover:shadow-md transition duration-200 flex flex-col justify-between overflow-hidden"
-          >
-            <div>
-              {/* Card Header Color Bar */}
-              <div
-                className="p-5 border-b flex items-start justify-between gap-3"
-                style={{
-                  backgroundColor: item.bgLight || '#f8fafc',
-                  borderColor: item.borderLight || '#e2e8f0',
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl leading-none">{item.iconEmoji}</span>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg font-black text-slate-900 font-serif">{item.nama}</h3>
-                      {item.isDefault && (
-                        <span className="text-[10px] bg-white/90 border border-slate-200 px-2 py-0.5 rounded-full font-bold text-slate-700 shadow-2xs">
-                          Standar DUPRAS KAJ
-                        </span>
-                      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        {items.map((item, idx) => {
+          const points = parseIndikatorPoints(item.indikator)
+          return (
+            <Card
+              key={item.id}
+              className="bg-white border-slate-200/90 rounded-3xl shadow-xs hover:shadow-md transition duration-200 flex flex-col justify-between overflow-hidden h-full"
+            >
+              <div className="flex-1 flex flex-col">
+                {/* Card Header Color Bar */}
+                <div
+                  className="p-5 border-b flex items-start justify-between gap-3 min-h-[96px]"
+                  style={{
+                    backgroundColor: item.bgLight || '#f8fafc',
+                    borderColor: item.borderLight || '#e2e8f0',
+                  }}
+                >
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <span className="text-3xl leading-none shrink-0">{item.iconEmoji}</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-lg font-black text-slate-900 font-serif leading-tight">{item.nama}</h3>
+                        {item.isDefault && (
+                          <span className="text-[10px] bg-white/95 border border-slate-200 px-2 py-0.5 rounded-full font-bold text-slate-700 shadow-2xs shrink-0">
+                            Standar DUPRAS KAJ
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-semibold mt-1 leading-snug" style={{ color: item.textColor || '#475569' }}>
+                        {item.subjudul}
+                      </p>
                     </div>
-                    <p className="text-xs font-semibold mt-0.5" style={{ color: item.textColor || '#475569' }}>
-                      {item.subjudul}
-                    </p>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleOpenEdit(item)}
-                    className="h-8 px-2.5 text-xs border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl cursor-pointer font-medium shadow-2xs"
-                    title="Ubah rincian kriteria"
-                  >
-                    <Pencil className="w-3.5 h-3.5 mr-1 text-slate-500" />
-                    Edit
-                  </Button>
-                  {!item.isDefault && (
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleDelete(item.id, item.nama)}
-                      className="h-8 px-2 text-xs border-rose-200 bg-white hover:bg-rose-50 text-rose-600 rounded-xl cursor-pointer"
-                      title="Hapus kriteria kustom"
+                      onClick={() => handleOpenEdit(item)}
+                      className="h-8 px-2.5 text-xs border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl cursor-pointer font-medium shadow-2xs"
+                      title="Ubah rincian kriteria"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Pencil className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                      Edit
                     </Button>
-                  )}
+                    {!item.isDefault && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(item.id, item.nama)}
+                        className="h-8 px-2 text-xs border-rose-200 bg-white hover:bg-rose-50 text-rose-600 rounded-xl cursor-pointer"
+                        title="Hapus kriteria kustom"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Card Body */}
-              <CardContent className="p-5 space-y-4 text-xs text-slate-700">
-                {/* Ambang Batas Pengeluaran / Garis Kemiskinan */}
-                {item.garisPengeluaran && (
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-serif">
+                {/* Card Body */}
+                <CardContent className="p-5 flex-1 flex flex-col justify-between gap-4 text-xs text-slate-700">
+                  {/* Ambang Batas Pengeluaran / Garis Kemiskinan */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 min-h-[76px] flex flex-col justify-center">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-serif mb-1">
                       Tolak Ukur Standar Pengeluaran / Garis DUPRAS:
                     </span>
-                    <p className="font-mono font-bold text-xs text-slate-900">
-                      {item.garisPengeluaran}
+                    <p className="font-mono font-bold text-xs text-slate-900 leading-tight">
+                      {item.garisPengeluaran || '-'}
                     </p>
                   </div>
-                )}
 
-                {/* Tahap & Metode Penentuan */}
-                {item.tahapMetode && (
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-serif">
+                  {/* Tahap & Metode Penentuan */}
+                  <div className="p-3 rounded-2xl bg-slate-50/70 border border-slate-100 min-h-[64px] flex flex-col justify-center">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-serif mb-0.5">
                       Tahapan & Metode Pendataan:
                     </span>
-                    <p className="text-slate-700 font-semibold">
-                      {item.tahapMetode}
+                    <p className="text-slate-800 font-semibold text-xs leading-snug">
+                      {item.tahapMetode || '-'}
                     </p>
                   </div>
-                )}
 
-                {/* Indikator Penilaian */}
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-serif">
-                    Indikator Kriteria & Karakteristik Rumah Tangga:
-                  </span>
-                  <p className="leading-relaxed bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 text-slate-800">
-                    {item.indikator || 'Belum ada rincian indikator tertulis.'}
-                  </p>
-                </div>
+                  {/* Indikator Penilaian (Per Point Inti) */}
+                  <div className="flex-1 flex flex-col space-y-1.5">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-serif">
+                      Indikator Kriteria & Karakteristik Rumah Tangga:
+                    </span>
+                    <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 flex-1 flex flex-col justify-start min-h-[310px]">
+                      <ul className="space-y-2.5 text-xs">
+                        {points.map((pt, pIdx) => (
+                          <li key={pIdx} className="flex items-start gap-2.5 leading-relaxed">
+                            <span
+                              className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
+                              style={{ backgroundColor: item.badgeColor || '#16a34a' }}
+                            />
+                            <span className="text-[11.5px] text-slate-700 leading-snug">
+                              {renderFormattedText(pt)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
 
-                {/* Contoh Kondisi */}
-                {item.contohKondisi && (
+                  {/* Contoh Kondisi */}
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-serif">
                       Contoh Kasus / Profesi Keluarga:
                     </span>
-                    <p className="text-slate-600 italic bg-amber-50/30 p-2.5 rounded-xl border border-amber-100/60">
-                      &ldquo;{item.contohKondisi}&rdquo;
-                    </p>
+                    <div className="bg-amber-50/35 p-3 rounded-2xl border border-amber-100/70 min-h-[72px] flex items-center">
+                      <p className="text-slate-700 italic text-xs leading-snug">
+                        &ldquo;{item.contohKondisi || 'Belum ada contoh kasus spesifik.'}&rdquo;
+                      </p>
+                    </div>
                   </div>
-                )}
 
-                {/* Rekomendasi Kebijakan Bantuan */}
-                {item.rekomendasiBantuan && (
-                  <div className="p-3.5 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-1.5">
+                  {/* Rekomendasi Kebijakan Bantuan */}
+                  <div className="p-3.5 bg-slate-50 border border-slate-200/90 rounded-2xl min-h-[96px] flex flex-col justify-center space-y-1">
                     <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block font-serif flex items-center gap-1.5">
                       <HeartHandshake className="w-3.5 h-3.5 text-emerald-600" />
                       Rekomendasi Kebijakan & Bantuan Pastoral:
                     </span>
-                    <p className="text-slate-800 font-medium leading-relaxed">
-                      {item.rekomendasiBantuan}
+                    <p className="text-slate-800 font-medium text-xs leading-snug">
+                      {item.rekomendasiBantuan || '-'}
                     </p>
                   </div>
-                )}
-              </CardContent>
-            </div>
+                </CardContent>
+              </div>
 
-            {/* Card Footer */}
-            <div className="px-5 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-              <span className="font-serif">Prioritas Penanganan #{idx + 1}</span>
-              <span className="font-semibold text-emerald-700 flex items-center gap-1">
-                Aktif di Modul DAFU <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              </span>
-            </div>
-          </Card>
-        ))}
+              {/* Card Footer */}
+              <div className="px-5 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                <span className="font-serif">Prioritas Penanganan #{idx + 1}</span>
+                <span className="font-semibold text-emerald-700 flex items-center gap-1">
+                  Aktif di Modul DAFU <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                </span>
+              </div>
+            </Card>
+          )
+        })}
       </div>
 
       {/* ========================================================================= */}
@@ -577,16 +624,19 @@ export default function KriteriaGolonganPage() {
 
             {/* Indikator Kriteria */}
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-700">
-                Indikator Kriteria Penilaian *
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-slate-700">
+                  Indikator Kriteria Penilaian (Per Point Inti) *
+                </Label>
+                <span className="text-[10px] text-slate-400">Gunakan baris baru atau • untuk tiap point</span>
+              </div>
               <textarea
                 value={formIndikator}
                 onChange={(e) => setFormIndikator(e.target.value)}
-                placeholder="Jelaskan kondisi ekonomi, pekerjaan, kepemilikan rumah, atau kesehatan yang menjadi tolak ukur..."
-                rows={3}
+                placeholder="• **Judul Point:** Keterangan point indikator..."
+                rows={6}
                 required
-                className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-sans"
               />
             </div>
 

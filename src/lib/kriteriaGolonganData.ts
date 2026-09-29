@@ -42,9 +42,14 @@ export const DEFAULT_KRITERIA_GOLONGAN: KriteriaGolonganItem[] = [
     subjudul: 'Keluarga Mandiri / Berdaya (Di Atas Garis Rentan)',
     garisPengeluaran: 'Z ≥ Rp 1.700.000,- / kapita / bln (atau ≥ Rp 8.500.000,- / RT)',
     tahapMetode: 'Tahap 1 (Semua Data Pokok = "TIDAK") / Tahap 2 (Z ≥ Rp 1.700.000)',
-    indikator: 'Menjawab "TIDAK" pada seluruh indikator kerentanan Data Pokok. Memiliki hunian layak & permanen (bukan kawasan kumuh, luas lantai ≥ 8 m²/orang, sanitasi sendiri), tempat tinggal milik sendiri atau sewa mandiri, kepala keluarga/ART bekerja tetap (durasi kerja ≥ 40 jam/minggu), dan pengeluaran per kapita per bulan Z ≥ Rp 1.700.000,- (atau pengeluaran rumah tangga ≥ Rp 8.500.000,-/bulan untuk rata-rata 5 anggota). Mampu memenuhi kebutuhan pokok pangan, papan, pendidikan, dan kesehatan secara mandiri.',
+    indikator: `• **Hasil Skrining Awal:** Menjawab "TIDAK" pada seluruh 5 indikator Data Pokok kerentanan.
+• **Kondisi Tempat Tinggal:** Rumah permanen & layak (luas ≥ 8 m²/jiwa, bukan kawasan kumuh, sanitasi mandiri).
+• **Status Kepemilikan:** Rumah milik sendiri atau kontrak/sewa mandiri tanpa beban bantuan.
+• **Pekerjaan & Penghasilan:** Kepala keluarga / ART berpenghasilan teratur & bekerja tetap (≥ 40 jam/minggu).
+• **Tingkat Pengeluaran (Z):** Z ≥ Rp 1.700.000,- / kapita / bln (atau pengeluaran RT ≥ Rp 8.500.000,- / bln).
+• **Kemandirian Finansial:** Mandiri memenuhi pangan, papan, pendidikan, & kesehatan tanpa subsidi gereja.`,
     contohKondisi: 'Karyawan tetap, profesional, wirausaha mandiri dengan penghasilan teratur, keluarga yang berkecukupan dan tidak membutuhkan subsidi sosial gereja.',
-    rekomendasiBantuan: 'Tidak memerlukan subsidi atau bantuan ekonomi. Diharapkan menjadi penopang gotong-royong, donatur iuran/kolekte lingkungan, serta penggerak solidaritas umat.',
+    rekomendasiBantuan: 'Tidak memerlukan subsidi ekonomi gereja. Diharapkan menjadi penopang gotong-royong, donatur iuran/kolekte lingkungan, serta penggerak solidaritas umat.',
     isDefault: true,
     urutan: 1,
   },
@@ -59,9 +64,14 @@ export const DEFAULT_KRITERIA_GOLONGAN: KriteriaGolonganItem[] = [
     subjudul: 'Hasil Skrining Awal (Perlu Verifikasi Pendataan-2)',
     garisPengeluaran: 'Pengeluaran RT < Rp 8.500.000,- / bln atau terindikasi pada Data Pokok/Tambahan',
     tahapMetode: 'Tahap 1 (Skrining Awal BIDUK Lingkungan: Minimal 1 jawaban YA/RAGU)',
-    indikator: 'Menjawab "YA" atau "RAGU-RAGU" pada sekurang-kurangnya satu pertanyaan Data Pokok: (1) Tinggal di wilayah kumuh (lahan tanpa legalitas, luas lantai < 8 m²/orang, atau jamban bersama), (2) Bangunan tempat tinggal semi permanen (lantai tanah/kayu murah, dinding rumbia/bambu/tanpa plester, tanpa listrik PLN, atau air tak terlindung), (3) Tempat tinggal bukan milik sendiri (kontrak/sewa/numpang), (4) Tidak memiliki pekerjaan tetap (< 40 jam/minggu/serabutan), atau (5) Pengeluaran rumah tangga < Rp 8.500.000,-/bulan. Serta didukung Data Tambahan faktor risiko kemiskinan (anggota keluarga disabilitas fisik/intelektual/mental/sensorik, anak risiko stunting/gizi buruk, sakit kronis/menahun, atau lansia >60 th terlantar/hidup sendirian).',
+    indikator: `• **Hasil Skrining Awal:** Menjawab "YA" atau "RAGU-RAGU" pada minimal satu pertanyaan Data Pokok.
+• **Kawasan & Sanitasi:** Tinggal di kawasan kumuh, lahan tanpa legalitas, luas < 8 m²/jiwa, atau jamban bersama.
+• **Kondisi Fisik Bangunan:** Semi permanen (lantai tanah/kayu murah, dinding rumbia/tanpa plester, tanpa listrik PLN/air terlindung).
+• **Kepemilikan & Pekerjaan:** Rumah bukan milik sendiri (kontrak/sewa/numpang) dan/atau kerja serabutan (< 40 jam/minggu).
+• **Pengeluaran Rumah Tangga:** Pengeluaran keluarga < Rp 8.500.000,- / bln (indikasi awal sebelum rasio per kapita Z).
+• **Faktor Risiko Tambahan:** Anggota keluarga disabilitas, balita risiko stunting/gizi buruk, sakit menahun, atau lansia terlantar.`,
     contohKondisi: 'Pekerja kontrak/serabutan, keluarga mengontrak di permukiman padat, buruh lepas harian, atau keluarga dengan anggota sakit kronis yang belum disurvei mendalam.',
-    rekomendasiBantuan: 'Wajib dilakukan Pendataan-2 oleh Pengurus Lingkungan (Ketua Lingkungan, Seksi Sosial PSE, Sekretaris) melalui survei & kunjungan langsung by name by address guna mengumpulkan Data Pendalaman dan menghitung rasio pengeluaran riil per kapita (Z = Y/X) untuk menentukan klasifikasi definitif.',
+    rekomendasiBantuan: 'Wajib dilakukan Pendataan-2 oleh Pengurus Lingkungan (Ketua, PSE, Sekretaris) melalui survei & kunjungan langsung untuk mengumpulkan Data Pendalaman dan menghitung rasio Z.',
     isDefault: true,
     urutan: 2,
   },
@@ -76,9 +86,14 @@ export const DEFAULT_KRITERIA_GOLONGAN: KriteriaGolonganItem[] = [
     subjudul: 'Waspada Kerentanan (Antara 1x s/d 2x Garis Kemiskinan)',
     garisPengeluaran: 'Rp 850.000,- < Z < Rp 1.700.000,- / kapita / bln (RT: Rp 4.250.000 - Rp 8.500.000 / bln)',
     tahapMetode: 'Hasil Pendataan-2 (Survei Langsung Nilai Pengeluaran Z = Y / X)',
-    indikator: 'Golongan keluarga yang berada di atas Garis Tidak Mampu secara konsep, namun rentan jatuh menjadi Tidak Mampu bila terjadi gejolak ekonomi, inflasi, atau risiko tak terduga (kehilangan pekerjaan, sakit keras, musibah). Nilai pengeluaran per kapita per bulan berada di antara Rp 850.000,- s/d Rp 1.700.000,- (atau pengeluaran rumah tangga antara Rp 4.250.000,- s/d Rp 8.500.000,-/bulan). Memiliki pekerjaan tidak tetap, pekerja paruh waktu (< 40 jam/minggu), atau beban tanggungan biaya sekolah dan kesehatan yang tinggi.',
+    indikator: `• **Tingkat Kerentanan:** Berada di atas Garis Kemiskinan, namun rentan jatuh miskin akibat inflasi, PHK, sakit keras, atau musibah.
+• **Rasio Pengeluaran Riil (Z):** Rp 850.000,- < Z < Rp 1.700.000,- / kapita / bln (Pengeluaran RT: Rp 4.250.000 - Rp 8.500.000 / bln).
+• **Kondisi Hunian:** Hunian sederhana/sewa dengan beban biaya sewa atau cicilan yang memberatkan ekonomi keluarga.
+• **Status Mata Pencaharian:** Buruh lepas, ojek online, pedagang kecil, pekerja paruh waktu (< 40 jam/mgg), atau upah tidak menentu.
+• **Beban Tanggungan:** Memiliki beban tanggungan biaya sekolah anak yang tinggi, lansia tanpa pensiun, atau biaya berobat rutin.
+• **Ketahanan Finansial:** Belum mandiri menghadapi kondisi darurat dan membutuhkan intervensi pemberdayaan ekonomi.`,
     contohKondisi: 'Pekerja harian lepas, buruh pabrik kontrak, pengemudi ojek online, pedagang kelontong kecil, keluarga dengan lansia tanpa tunjangan pensiun atau beban cicilan mendesak.',
-    rekomendasiBantuan: 'Prioritas program pemberdayaan ekonomi umat (SABUK - Sentra Bimbingan Usaha Kecil, pelatihan kerja Ayo Kerja, Koperasi Credit Union), bantuan akses beasiswa pendidikan (Gerakan ASAK Paroki / KIP), advokasi jaminan kesehatan (BPJS/KIS), serta subsidi sembako hari raya.',
+    rekomendasiBantuan: 'Prioritas program pemberdayaan ekonomi umat (SABUK, Ayo Kerja, Credit Union), bantuan akses beasiswa pendidikan (ASAK / KIP), advokasi BPJS/KIS, serta subsidi sembako hari raya.',
     isDefault: true,
     urutan: 3,
   },
@@ -93,15 +108,20 @@ export const DEFAULT_KRITERIA_GOLONGAN: KriteriaGolonganItem[] = [
     subjudul: 'Bantuan Penuh & Prioritas Khusus (Di Bawah Garis Kemiskinan KAJ)',
     garisPengeluaran: 'Z ≤ Rp 850.000,- / kapita / bln (atau ≤ Rp 4.250.000,- / RT / bln)',
     tahapMetode: 'Hasil Pendataan-2 (Survei Langsung Nilai Pengeluaran Z = Y / X)',
-    indikator: 'Ketidakmampuan secara ekonomi untuk memenuhi kebutuhan dasar makanan minimum (2100 kkalori per kapita/hari) dan kebutuhan non-makanan dasar (perumahan, sandang, pendidikan, kesehatan). Nilai pengeluaran per kapita per bulan Z ≤ Rp 850.000,- (atau pengeluaran rumah tangga ≤ Rp 4.250.000,-/bulan untuk rata-rata 5 ART) mengacu pada standar Susenas BPS DKI Jakarta. Kepala rumah tangga tidak memiliki pekerjaan/penghasilan mandiri, kondisi hunian memprihatinkan, atau tidak memiliki aset yang dapat dijual minimal Rp 500.000,-.',
+    indikator: `• **Pemenuhan Kebutuhan Dasar:** Tidak mampu mencukupi kebutuhan dasar pangan minimum (2.100 kkal/jiwa/hari) serta papan/sandang dasar.
+• **Rasio Pengeluaran Riil (Z):** Z ≤ Rp 850.000,- / kapita / bln (atau Pengeluaran RT ≤ Rp 4.250.000,- / bln) standar Susenas BPS DKI.
+• **Kondisi Fisik Hunian:** Tempat tinggal sangat tidak layak huni, menumpang tanpa kepastian, atau fasilitas sanitasi sangat buruk.
+• **Sumber Penghasilan:** Kepala keluarga tidak bekerja/menganggur, lansia hidup sebatang kara, keluarga disabilitas berat, atau janda dhuafa.
+• **Ketiadaan Aset Cadangan:** Tidak memiliki tabungan maupun aset yang dapat dijual minimal Rp 500.000,- untuk bertahan hidup.
+• **Intervensi Khusus:** Wajib menerima intervensi karitatif penuh dan santunan rutin dari Seksi Pengembangan Sosial Ekonomi (PSE).`,
     contohKondisi: 'Lansia sebatang kara/terlantar tanpa sanak saudara, janda/duda dhuafa tanpa pencari nafkah, keluarga dengan disabilitas berat tanpa penopang nafkah, anak yatim piatu.',
-    rekomendasiBantuan: 'Intervensi karitatif penuh dan prioritas utama PSE Paroki: santunan kebutuhan pokok sembako rutin bulanan, advokasi tanggap darurat kesehatan/pengobatan, beasiswa penuh anak asuh (Gerakan ASAK Paroki), bantuan bedah rumah/hunian layak, serta pembebasan total dari iuran kas lingkungan.',
+    rekomendasiBantuan: 'Intervensi karitatif penuh dan prioritas utama PSE Paroki: santunan kebutuhan pokok sembako rutin bulanan, advokasi darurat medis, beasiswa penuh ASAK, bedah rumah, & bebas iuran kas.',
     isDefault: true,
     urutan: 4,
   },
 ];
 
-const STORAGE_KEY = 'kriteria_golongan_dupras_kaj_v2';
+const STORAGE_KEY = 'kriteria_golongan_dupras_kaj_v3';
 const LEGACY_STORAGE_KEY = 'kriteria_golongan_custom_list';
 
 export function getKriteriaGolonganList(): KriteriaGolonganItem[] {
@@ -112,7 +132,7 @@ export function getKriteriaGolonganList(): KriteriaGolonganItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      // Check legacy: if only legacy exists and might be old mock, reset to official KAJ
+      // Initialize with default KAJ
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_KRITERIA_GOLONGAN));
       return DEFAULT_KRITERIA_GOLONGAN;
     }
