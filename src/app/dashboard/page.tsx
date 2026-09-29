@@ -1027,8 +1027,8 @@ export default function DashboardOverviewPage() {
 
             {/* Direct Link to DAFU Input Module */}
             <Link href="/dashboard/dafu">
-              <Button className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl shadow-xs cursor-pointer h-11 shrink-0 w-full sm:w-auto">
-                <Plus className="w-4 h-4 mr-2 text-emerald-400" />
+              <Button className="bg-slate-700 hover:bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl shadow-xs cursor-pointer h-11 shrink-0 w-full sm:w-auto transition-all">
+                <Plus className="w-4 h-4 mr-2 text-white" />
                 Input Data di DAFU
               </Button>
             </Link>
@@ -1328,7 +1328,7 @@ export default function DashboardOverviewPage() {
                                     <Link href={`/dashboard/dafu?edit=${kk.id}`}>
                                       <Button
                                         size="sm"
-                                        className="h-7 text-[11px] bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg cursor-pointer inline-flex items-center gap-1"
+                                        className="h-7 text-[11px] bg-slate-700 hover:bg-slate-800 text-white font-medium rounded-lg cursor-pointer inline-flex items-center gap-1 transition-all"
                                       >
                                         <Pencil className="w-3 h-3" />
                                         Edit Anggota
@@ -1861,12 +1861,12 @@ export default function DashboardOverviewPage() {
                                     <span className="text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-full">
                                       Total {members.length} Anggota Jiwa
                                     </span>
-                                    <Link href={`/dashboard/dafu?edit=${k.id}`}>
-                                      <Button size="sm" className="h-7 text-[11px] bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg cursor-pointer inline-flex items-center gap-1">
-                                        <Pencil className="w-3 h-3 mr-1" />
-                                        Edit Anggota
-                                      </Button>
-                                    </Link>
+                                      <Link href={`/dashboard/dafu?edit=${k.id}`}>
+                                        <Button size="sm" className="h-7 text-[11px] bg-slate-700 hover:bg-slate-800 text-white font-medium rounded-lg cursor-pointer inline-flex items-center gap-1 transition-all">
+                                          <Pencil className="w-3 h-3 mr-1" />
+                                          Edit Anggota
+                                        </Button>
+                                      </Link>
                                   </div>
                                 </div>
 
