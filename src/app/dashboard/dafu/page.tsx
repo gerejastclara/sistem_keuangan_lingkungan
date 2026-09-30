@@ -844,7 +844,7 @@ function DafuFormContent() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-[#1B2130] tracking-tight font-serif">
-              DAFU - Formulir Input Data Umat & Keluarga
+              {userRole === 'PAROKI' ? 'DAFU - Monitoring Data Umat & Keluarga' : 'DAFU - Formulir Input Data Umat & Keluarga'}
             </h1>
           </div>
         </div>
@@ -942,7 +942,23 @@ function DafuFormContent() {
         </div>
       )}
 
-      {/* FORMULIR INPUT LANGSUNG DI MODUL (GAMBAR 2 - BUKAN POPUP!) */}
+      {/* Mode Monitoring Info Paroki */}
+      {userRole === 'PAROKI' && (
+        <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-[#004085] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <Users className="w-4 h-4 text-[#004085] shrink-0" />
+            <span>Mode Monitoring Paroki: Menampilkan daftar data umat & keluarga secara read-only (tanpa form input dan hapus).</span>
+          </div>
+          <Link href="/dashboard/paroki/sekretaris">
+            <Button size="sm" className="bg-[#004085] hover:bg-[#003366] text-white text-xs font-bold rounded-lg cursor-pointer">
+              Buka Sekretariat Paroki
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* FORMULIR INPUT LANGSUNG DI MODUL (HANYA UNTUK SEKRETARIS LINGKUNGAN) */}
+      {canEdit && (
       <Card className="bg-white border-slate-200 rounded-2xl shadow-xs overflow-hidden">
         <CardHeader className="bg-slate-50/70 border-b border-slate-100 p-5">
           <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2 font-serif">
@@ -1280,6 +1296,7 @@ function DafuFormContent() {
           </form>
         </CardContent>
       </Card>
+      )}
 
       {/* RECENT FAMILIES LIST BELOW THE FORM */}
       <Card className="bg-white border-slate-200 rounded-2xl shadow-xs overflow-hidden">
@@ -1423,24 +1440,37 @@ function DafuFormContent() {
                           )}
                         </TableCell>
                         <TableCell className="text-right space-x-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => populateFormForEdit(kk, anggotaMap[kk.id], golonganMap[kk.id])}
-                            className="h-7 px-2 text-slate-700 hover:text-emerald-700 hover:bg-slate-100 rounded cursor-pointer"
-                            title="Edit data keluarga"
-                          >
-                            <Pencil className="w-3 h-3 mr-1" /> Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(kk.id, kk.nama_kk)}
-                            className="h-7 w-7 p-0 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
-                            title="Hapus KK"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                          {canEdit ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => populateFormForEdit(kk, anggotaMap[kk.id], golonganMap[kk.id])}
+                                className="h-7 px-2 text-slate-700 hover:text-emerald-700 hover:bg-slate-100 rounded cursor-pointer"
+                                title="Edit data keluarga"
+                              >
+                                <Pencil className="w-3 h-3 mr-1" /> Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDelete(kk.id, kk.nama_kk)}
+                                className="h-7 w-7 p-0 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                                title="Hapus KK"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => toggleExpandKk(kk.id)}
+                              className="h-7 px-2.5 text-slate-700 hover:bg-slate-100 rounded cursor-pointer text-xs font-semibold"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5 mr-1" /> {isExpanded ? 'Tutup' : 'Rincian'}
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
 

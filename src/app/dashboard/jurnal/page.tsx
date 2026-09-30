@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 import { UserProfile, JurnalTransaksi, KepalaKeluarga, COA } from '@/lib/types'
 import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
@@ -134,6 +135,8 @@ export default function JurnalPage() {
   // Double Entry Modal & Posting Modal
   const [isDeModalOpen, setIsDeModalOpen] = useState(false)
   const [postingLoading, setPostingLoading] = useState(false)
+
+  const isParoki = userProfile?.role === 'PAROKI' || (typeof document !== 'undefined' && (document.cookie.includes('demo_user_role=PAROKI') || document.cookie.includes('demo_user_username=paroki')))
 
   // Currency Formatter
   const formatCurrency = (val: number): string => {
@@ -891,14 +894,16 @@ export default function JurnalPage() {
           </div>
 
           <div className="flex items-center gap-2 pt-2 sm:pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsDeModalOpen(true)}
-              className="border-slate-300 text-slate-700 hover:bg-slate-100 font-bold rounded-xl h-11 px-4 text-xs cursor-pointer shadow-2xs"
-            >
-              Jurnal DE
-            </Button>
+            {!isParoki && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDeModalOpen(true)}
+                className="border-slate-300 text-slate-700 hover:bg-slate-100 font-bold rounded-xl h-11 px-4 text-xs cursor-pointer shadow-2xs"
+              >
+                Jurnal DE
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -921,7 +926,23 @@ export default function JurnalPage() {
         )}
       </div>
 
-      {/* FORM: CATAT TRANSAKSI BARU (Persis Gambar 2, 3, 4) */}
+      {/* Mode Monitoring Info Paroki */}
+      {isParoki && (
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <Lock className="w-4 h-4 text-amber-700 shrink-0" />
+            <span>Mode Monitoring Paroki: Hanya memantau hasil akhir transaksi jurnal kas bendahara lingkungan (Read-Only).</span>
+          </div>
+          <Link href="/dashboard/paroki/bendahara">
+            <Button size="sm" className="bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold rounded-lg cursor-pointer">
+              Monitoring Kas Seluruh Lingkungan
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* FORM: CATAT TRANSAKSI BARU (HANYA UNTUK BENDAHARA LINGKUNGAN) */}
+      {!isParoki && (
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
         <div className="p-5 pb-4 border-b border-slate-100 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-extrabold text-base shrink-0">
@@ -1374,6 +1395,7 @@ export default function JurnalPage() {
           )}
         </form>
       </div>
+      )}
 
       {/* BOX: DAFTAR TRANSAKSI (Riwayat Transaksi yang Telah Dijurnal, Persis Gambar 4) */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
@@ -1550,7 +1572,7 @@ export default function JurnalPage() {
                           {j.tipe_arus === 'MASUK' ? '+' : '-'} {formatRupiah(Number(j.nominal))}
                         </TableCell>
                         <TableCell className="text-center">
-                          {!j.is_posted && (
+                          {!isParoki && !j.is_posted && (
                             <button
                               type="button"
                               onClick={() => handleDeleteTransaction(j.id, j.is_posted)}

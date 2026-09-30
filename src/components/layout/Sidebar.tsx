@@ -136,6 +136,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         item.href === '/dashboard/kartu-setoran'
       )
     }
+    if (userRole === 'PAROKI') {
+      return (
+        item.href !== '/dashboard/form-standar' &&
+        item.href !== '/dashboard/coa-saldo' &&
+        item.href !== '/dashboard/dafu'
+      )
+    }
     return true
   })
 

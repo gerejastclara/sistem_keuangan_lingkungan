@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { UserProfile, Lingkungan } from '@/lib/types'
-import { getWilayahForLingkungan } from '@/lib/constants'
+import { getWilayahForLingkungan, formatNamaLingkungan, getAllMasterLingkungan, getLingkunganDbUuid } from '@/lib/constants'
 import { LogOut, Building2, User, ChevronDown, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -27,6 +27,18 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleSidebar,
 }) => {
   const [showProfileMenu, setShowProfileMenu] = React.useState(false)
+
+  const resolveLingkunganLabel = (id: string | null): string => {
+    if (!id) return 'Pilih Lingkungan'
+    const foundDirect = lingkunganList.find((l) => l.id === id)
+    if (foundDirect) return formatNamaLingkungan(foundDirect.nama_lingkungan)
+
+    const master = getAllMasterLingkungan()
+    const foundMaster = master.find(m => m.id === id || getLingkunganDbUuid(m.id) === id || m.slug === id)
+    if (foundMaster) return formatNamaLingkungan(foundMaster.nama_lingkungan)
+
+    return 'Lingkungan'
+  }
 
   const getRoleBadge = (role?: string) => {
     switch (role) {
@@ -59,8 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const currentLingkunganName =
     userProfile?.lingkungan_nama ||
-    lingkunganList.find((l) => l.id === selectedLingkunganId)?.nama_lingkungan ||
-    'Lingkungan'
+    resolveLingkunganLabel(selectedLingkunganId)
 
   return (
     <header className="bg-[#16233F] text-white border-b border-[#2C3E66] sticky top-0 z-30 shadow-md">
@@ -98,14 +109,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Building2 className="w-4 h-4 text-[#A9834F] shrink-0" />
             {userProfile?.role === 'PAROKI' ? (
               <Select value={selectedLingkunganId || ''} onValueChange={(val) => val && onLingkunganChange(val)}>
-                <SelectTrigger className="h-6 border-none bg-transparent shadow-none focus:ring-0 text-xs font-medium p-0 text-white gap-1">
-                  <SelectValue placeholder="Pilih Lingkungan" />
+                <SelectTrigger className="h-6 border-none bg-transparent shadow-none focus:ring-0 text-xs font-semibold p-0 text-white gap-1.5 cursor-pointer max-w-[210px]">
+                  <span className="truncate">{resolveLingkunganLabel(selectedLingkunganId)}</span>
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto bg-[#16233F] border-[#2C3E66] text-slate-100">
                   {lingkunganList.map((l) => (
                     <SelectItem key={l.id} value={l.id} className="hover:bg-[#22335A] focus:bg-[#22335A] focus:text-white">
                       <div className="flex items-center justify-between w-full gap-3">
-                        <span>{l.nama_lingkungan}</span>
+                        <span className="font-medium">{formatNamaLingkungan(l.nama_lingkungan)}</span>
                         <span className="text-[10px] bg-[#22335A] text-[#A9834F] px-1.5 py-0.5 rounded border border-[#2C3E66]">
                           {getWilayahForLingkungan(l.nama_lingkungan)}
                         </span>
