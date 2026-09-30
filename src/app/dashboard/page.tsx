@@ -48,7 +48,8 @@ import {
   ShieldCheck,
   UserCheck,
   Phone,
-  Calendar
+  Calendar,
+  CreditCard
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -1443,19 +1444,38 @@ export default function DashboardOverviewPage() {
           </div>
         </div>
 
-        <div className="flex gap-2.5 shrink-0">
-          <Link href="/dashboard/jurnal">
-            <Button className="bg-slate-700 hover:bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl shadow-xs cursor-pointer transition-all">
-              <Receipt className="w-4 h-4 mr-2 text-white" />
-              Input Jurnal
-            </Button>
-          </Link>
-          <Link href="/dashboard/laporan">
-            <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer">
-              <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" />
-              Laporan
-            </Button>
-          </Link>
+        <div className="flex flex-wrap gap-2.5 shrink-0">
+          {userRole === 'PAROKI' ? (
+            <>
+              <Link href="/dashboard/paroki/sekretaris">
+                <Button className="bg-[#004085] hover:bg-[#003366] text-white font-bold px-3.5 py-2.5 rounded-xl shadow-xs cursor-pointer transition-all text-xs">
+                  <Users className="w-4 h-4 mr-1.5 text-white" />
+                  Sekretariat Paroki
+                </Button>
+              </Link>
+              <Link href="/dashboard/paroki/bendahara">
+                <Button className="bg-amber-700 hover:bg-amber-800 text-white font-bold px-3.5 py-2.5 rounded-xl shadow-xs cursor-pointer transition-all text-xs">
+                  <CreditCard className="w-4 h-4 mr-1.5 text-white" />
+                  Monitoring Kas & Setoran
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/dashboard/jurnal">
+                <Button className="bg-slate-700 hover:bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl shadow-xs cursor-pointer transition-all text-xs">
+                  <Receipt className="w-4 h-4 mr-2 text-white" />
+                  Input Jurnal
+                </Button>
+              </Link>
+              <Link href="/dashboard/laporan">
+                <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-xl cursor-pointer text-xs">
+                  <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" />
+                  Laporan
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
 

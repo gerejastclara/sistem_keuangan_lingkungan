@@ -42,6 +42,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: LayoutDashboard,
       roles: ['BENDAHARA', 'SEKRETARIS', 'PAROKI'],
     },
+    // Modul Monitoring Khusus Paroki
+    {
+      title: 'Sekretariat Paroki (Pengurus & DAFU)',
+      href: '/dashboard/paroki/sekretaris',
+      icon: Users,
+      roles: ['PAROKI'],
+    },
+    {
+      title: 'Monitoring Kas & Setoran',
+      href: '/dashboard/paroki/bendahara',
+      icon: CreditCard,
+      roles: ['PAROKI'],
+    },
+    // Modul Operasional Lingkungan
     {
       title: 'DAFU (Input Umat)',
       href: '/dashboard/dafu',
@@ -101,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Filter items based on user role
   // Sekretaris: Dashboard Overview, DAFU, Kriteria Golongan, Form Standar
   // Bendahara: Dashboard Overview, COA & Saldo Awal, Jurnal Transaksi, Laporan, Aset, Kartu Setoran
-  // Paroki: All available modules
+  // Paroki: All modules including Paroki Monitoring modules
   const visibleNavItems = allNavItems.filter((item) => {
     if (userRole === 'SEKRETARIS') {
       return (
@@ -113,9 +127,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     if (userRole === 'BENDAHARA') {
       return (
-        item.href !== '/dashboard/dafu' &&
-        item.href !== '/dashboard/kriteria-golongan' &&
-        item.href !== '/dashboard/form-standar'
+        item.href === '/dashboard' ||
+        item.href === '/dashboard/coa-saldo' ||
+        item.href === '/dashboard/jurnal' ||
+        item.href === '/dashboard/dana-talangan' ||
+        item.href === '/dashboard/laporan' ||
+        item.href === '/dashboard/aset' ||
+        item.href === '/dashboard/kartu-setoran'
       )
     }
     return true

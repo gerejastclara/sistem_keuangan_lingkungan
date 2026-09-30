@@ -19,6 +19,7 @@ export interface KepalaKeluarga {
   id: string;
   lingkungan_id: string;
   nama_kk: string;
+  no_kk?: string;
   alamat: string | null;
   is_biduk: boolean;
   wilayah?: string;
@@ -28,7 +29,7 @@ export interface KepalaKeluarga {
 }
 
 export type PeranKeluarga = 'Kepala Keluarga' | 'Suami' | 'Istri' | 'Anak' | 'Orang Tua' | 'Famili Lain';
-export type KategoriGolongan = 'Sejahtera' | 'Terduga Prasejahtera' | 'Terduga Pra Sejahtera' | 'Rentan Tidak Mampu' | 'Tidak Mampu';
+export type KategoriGolongan = 'Sejahtera' | 'Terduga Prasejahtera' | 'Terduga Pra Sejahtera' | 'Rentan Tidak Mampu' | 'Tidak Mampu' | 'Rentan' | 'Menengah' | 'Mampu';
 
 export interface AnggotaKeluarga {
   id: string;
