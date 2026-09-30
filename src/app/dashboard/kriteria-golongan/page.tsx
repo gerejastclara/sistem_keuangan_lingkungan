@@ -37,6 +37,8 @@ import {
   KriteriaGolonganItem,
   PEDOMAN_DUPRAS_KAJ_INFO
 } from '@/lib/kriteriaGolonganData'
+import { createClient } from '@/utils/supabase/client'
+import { UserRole } from '@/lib/types'
 
 const COLOR_PRESETS = [
   { name: 'Hijau (Mandiri)', badgeColor: '#16a34a', bgLight: '#f0fdf4', borderLight: '#bbf7d0', textColor: '#15803d', iconEmoji: '🟢' },
@@ -87,6 +89,9 @@ function renderFormattedText(rawText: string) {
 
 export default function KriteriaGolonganPage() {
   const [items, setItems] = useState<KriteriaGolonganItem[]>([])
+  const [userRole, setUserRole] = useState<UserRole>('SEKRETARIS')
+  const isParoki = userRole === 'PAROKI'
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDetailPedomanOpen, setIsDetailPedomanOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<KriteriaGolonganItem | null>(null)
@@ -102,7 +107,7 @@ export default function KriteriaGolonganPage() {
   const [formRekomendasiBantuan, setFormRekomendasiBantuan] = useState('')
   const [selectedColorIndex, setSelectedColorIndex] = useState(0)
 
-  // Load items
+  // Load items & check role
   useEffect(() => {
     setItems(getKriteriaGolonganList())
 
@@ -111,6 +116,43 @@ export default function KriteriaGolonganPage() {
     }
     window.addEventListener('kriteriaGolonganChanged', handleUpdate)
     window.addEventListener('storage', handleUpdate)
+
+    async function checkRole() {
+      try {
+        const supabase = createClient()
+        const { data } = await supabase.auth.getUser()
+        const user = data?.user
+        if (user) {
+          const { data: uData } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle()
+          if (uData?.role) {
+            setUserRole(uData.role)
+            return
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user role:', err)
+      }
+
+      const cookies = typeof document !== 'undefined' ? document.cookie : ''
+      const getCookieVal = (name: string) => {
+        const v = `; ${cookies}`
+        const p = v.split(`; ${name}=`)
+        if (p.length === 2) return decodeURIComponent(p.pop()!.split(';').shift()!)
+        return null
+      }
+      const demoRole = getCookieVal('demo_user_role') || ''
+      const demoEmail = getCookieVal('demo_user_email') || getCookieVal('demo_user_username') || ''
+      if (demoRole === 'PAROKI' || demoEmail.includes('paroki')) {
+        setUserRole('PAROKI')
+      } else if (demoRole === 'BENDAHARA' || demoEmail.includes('bendahara')) {
+        setUserRole('BENDAHARA')
+      } else {
+        setUserRole('SEKRETARIS')
+      }
+    }
+
+    checkRole()
+
     return () => {
       window.removeEventListener('kriteriaGolonganChanged', handleUpdate)
       window.removeEventListener('storage', handleUpdate)
@@ -118,6 +160,7 @@ export default function KriteriaGolonganPage() {
   }, [])
 
   const handleOpenAdd = () => {
+    if (!isParoki) return
     setEditingItem(null)
     setFormNama('')
     setFormSubjudul('')
@@ -131,6 +174,7 @@ export default function KriteriaGolonganPage() {
   }
 
   const handleOpenEdit = (item: KriteriaGolonganItem) => {
+    if (!isParoki) return
     setEditingItem(item)
     setFormNama(item.nama)
     setFormSubjudul(item.subjudul)
@@ -147,6 +191,10 @@ export default function KriteriaGolonganPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isParoki) {
+      alert('Akses ditolak: Hanya akun Paroki yang berwenang mengubah kriteria golongan.')
+      return
+    }
     if (!formNama.trim()) return
 
     const colorConfig = COLOR_PRESETS[selectedColorIndex] || COLOR_PRESETS[0]
@@ -207,6 +255,10 @@ export default function KriteriaGolonganPage() {
   }
 
   const handleDelete = (id: string, nama: string) => {
+    if (!isParoki) {
+      alert('Akses ditolak: Hanya akun Paroki yang berwenang menghapus kriteria golongan.')
+      return
+    }
     if (confirm(`Hapus parameter klasifikasi golongan "${nama}"?`)) {
       const updatedList = items.filter((it) => it.id !== id)
       saveKriteriaGolonganList(updatedList)
@@ -217,6 +269,10 @@ export default function KriteriaGolonganPage() {
   }
 
   const handleResetToDefault = () => {
+    if (!isParoki) {
+      alert('Akses ditolak: Hanya akun Paroki yang berwenang mereset kriteria golongan.')
+      return
+    }
     if (confirm('Kembalikan parameter klasifikasi ke 4 standar baku resmi Pedoman DUPRAS KAJ 2025?')) {
       const def = resetKriteriaGolonganDefault()
       setItems(def)
@@ -274,26 +330,33 @@ export default function KriteriaGolonganPage() {
             {isDetailPedomanOpen ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
           </Button>
 
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={handleResetToDefault}
-              variant="outline"
-              size="sm"
-              className="border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer h-9"
-            >
-              <RotateCcw className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-              Reset 4 Baku KAJ
-            </Button>
+          {isParoki ? (
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleResetToDefault}
+                variant="outline"
+                size="sm"
+                className="border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer h-9"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
+                Reset 4 Baku KAJ
+              </Button>
 
-            <Button
-              onClick={handleOpenAdd}
-              size="sm"
-              className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer h-9 px-4 shadow-xs transition-all"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              Tambah Kriteria
-            </Button>
-          </div>
+              <Button
+                onClick={handleOpenAdd}
+                size="sm"
+                className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer h-9 px-4 shadow-xs transition-all"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Tambah Kriteria
+              </Button>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs">
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>Akses Sekretaris: <strong>Hanya Lihat</strong> (Edit parameter hanya melalui akun Paroki)</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -402,6 +465,22 @@ export default function KriteriaGolonganPage() {
         </div>
       </div>
 
+      {/* Read-Only Notice for non-PAROKI */}
+      {!isParoki && (
+        <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 flex items-start gap-3.5">
+          <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-950 space-y-1">
+            <span className="font-bold text-slate-900 block text-sm">
+              Hak Akses Sekretaris: Mode Baca (Read-Only)
+            </span>
+            <p className="leading-relaxed text-slate-700">
+              Pengubahan parameter dan kriteria baku penggolongan ekonomi hanya dapat dilakukan melalui <strong>Akun Pengawas Paroki</strong>. 
+              Sekretaris Lingkungan menggunakan parameter ini sebagai pedoman dan acuan saat menentukan golongan keluarga umat pada <strong>Modul DAFU</strong>.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ========================================================================= */}
       {/* 4 CARDS KRITERIA GOLONGAN (SEJAHTERA, TERDUGA, RENTAN, TIDAK MAMPU)       */}
       {/* ========================================================================= */}
@@ -439,29 +518,35 @@ export default function KriteriaGolonganPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleOpenEdit(item)}
-                      className="h-8 px-2.5 text-xs border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl cursor-pointer font-medium shadow-2xs"
-                      title="Ubah rincian kriteria"
-                    >
-                      <Pencil className="w-3.5 h-3.5 mr-1 text-slate-500" />
-                      Edit
-                    </Button>
-                    {!item.isDefault && (
+                  {isParoki ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDelete(item.id, item.nama)}
-                        className="h-8 px-2 text-xs border-rose-200 bg-white hover:bg-rose-50 text-rose-600 rounded-xl cursor-pointer"
-                        title="Hapus kriteria kustom"
+                        onClick={() => handleOpenEdit(item)}
+                        className="h-8 px-2.5 text-xs border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl cursor-pointer font-medium shadow-2xs"
+                        title="Ubah rincian kriteria"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Pencil className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                        Edit
                       </Button>
-                    )}
-                  </div>
+                      {!item.isDefault && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDelete(item.id, item.nama)}
+                          className="h-8 px-2 text-xs border-rose-200 bg-white hover:bg-rose-50 text-rose-600 rounded-xl cursor-pointer"
+                          title="Hapus kriteria kustom"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-[11px] font-semibold text-slate-500 bg-white/90 border border-slate-200 px-2.5 py-1 rounded-xl shadow-2xs shrink-0 flex items-center gap-1">
+                      <Check className="w-3 h-3 text-slate-400" /> Acuan Standar
+                    </span>
+                  )}
                 </div>
 
                 {/* Card Body */}
@@ -546,9 +631,9 @@ export default function KriteriaGolonganPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* DIALOG ADD / EDIT KRITERIA                                                */}
+      {/* DIALOG ADD / EDIT KRITERIA (HANYA UNTUK PAROKI)                           */}
       {/* ========================================================================= */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog open={isParoki && isModalOpen} onOpenChange={(open) => isParoki && setIsModalOpen(open)}>
         <DialogContent className="sm:max-w-xl bg-white border-slate-200 text-slate-900 rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2 font-serif">

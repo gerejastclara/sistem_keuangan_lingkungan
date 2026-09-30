@@ -972,7 +972,7 @@ function DafuFormContent() {
                   href="/dashboard/kriteria-golongan"
                   className="text-[11px] text-emerald-700 hover:text-emerald-800 font-semibold underline underline-offset-2 flex items-center gap-1"
                 >
-                  Kelola Parameter Kriteria Golongan &rarr;
+                  {userProfile?.role === 'PAROKI' ? 'Kelola Parameter Kriteria Golongan →' : 'Lihat Parameter Kriteria Golongan →'}
                 </Link>
               </div>
 

@@ -888,18 +888,14 @@ export default function JurnalPage() {
         </div>
 
         {/* Status Badge */}
-        <div className="pt-1 flex items-center gap-2">
-          {isMonthPosted ? (
+        {isMonthPosted && (
+          <div className="pt-1 flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 text-xs bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-full font-bold">
               <Lock className="w-3.5 h-3.5 text-amber-700" />
               POSTED — Bulan ini telah dikunci
             </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-xs bg-[#EAF7EE] text-[#137333] border border-[#B7E4C7] px-3.5 py-1 rounded-full font-medium">
-              <span className="font-extrabold text-[#0D6539]">DRAFT</span> Transaksi masih bisa ditambah/dihapus
-            </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* FORM: CATAT TRANSAKSI BARU (Persis Gambar 2, 3, 4) */}
@@ -1310,8 +1306,8 @@ export default function JurnalPage() {
 
                 <div className="grid grid-cols-12 text-xs font-bold pb-1 border-b border-slate-200">
                   <div className="col-span-8 text-slate-700">Akun</div>
-                  <div className="col-span-2 text-right text-rose-700">Debit</div>
-                  <div className="col-span-2 text-right text-emerald-700">Kredit</div>
+                  <div className="col-span-2 text-right text-emerald-700">Debit</div>
+                  <div className="col-span-2 text-right text-rose-700">Kredit</div>
                 </div>
 
                 {/* Double Entry Row 1 (Debit) */}
@@ -1319,7 +1315,7 @@ export default function JurnalPage() {
                   <div className="col-span-8 text-slate-900 font-mono">
                     {currentDebitAccount} -- {currentDebitName}
                   </div>
-                  <div className="col-span-2 text-right font-mono font-bold text-rose-700">
+                  <div className="col-span-2 text-right font-mono font-bold text-emerald-700">
                     {formatCurrency(step4NominalNumeric)}
                   </div>
                   <div className="col-span-2 text-right font-mono text-slate-400">
@@ -1335,7 +1331,7 @@ export default function JurnalPage() {
                   <div className="col-span-2 text-right font-mono text-slate-400">
                     Rp --
                   </div>
-                  <div className="col-span-2 text-right font-mono font-bold text-emerald-700">
+                  <div className="col-span-2 text-right font-mono font-bold text-rose-700">
                     {formatCurrency(step4NominalNumeric)}
                   </div>
                 </div>
@@ -1568,8 +1564,8 @@ export default function JurnalPage() {
                   <TableHead className="w-24">Tanggal</TableHead>
                   <TableHead>Keterangan & Akun</TableHead>
                   <TableHead className="w-20 text-center">Ref</TableHead>
-                  <TableHead className="w-28 text-right">Debit (Rp)</TableHead>
-                  <TableHead className="w-28 text-right">Kredit (Rp)</TableHead>
+                  <TableHead className="w-28 text-right text-emerald-700">Debit (Rp)</TableHead>
+                  <TableHead className="w-28 text-right text-rose-700">Kredit (Rp)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-slate-100 text-xs">
@@ -1595,7 +1591,7 @@ export default function JurnalPage() {
                           <div className="text-[11px] font-normal text-slate-500 mt-0.5">{cleanDisplayKeterangan(j.keterangan)}</div>
                         </TableCell>
                         <TableCell className="text-center font-mono text-[11px]">{j.coa_debit}</TableCell>
-                        <TableCell className="text-right font-mono font-bold text-rose-700">
+                        <TableCell className="text-right font-mono font-bold text-emerald-700">
                           {formatRupiah(Number(j.nominal))}
                         </TableCell>
                         <TableCell className="text-right font-mono text-slate-300">-</TableCell>
@@ -1608,7 +1604,7 @@ export default function JurnalPage() {
                         </TableCell>
                         <TableCell className="text-center font-mono text-[11px]">{j.coa_kredit}</TableCell>
                         <TableCell className="text-right font-mono text-slate-300">-</TableCell>
-                        <TableCell className="text-right font-mono font-bold text-emerald-700">
+                        <TableCell className="text-right font-mono font-bold text-rose-700">
                           {formatRupiah(Number(j.nominal))}
                         </TableCell>
                       </TableRow>
