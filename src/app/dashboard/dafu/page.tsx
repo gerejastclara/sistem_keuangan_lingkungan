@@ -942,20 +942,7 @@ function DafuFormContent() {
         </div>
       )}
 
-      {/* Mode Monitoring Info Paroki */}
-      {userRole === 'PAROKI' && (
-        <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-[#004085] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-bold">
-            <Users className="w-4 h-4 text-[#004085] shrink-0" />
-            <span>Mode Monitoring Paroki: Menampilkan daftar data umat & keluarga secara read-only (tanpa form input dan hapus).</span>
-          </div>
-          <Link href="/dashboard/paroki/sekretaris">
-            <Button size="sm" variant="outline" className="border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg cursor-pointer">
-              Buka Sekretariat Paroki
-            </Button>
-          </Link>
-        </div>
-      )}
+
 
       {/* FORMULIR INPUT LANGSUNG DI MODUL (HANYA UNTUK SEKRETARIS LINGKUNGAN) */}
       {canEdit && (

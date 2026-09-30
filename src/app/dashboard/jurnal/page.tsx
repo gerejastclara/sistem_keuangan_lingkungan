@@ -926,20 +926,7 @@ export default function JurnalPage() {
         )}
       </div>
 
-      {/* Mode Monitoring Info Paroki */}
-      {isParoki && (
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-bold">
-            <Lock className="w-4 h-4 text-amber-700 shrink-0" />
-            <span>Mode Monitoring Paroki: Hanya memantau hasil akhir transaksi jurnal kas bendahara lingkungan (Read-Only).</span>
-          </div>
-          <Link href="/dashboard/paroki/bendahara">
-            <Button size="sm" variant="outline" className="border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg cursor-pointer">
-              Monitoring Kas Seluruh Lingkungan
-            </Button>
-          </Link>
-        </div>
-      )}
+
 
       {/* FORM: CATAT TRANSAKSI BARU (HANYA UNTUK BENDAHARA LINGKUNGAN) */}
       {!isParoki && (

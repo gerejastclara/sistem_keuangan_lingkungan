@@ -335,8 +335,8 @@ export default function ParokiBendaharaPage() {
         // Tentukan Kesimpulan Status (Warna Soft & Netral Elegan, tidak neon)
         let kesimpulanStatus = {
           label: 'Belum Bayar (Tunggakan 9 Bulan)',
-          badgeClass: 'bg-rose-50/70 text-rose-700/90 border-rose-200/70',
-          color: 'text-rose-700',
+          badgeClass: 'bg-slate-50 text-slate-700 border-slate-200/90',
+          color: 'text-slate-700',
           isLunas: false
         }
 
@@ -849,7 +849,7 @@ export default function ParokiBendaharaPage() {
                           ) : item.kesimpulanStatus.label.startsWith('Bayar Sebagian') ? (
                             <Clock className="w-3.5 h-3.5 shrink-0 text-amber-700" />
                           ) : (
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#B25E5E]" />
                           )}
                           <span>{item.kesimpulanStatus.label}</span>
                         </div>
