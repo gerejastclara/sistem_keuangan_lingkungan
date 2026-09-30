@@ -99,7 +99,7 @@ export default function JurnalPage() {
   const [saldoAwalBank, setSaldoAwalBank] = useState<number>(0)
 
   // Filter State: Month & Year (Default to September 2026 as per design mockup)
-  const [selectedMonth, setSelectedMonth] = useState<number>(9)
+  const [selectedMonth, setSelectedMonth] = useState<number | 'ALL'>(9)
   const [selectedYear, setSelectedYear] = useState<number>(2026)
   const [filterArusView, setFilterArusView] = useState<'ALL' | 'MASUK' | 'KELUAR'>('ALL')
   const [searchDocQuery, setSearchDocQuery] = useState('')
@@ -210,15 +210,16 @@ export default function JurnalPage() {
         setCoaList(allCoas)
 
         if (targetLingkunganId) {
+          const dbUuid = getLingkunganDbUuid(targetLingkunganId)
           // Fetch KK list from DB + localStorage (which Sekretaris edits)
           const { data: kks } = await supabase
             .from('kepala_keluarga')
             .select('*')
-            .eq('lingkungan_id', targetLingkunganId)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .order('nama_kk', { ascending: true })
 
           let dbKks = kks || []
-          const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`)
+          const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`) || (dbUuid ? localStorage.getItem(`custom_kks_${dbUuid}`) : null)
           if (localSaved) {
             try {
               const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
@@ -232,7 +233,7 @@ export default function JurnalPage() {
           if (allSaved) {
             try {
               const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
-              const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId)
+              const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId || (dbUuid && k.lingkungan_id === dbUuid))
               const combinedMap = new Map<string, KepalaKeluarga>()
               dbKks.forEach(k => combinedMap.set(k.id, k))
               matched.forEach(k => combinedMap.set(k.id, k))
@@ -472,10 +473,14 @@ export default function JurnalPage() {
   // Filter journals by selected month and year
   const filteredJournals = jurnalList.filter((j) => {
     const d = new Date(j.tanggal)
-    return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear
+    const matchYear = isNaN(d.getFullYear()) || d.getFullYear() === selectedYear
+    if (selectedMonth === 'ALL') {
+      return matchYear
+    }
+    return d.getMonth() + 1 === selectedMonth && matchYear
   })
 
-  // Calculate Metrics for selected month
+  // Calculate Metrics for selected month or full year
   let totalBulanMasuk = 0
   let totalBulanKeluar = 0
   filteredJournals.forEach((j) => {
@@ -486,7 +491,7 @@ export default function JurnalPage() {
   const saldoBulanAkhir = saldoAwalBank + totalBulanMasuk - totalBulanKeluar
 
   // Check if current month is posted
-  const isMonthPosted = filteredJournals.length > 0 && filteredJournals.every(j => j.is_posted)
+  const isMonthPosted = selectedMonth !== 'ALL' && filteredJournals.length > 0 && filteredJournals.every(j => j.is_posted)
 
   // Current COA code and description mapping
   const resolveCoaDetails = (code: string) => {
@@ -754,20 +759,22 @@ export default function JurnalPage() {
   // Export transactions to Excel (CSV)
   const handleExportExcel = () => {
     if (filteredJournals.length === 0) {
-      alert('Tidak ada transaksi di bulan ini untuk diekspor.')
+      alert('Tidak ada transaksi pada periode ini untuk diekspor.')
       return
     }
 
     const headers = ['No', 'Tanggal', 'Tipe Arus', 'Jenis Transaksi', 'Keterangan', 'Nama KK / Umat', 'Akun Debit', 'Akun Kredit', 'Nominal (Rp)', 'Status']
     const rows = filteredJournals.map((j, idx) => {
       const cleanKet = cleanDisplayKeterangan(j.keterangan) || (j.tipe_arus === 'MASUK' ? 'Penerimaan' : 'Pengeluaran')
+      const linkedKk = kkList.find(k => k.id === j.kk_id)
+      const namaKk = linkedKk?.nama_kk || j.kepala_keluarga?.nama_kk || 'Umum / Kolektif'
       return [
         idx + 1,
         j.tanggal,
         j.tipe_arus,
         cleanKet,
         `"${cleanKet.replace(/"/g, '""')}"`,
-        `"${(j.kepala_keluarga?.nama_kk || 'Umum / Kolektif').replace(/"/g, '""')}"`,
+        `"${namaKk.replace(/"/g, '""')}"`,
         j.coa_debit,
         j.coa_kredit,
         j.nominal,
@@ -779,7 +786,8 @@ export default function JurnalPage() {
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement('a')
     link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `Jurnal_${formatNamaLingkungan(lingkunganName || 'Lingkungan').replace(/\s+/g, '_')}_${MONTH_NAMES[selectedMonth - 1]}_${selectedYear}.csv`)
+    const periodLabel = selectedMonth === 'ALL' ? `Seluruh_Tahun_${selectedYear}` : `${MONTH_NAMES[selectedMonth - 1]}_${selectedYear}`
+    link.setAttribute('download', `Jurnal_${formatNamaLingkungan(lingkunganName || 'Lingkungan').replace(/\s+/g, '_')}_${periodLabel}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -822,25 +830,33 @@ export default function JurnalPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Box 1: Saldo Awal (A) */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Saldo Awal (A)</div>
+          <div className="text-xs font-medium text-slate-500">
+            {selectedMonth === 'ALL' ? 'Saldo Awal Tahun (A)' : 'Saldo Awal (A)'}
+          </div>
           <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{formatRupiah(saldoAwalBank)}</div>
         </div>
 
         {/* Box 2: Total Uang Masuk (B) */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Total Uang Masuk (B)</div>
+          <div className="text-xs font-medium text-slate-500">
+            {selectedMonth === 'ALL' ? 'Total Masuk Setahun (B)' : 'Total Uang Masuk (B)'}
+          </div>
           <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{formatRupiah(totalBulanMasuk)}</div>
         </div>
 
         {/* Box 3: Total Uang Keluar (C) */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Total Uang Keluar (C)</div>
+          <div className="text-xs font-medium text-slate-500">
+            {selectedMonth === 'ALL' ? 'Total Keluar Setahun (C)' : 'Total Uang Keluar (C)'}
+          </div>
           <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{formatRupiah(totalBulanKeluar)}</div>
         </div>
 
         {/* Box 4: Saldo Akhir (A+B-C) */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Saldo Akhir (A+B-C)</div>
+          <div className="text-xs font-medium text-slate-500">
+            {selectedMonth === 'ALL' ? 'Saldo Akhir Tahun (A+B-C)' : 'Saldo Akhir (A+B-C)'}
+          </div>
           <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{formatRupiah(saldoBulanAkhir)}</div>
         </div>
       </div>
@@ -849,15 +865,22 @@ export default function JurnalPage() {
       <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1 flex-1 max-w-sm">
-            <Label className="text-xs font-bold text-slate-700">Pilih Bulan Transaksi</Label>
+            <Label className="text-xs font-bold text-slate-700">Pilih Periode / Bulan Transaksi</Label>
             <Select
               value={String(selectedMonth)}
-              onValueChange={(val) => setSelectedMonth(parseInt(val || '9', 10))}
+              onValueChange={(val) => {
+                if (val === 'ALL') setSelectedMonth('ALL')
+                else setSelectedMonth(parseInt(val || '9', 10))
+              }}
             >
               <SelectTrigger className="bg-white border-slate-300 text-slate-900 font-bold rounded-xl h-11 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200 text-slate-900">
+                <SelectItem value="ALL" className="font-bold text-emerald-800 bg-emerald-50/60 focus:bg-emerald-100">
+                  📅 Seluruh Transaksi Setahun ({selectedYear})
+                </SelectItem>
+                <div className="border-t border-slate-100 my-1" />
                 {MONTH_NAMES.map((m, idx) => (
                   <SelectItem key={idx + 1} value={String(idx + 1)}>
                     {m} {selectedYear}
@@ -1363,7 +1386,7 @@ export default function JurnalPage() {
             <div>
               <h3 className="text-sm font-bold text-slate-900">Daftar Transaksi</h3>
               <p className="text-xs text-slate-400">
-                {displayedTableJournals.length} dari {filteredJournals.length} transaksi di bulan ini
+                {displayedTableJournals.length} dari {filteredJournals.length} transaksi {selectedMonth === 'ALL' ? `tahun ${selectedYear}` : `di bulan ini`}
               </p>
             </div>
           </div>
@@ -1436,7 +1459,7 @@ export default function JurnalPage() {
           {displayedTableJournals.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-2">
               <div className="text-3xl font-extralight text-slate-400">&gt;</div>
-              <div className="text-sm font-medium text-slate-600">Belum ada transaksi di bulan ini</div>
+              <div className="text-sm font-medium text-slate-600">Belum ada transaksi {selectedMonth === 'ALL' ? `pada tahun ${selectedYear}` : `di bulan ini`}</div>
               <div className="text-xs text-slate-400">Gunakan form di atas untuk mulai mencatat transaksi jurnal</div>
             </div>
           ) : (
@@ -1491,9 +1514,13 @@ export default function JurnalPage() {
                           </div>
                         </TableCell>
                         <TableCell className="font-semibold text-slate-900">
-                          {j.kepala_keluarga?.nama_kk || (
-                            <span className="text-slate-500 italic">Umum / Kolektif</span>
-                          )}
+                          {(() => {
+                            const linkedKk = kkList.find(k => k.id === j.kk_id)
+                            const displayNamaKk = linkedKk?.nama_kk || j.kepala_keluarga?.nama_kk
+                            return displayNamaKk || (
+                              <span className="text-slate-500 italic">Umum / Kolektif</span>
+                            )
+                          })()}
                         </TableCell>
                         <TableCell className="text-slate-800 font-medium">
                           <div className="font-semibold text-slate-900">{displayKetClean}</div>
@@ -1550,7 +1577,7 @@ export default function JurnalPage() {
           <DialogHeader>
             <DialogTitle className="text-slate-900 font-bold text-lg flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-blue-600" />
-              Buku Jurnal Double Entry — {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+              Buku Jurnal Double Entry — {selectedMonth === 'ALL' ? `Seluruh Transaksi Tahun ${selectedYear}` : `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
               Format buku besar akuntansi berpasangan (Double Entry Ledger) untuk audit paroki.
@@ -1572,7 +1599,7 @@ export default function JurnalPage() {
                 {filteredJournals.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-6 text-slate-400">
-                      Belum ada transaksi pada bulan ini.
+                      Belum ada transaksi pada {selectedMonth === 'ALL' ? `tahun ${selectedYear}` : `bulan ini`}.
                     </TableCell>
                   </TableRow>
                 ) : (

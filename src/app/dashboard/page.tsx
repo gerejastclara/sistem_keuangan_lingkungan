@@ -339,14 +339,15 @@ export default function DashboardOverviewPage() {
 
         if (targetLingkunganId) {
           // 3. Fetch DAFU & Anggota Data (Essential for Sekretaris & useful for all)
+          const dbUuid = getLingkunganDbUuid(targetLingkunganId)
           const { data: kks } = await supabase
             .from('kepala_keluarga')
             .select('*')
-            .eq('lingkungan_id', targetLingkunganId)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .order('nama_kk', { ascending: true })
 
             let dbKks = (kks || []).filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
-            const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`)
+            const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`) || (dbUuid ? localStorage.getItem(`custom_kks_${dbUuid}`) : null)
             if (localSaved) {
               try {
                 const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
@@ -361,7 +362,7 @@ export default function DashboardOverviewPage() {
             if (allSaved) {
               try {
                 const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
-                const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
+                const matched = allParsed.filter(k => (k.lingkungan_id === targetLingkunganId || (dbUuid && k.lingkungan_id === dbUuid)) && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
                 const combinedMap = new Map<string, KepalaKeluarga>()
                 dbKks.forEach(k => combinedMap.set(k.id, k))
                 matched.forEach(k => combinedMap.set(k.id, k))

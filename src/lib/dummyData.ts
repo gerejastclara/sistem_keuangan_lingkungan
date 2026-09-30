@@ -1,6 +1,6 @@
 import { KepalaKeluarga, AnggotaKeluarga, GolonganKeluarga } from './types'
 import rawSantaClaraData from '@/data/santaClaraUmat.json'
-import { getAllMasterLingkungan } from './constants'
+import { getAllMasterLingkungan, getLingkunganDbUuid } from './constants'
 
 interface SantaClaraDataset {
   totalFamilies: number
@@ -98,14 +98,32 @@ export function ensureDummyKksForLingkungan(
 ): KepalaKeluarga[] {
   const realList = getRealKkListForLingkungan(lingkunganId, namaLingkungan)
 
-  const combinedMap = new Map<string, KepalaKeluarga>()
-  // Load real parishioners first
-  realList.forEach(k => combinedMap.set(k.id, k))
+  let deletedSet = new Set<string>()
+  if (typeof window !== 'undefined') {
+    try {
+      const dbUuid = getLingkunganDbUuid(lingkunganId)
+      const rawAll = localStorage.getItem('custom_kks_deleted_store')
+      const rawL = localStorage.getItem(`custom_kks_deleted_${lingkunganId}`)
+      const rawU = dbUuid ? localStorage.getItem(`custom_kks_deleted_${dbUuid}`) : null
+      const allD: string[] = rawAll ? JSON.parse(rawAll) : []
+      const lD: string[] = rawL ? JSON.parse(rawL) : []
+      const uD: string[] = rawU ? JSON.parse(rawU) : []
+      deletedSet = new Set([...allD, ...lD, ...uD])
+    } catch (e) {}
+  }
 
-  // Merge any locally saved / custom user entries (from Supabase or localStorage), strictly ignoring any legacy dummy IDs
+  const combinedMap = new Map<string, KepalaKeluarga>()
+  // Load real parishioners first (excluding deleted)
+  realList.forEach(k => {
+    if (!deletedSet.has(k.id)) {
+      combinedMap.set(k.id, k)
+    }
+  })
+
+  // Merge any locally saved / custom user entries (from Supabase or localStorage), strictly ignoring any legacy dummy IDs or deleted entries
   if (existingList && existingList.length > 0) {
     existingList.forEach(k => {
-      if (k && k.id && !k.id.startsWith('dummy-') && !k.id.includes('dummy')) {
+      if (k && k.id && !k.id.startsWith('dummy-') && !k.id.includes('dummy') && !deletedSet.has(k.id)) {
         combinedMap.set(k.id, k)
       }
     })

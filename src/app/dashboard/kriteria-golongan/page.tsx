@@ -467,13 +467,13 @@ export default function KriteriaGolonganPage() {
 
       {/* Read-Only Notice for non-PAROKI */}
       {!isParoki && (
-        <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 flex items-start gap-3.5">
-          <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-950 space-y-1">
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-start gap-3.5">
+          <ShieldAlert className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />
+          <div className="text-xs text-slate-700 space-y-1">
             <span className="font-bold text-slate-900 block text-sm">
               Hak Akses Sekretaris: Mode Baca (Read-Only)
             </span>
-            <p className="leading-relaxed text-slate-700">
+            <p className="leading-relaxed">
               Pengubahan parameter dan kriteria baku penggolongan ekonomi hanya dapat dilakukan melalui <strong>Akun Pengawas Paroki</strong>. 
               Sekretaris Lingkungan menggunakan parameter ini sebagai pedoman dan acuan saat menentukan golongan keluarga umat pada <strong>Modul DAFU</strong>.
             </p>

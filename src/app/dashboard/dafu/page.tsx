@@ -14,7 +14,7 @@ import {
   PeranKeluarga,
   Lingkungan
 } from '@/lib/types'
-import { MASTER_LINGKUNGAN_LIST, formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getWilayahForLingkungan } from '@/lib/constants'
+import { MASTER_LINGKUNGAN_LIST, formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getWilayahForLingkungan, getLingkunganDbUuid } from '@/lib/constants'
 import {
   ensureDummyKksForLingkungan,
   getDummyAnggotaForKk,
@@ -622,6 +622,8 @@ function DafuFormContent() {
 
     let savedKkId = editingKk?.id
 
+    const dbUuid = getLingkunganDbUuid(lingkunganId)
+
     if (editingKk) {
       const { error } = await supabase.from('kepala_keluarga').update(kkPayload).eq('id', editingKk.id)
       if (error) console.warn('Supabase DB info:', error.message)
@@ -629,6 +631,7 @@ function DafuFormContent() {
       setKkList(prev => {
         const updated = prev.map(k => k.id === editingKk.id ? { ...k, ...kkPayload } : k)
         localStorage.setItem(`custom_kks_${kkPayload.lingkungan_id}`, JSON.stringify(updated))
+        if (dbUuid) localStorage.setItem(`custom_kks_${dbUuid}`, JSON.stringify(updated))
         const allSaved = localStorage.getItem('custom_kks_all_store')
         let allList: KepalaKeluarga[] = []
         if (allSaved) {
@@ -655,6 +658,7 @@ function DafuFormContent() {
       setKkList(prev => {
         const updated = [...prev, newItem].sort((a, b) => a.nama_kk.localeCompare(b.nama_kk))
         localStorage.setItem(`custom_kks_${kkPayload.lingkungan_id}`, JSON.stringify(updated))
+        if (dbUuid) localStorage.setItem(`custom_kks_${dbUuid}`, JSON.stringify(updated))
         const allSaved = localStorage.getItem('custom_kks_all_store')
         let allList: KepalaKeluarga[] = []
         if (allSaved) {
@@ -665,6 +669,30 @@ function DafuFormContent() {
         localStorage.setItem('custom_kks_all_store', JSON.stringify(allList))
         return updated
       })
+    }
+
+    // Clean deleted cache if this id was previously marked deleted
+    if (typeof window !== 'undefined' && savedKkId) {
+      try {
+        const rawAll = localStorage.getItem('custom_kks_deleted_store')
+        if (rawAll) {
+          const list: string[] = JSON.parse(rawAll).filter((d: string) => d !== savedKkId)
+          localStorage.setItem('custom_kks_deleted_store', JSON.stringify(list))
+        }
+        // Update cached transaction KK references
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && key.startsWith('tx_kk_')) {
+            const raw = localStorage.getItem(key)
+            if (raw) {
+              const parsed = JSON.parse(raw)
+              if (parsed.id === savedKkId) {
+                localStorage.setItem(key, JSON.stringify({ ...parsed, nama_kk: formNama.trim(), alamat: formAlamat.trim() || null }))
+              }
+            }
+          }
+        }
+      } catch (e) {}
     }
 
     if (savedKkId) {
@@ -767,9 +795,22 @@ function DafuFormContent() {
       await supabase.from('kepala_keluarga').delete().eq('id', id)
     } catch (err) {}
 
+    const dbUuid = getLingkunganDbUuid(lingkunganId)
+    if (typeof window !== 'undefined') {
+      try {
+        const rawAll = localStorage.getItem('custom_kks_deleted_store')
+        const list: string[] = rawAll ? JSON.parse(rawAll) : []
+        if (!list.includes(id)) list.push(id)
+        localStorage.setItem('custom_kks_deleted_store', JSON.stringify(list))
+        if (lingkunganId) localStorage.setItem(`custom_kks_deleted_${lingkunganId}`, JSON.stringify(list))
+        if (dbUuid) localStorage.setItem(`custom_kks_deleted_${dbUuid}`, JSON.stringify(list))
+      } catch (e) {}
+    }
+
     setKkList(prev => {
       const updated = prev.filter(k => k.id !== id)
       if (lingkunganId) localStorage.setItem(`custom_kks_${lingkunganId}`, JSON.stringify(updated))
+      if (dbUuid) localStorage.setItem(`custom_kks_${dbUuid}`, JSON.stringify(updated))
       try {
         const allSaved = localStorage.getItem('custom_kks_all_store')
         if (allSaved) {

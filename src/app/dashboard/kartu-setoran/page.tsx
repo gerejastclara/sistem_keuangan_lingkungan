@@ -175,14 +175,15 @@ export default function KartuSetoranPage() {
           } catch (e) {}
 
           // Fetch KK List from DB + localStorage
+          const dbUuid = getLingkunganDbUuid(targetLingkunganId)
           const { data: kks } = await supabase
             .from('kepala_keluarga')
             .select('*')
-            .eq('lingkungan_id', targetLingkunganId)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .order('nama_kk', { ascending: true })
 
           let dbKks = kks || []
-          const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`)
+          const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`) || (dbUuid ? localStorage.getItem(`custom_kks_${dbUuid}`) : null)
           if (localSaved) {
             try {
               const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
@@ -197,7 +198,7 @@ export default function KartuSetoranPage() {
           if (allSaved) {
             try {
               const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
-              const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId)
+              const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId || (dbUuid && k.lingkungan_id === dbUuid))
               const combinedMap = new Map<string, KepalaKeluarga>()
               dbKks.forEach(k => combinedMap.set(k.id, k))
               matched.forEach(k => combinedMap.set(k.id, k))
@@ -210,7 +211,6 @@ export default function KartuSetoranPage() {
 
           // Load Journals for this lingkungan
           let list: JurnalTransaksi[] = []
-          const dbUuid = getLingkunganDbUuid(targetLingkunganId)
           try {
             const { data: journals } = await supabase
               .from('jurnal_transaksi')
@@ -294,12 +294,14 @@ export default function KartuSetoranPage() {
     window.addEventListener('storage', handleSync)
     window.addEventListener('lingkunganChanged', handleSync)
     window.addEventListener('coaListUpdated', handleSync)
+    window.addEventListener('dafuDataUpdated', handleSync)
 
     return () => {
       window.removeEventListener('customJournalsUpdated', handleSync)
       window.removeEventListener('storage', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
       window.removeEventListener('coaListUpdated', handleSync)
+      window.removeEventListener('dafuDataUpdated', handleSync)
     }
   }, [supabase])
 
