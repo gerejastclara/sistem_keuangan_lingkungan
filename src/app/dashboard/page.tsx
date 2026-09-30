@@ -1006,9 +1006,6 @@ export default function DashboardOverviewPage() {
               <h1 className="text-2xl font-bold text-[#1B2130] tracking-tight font-serif">
                 Dashboard Data Umat & Keluarga
               </h1>
-              <span className="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">
-                Sistem Golongan & KAJ
-              </span>
             </div>
             <p className="text-sm text-slate-500 mt-1">
               Rangkuman data seluruh umat, rincian keluarga, & klasifikasi golongan keluarga lingkungan{' '}
@@ -1633,11 +1630,7 @@ export default function DashboardOverviewPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Terintegrasi dengan Sekretaris
-              </span>
-              <span className="text-xs text-slate-500 font-medium">
+              <span className="text-xs text-slate-500 font-semibold tracking-wide">
                 {formatNamaLingkungan(lingkunganName)}
               </span>
             </div>
@@ -1645,13 +1638,6 @@ export default function DashboardOverviewPage() {
             <p className="text-xs text-slate-500">
               Data seluruh KK, anggota keluarga, dan status golongan yang diinput oleh Sekretaris Lingkungan tersinkronisasi otomatis ke Bendahara dan Paroki.
             </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              Data DAFU Disinkronkan Sekretaris
-            </div>
           </div>
         </div>
 

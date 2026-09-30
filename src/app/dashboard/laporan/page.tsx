@@ -120,7 +120,7 @@ export default function LaporanPage() {
   const [pengurus, setPengurus] = useState<PengurusLingkungan | null>(null)
 
   // Period: Default to September 2026 as per mockup in Images 2, 3, 4
-  const [selectedMonth, setSelectedMonth] = useState<number>(9)
+  const [selectedMonth, setSelectedMonth] = useState<string>('9')
   const [selectedYear, setSelectedYear] = useState<number>(2026)
 
   const [saldoAwalBank, setSaldoAwalBank] = useState<number>(0)
@@ -269,10 +269,13 @@ export default function LaporanPage() {
     }
   }, [supabase])
 
-  // Filter journals for selected month and year
+  // Filter journals for selected month and year (or all year)
+  const isYearly = selectedMonth === 'ALL'
   const filteredJournals = jurnalList.filter((j) => {
     const d = new Date(j.tanggal)
-    return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear
+    if (d.getFullYear() !== selectedYear) return false
+    if (isYearly) return true
+    return d.getMonth() + 1 === parseInt(selectedMonth, 10)
   })
 
   // Calculate sum for a specific COA code in the period
@@ -309,17 +312,27 @@ export default function LaporanPage() {
     return amt.toLocaleString('id-ID')
   }
 
+  const monthNum = parseInt(selectedMonth, 10)
+  const selectedMonthName = isYearly ? 'Tahun Penuh' : (MONTH_NAMES[monthNum - 1] || '')
+  const displayPeriodeTitle = isYearly 
+    ? `Periode 1 Tahun Penuh (Januari - Desember ${selectedYear})` 
+    : `Periode ${selectedMonthName} ${selectedYear}`
+  const tablePeriodHeader = isYearly ? `Tahun ${selectedYear} (Rp)` : `${selectedMonthName} (Rp)`
+
   // Export to Excel (CSV)
   const handleExportExcel = () => {
-    const monthName = MONTH_NAMES[selectedMonth - 1]
+    const periodLabel = isYearly ? `1 Tahun Penuh (Januari - Desember ${selectedYear})` : `${selectedMonthName} ${selectedYear}`
+    const columnLabel = isYearly ? `Tahun ${selectedYear} (Rp)` : `${selectedMonthName} (Rp)`
+    const fileSuffix = isYearly ? `1_Tahun_${selectedYear}` : `${selectedMonthName}_${selectedYear}`
+
     const rows = [
       ['GEREJA ST CLARA - PAROKI BEKASI UTARA'],
       ['LAPORAN AKTIVITAS'],
-      [`Periode ${monthName} ${selectedYear}`],
+      [`Periode ${periodLabel}`],
       [`Lingkungan: ${formatNamaLingkungan(lingkunganName)}`],
       ['(Disajikan dalam Rupiah kecuali dinyatakan lain)'],
       [''],
-      ['COA', 'Uraian', `${monthName} (Rp)`],
+      ['COA', 'Uraian', columnLabel],
       ['', 'Saldo Awal (A)', saldoAwalBank || 0],
       ['', 'Penerimaan terdiri dari :'],
       ['', '  Iuran Lingkungan']
@@ -354,7 +367,7 @@ export default function LaporanPage() {
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement('a')
     link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `Laporan_Aktivitas_${formatNamaLingkungan(lingkunganName).replace(/\s+/g, '_')}_${monthName}_${selectedYear}.csv`)
+    link.setAttribute('download', `Laporan_Aktivitas_${formatNamaLingkungan(lingkunganName).replace(/\s+/g, '_')}_${fileSuffix}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -364,8 +377,6 @@ export default function LaporanPage() {
   const handlePrint = () => {
     window.print()
   }
-
-  const selectedMonthName = MONTH_NAMES[selectedMonth - 1]
 
   if (loading) {
     return (
@@ -426,15 +437,18 @@ export default function LaporanPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="bulan" className="text-xs font-bold text-slate-700">Bulan</Label>
+            <Label htmlFor="bulan" className="text-xs font-bold text-slate-700">Periode / Bulan</Label>
             <Select
-              value={String(selectedMonth)}
-              onValueChange={(val) => setSelectedMonth(parseInt(val || '9', 10))}
+              value={selectedMonth}
+              onValueChange={(val) => setSelectedMonth(val || '9')}
             >
               <SelectTrigger id="bulan" className="bg-white border-slate-300 text-slate-900 font-bold rounded-xl h-11 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200 text-slate-900">
+                <SelectItem value="ALL" className="font-bold text-[#18539E]">
+                  📅 1 Tahun Penuh (Januari - Desember {selectedYear})
+                </SelectItem>
                 {MONTH_NAMES.map((m, idx) => (
                   <SelectItem key={idx + 1} value={String(idx + 1)}>
                     {m}
@@ -483,7 +497,7 @@ export default function LaporanPage() {
           </h1>
           <div className="text-slate-400 text-sm font-semibold">—</div>
           <div className="text-xs font-semibold text-slate-700">
-            Periode {selectedMonthName} {selectedYear}
+            {displayPeriodeTitle}
           </div>
           <div className="text-[11px] text-slate-500 italic">
             (Disajikan dalam Rupiah kecuali dinyatakan lain)
@@ -503,7 +517,7 @@ export default function LaporanPage() {
               <tr className="font-bold border-b border-slate-200 text-slate-900">
                 <th className="w-20 text-left py-2 font-bold">COA</th>
                 <th className="text-left py-2 font-bold">Uraian</th>
-                <th className="w-36 text-right py-2 font-bold">{selectedMonthName} (Rp)</th>
+                <th className="w-36 text-right py-2 font-bold">{tablePeriodHeader}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
