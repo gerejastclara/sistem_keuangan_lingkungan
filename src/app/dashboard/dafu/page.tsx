@@ -950,7 +950,7 @@ function DafuFormContent() {
             <span>Mode Monitoring Paroki: Menampilkan daftar data umat & keluarga secara read-only (tanpa form input dan hapus).</span>
           </div>
           <Link href="/dashboard/paroki/sekretaris">
-            <Button size="sm" className="bg-[#004085] hover:bg-[#003366] text-white text-xs font-bold rounded-lg cursor-pointer">
+            <Button size="sm" variant="outline" className="border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg cursor-pointer">
               Buka Sekretariat Paroki
             </Button>
           </Link>

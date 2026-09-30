@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { getAllMasterLingkungan, formatNamaLingkungan, getLingkunganDbUuid } from '@/lib/constants'
+import { getAllMasterLingkungan, formatNamaLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
 import { ensureDummyKksForLingkungan, getDummyGolonganForKk } from '@/lib/dummyData'
 import { KepalaKeluarga, JurnalTransaksi, GolonganKeluarga } from '@/lib/types'
 import { formatRupiah, MONTH_NAMES } from '@/lib/utils'
@@ -298,8 +298,16 @@ export default function ParokiBendaharaPage() {
 
     allLingkungan.forEach(ling => {
       // Jika ada filter lingkungan
-      if (selectedLingkunganFilter !== 'ALL' && ling.id !== selectedLingkunganFilter) {
-        return
+      if (selectedLingkunganFilter !== 'ALL') {
+        const targetUuid = getLingkunganDbUuid(selectedLingkunganFilter).toLowerCase()
+        const lingUuid = getLingkunganDbUuid(ling.id).toLowerCase()
+        if (
+          ling.id !== selectedLingkunganFilter &&
+          lingUuid !== targetUuid &&
+          ling.nama_lingkungan.toLowerCase() !== selectedLingkunganFilter.toLowerCase()
+        ) {
+          return
+        }
       }
 
       const kks = dafuByLingkungan[ling.id] || []
@@ -324,10 +332,10 @@ export default function ParokiBendaharaPage() {
         const paidMonths = Array.from(paidSet).sort((a, b) => a - b)
         const paidCount = paidMonths.length
 
-        // Tentukan Kesimpulan Status
+        // Tentukan Kesimpulan Status (Warna Soft & Netral Elegan, tidak neon)
         let kesimpulanStatus = {
           label: 'Belum Bayar (Tunggakan 9 Bulan)',
-          badgeClass: 'bg-rose-50 text-rose-800 border-rose-200',
+          badgeClass: 'bg-rose-50/70 text-rose-700/90 border-rose-200/70',
           color: 'text-rose-700',
           isLunas: false
         }
@@ -335,29 +343,29 @@ export default function ParokiBendaharaPage() {
         if (gol.golongan === 'Tidak Mampu') {
           kesimpulanStatus = {
             label: 'Bebas Iuran (Subsidi Paroki)',
-            badgeClass: 'bg-slate-100 text-slate-700 border-slate-300',
+            badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
             color: 'text-slate-600',
             isLunas: true
           }
         } else if (paidCount >= 12) {
           kesimpulanStatus = {
             label: 'Lunas Penuh 1 Tahun (12/12 Bln)',
-            badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-            color: 'text-emerald-700',
+            badgeClass: 'bg-slate-100 text-slate-800 border-slate-200',
+            color: 'text-slate-800',
             isLunas: true
           }
         } else if (paidCount >= BULAN_BERJALAN_CURRENT) {
           kesimpulanStatus = {
             label: `Lunas s/d Bulan Ini (${paidCount}/${BULAN_BERJALAN_CURRENT} Bln)`,
-            badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-            color: 'text-emerald-700',
+            badgeClass: 'bg-slate-100 text-slate-800 border-slate-200',
+            color: 'text-slate-800',
             isLunas: true
           }
         } else if (paidCount > 0) {
           const sisa = BULAN_BERJALAN_CURRENT - paidCount
           kesimpulanStatus = {
             label: `Bayar Sebagian (${paidCount}/${BULAN_BERJALAN_CURRENT} Bln - Kurang ${sisa} Bln)`,
-            badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
+            badgeClass: 'bg-amber-50/70 text-amber-800/90 border-amber-200/70',
             color: 'text-amber-700',
             isLunas: false
           }
@@ -705,11 +713,11 @@ export default function ParokiBendaharaPage() {
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-slate-500">Filter Lingkungan</Label>
               <Select value={selectedLingkunganFilter} onValueChange={(val) => setSelectedLingkunganFilter(val || 'ALL')}>
-                <SelectTrigger className="bg-white border-slate-300 text-slate-900 text-xs font-bold rounded-xl h-10">
-                  <SelectValue placeholder="Semua Lingkungan" />
+                <SelectTrigger className="bg-white border-slate-300 text-slate-900 text-xs font-semibold rounded-xl h-10">
+                  <span className="truncate">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)}</span>
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs max-h-72">
-                  <SelectItem value="ALL" className="font-extrabold text-[#004085]">
+                  <SelectItem value="ALL" className="font-semibold text-slate-800">
                     ⭐ Semua Lingkungan (69 Lingkungan)
                   </SelectItem>
                   {allLingkungan.map(ling => (
@@ -803,17 +811,17 @@ export default function ParokiBendaharaPage() {
                       </TableCell>
                       <TableCell>
                         <div className="font-bold text-slate-900">{item.kk.nama_kk}</div>
-                        <div className="text-[11px] text-slate-500 font-mono">No. KK: {item.kk.no_kk || '-'}</div>
+                        {item.kk.no_kk && item.kk.no_kk.trim() !== '' && item.kk.no_kk.trim() !== '-' && (
+                          <div className="text-[11px] text-slate-500 font-mono">No. KK: {item.kk.no_kk}</div>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
+                        <span className={`inline-block px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${
                           String(item.golongan.golongan) === 'Tidak Mampu'
-                            ? 'bg-rose-100 text-rose-800'
+                            ? 'bg-rose-50/70 text-rose-700/90 border-rose-200/60'
                             : String(item.golongan.golongan).includes('Rentan') || String(item.golongan.golongan).includes('Prasejahtera')
-                            ? 'bg-amber-100 text-amber-800'
-                            : String(item.golongan.golongan) === 'Menengah'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-amber-50/70 text-amber-800/90 border-amber-200/60'
+                            : 'bg-slate-100 text-slate-700 border-slate-200/80'
                         }`}>
                           {item.golongan.golongan}
                         </span>
@@ -822,7 +830,7 @@ export default function ParokiBendaharaPage() {
                         {item.paidMonths.length > 0 ? (
                           <div className="flex flex-wrap gap-1 max-w-xs">
                             {item.paidMonths.map(m => (
-                              <span key={m} className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                              <span key={m} className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/80 text-[10px] font-medium">
                                 {MONTH_NAMES[m - 1].slice(0, 3)}
                               </span>
                             ))}
@@ -835,11 +843,11 @@ export default function ParokiBendaharaPage() {
                         {item.totalBayar > 0 ? formatRupiah(item.totalBayar) : 'Rp 0'}
                       </TableCell>
                       <TableCell>
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-bold ${item.kesimpulanStatus.badgeClass}`}>
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-semibold ${item.kesimpulanStatus.badgeClass}`}>
                           {item.kesimpulanStatus.isLunas ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-slate-600" />
                           ) : item.kesimpulanStatus.label.startsWith('Bayar Sebagian') ? (
-                            <Clock className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                            <Clock className="w-3.5 h-3.5 shrink-0 text-amber-700" />
                           ) : (
                             <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
                           )}

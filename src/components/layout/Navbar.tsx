@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { UserProfile, Lingkungan } from '@/lib/types'
-import { getWilayahForLingkungan, formatNamaLingkungan, getAllMasterLingkungan, getLingkunganDbUuid } from '@/lib/constants'
+import { getWilayahForLingkungan, formatNamaLingkungan, getAllMasterLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
 import { LogOut, Building2, User, ChevronDown, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -33,11 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     const foundDirect = lingkunganList.find((l) => l.id === id)
     if (foundDirect) return formatNamaLingkungan(foundDirect.nama_lingkungan)
 
-    const master = getAllMasterLingkungan()
-    const foundMaster = master.find(m => m.id === id || getLingkunganDbUuid(m.id) === id || m.slug === id)
-    if (foundMaster) return formatNamaLingkungan(foundMaster.nama_lingkungan)
-
-    return 'Lingkungan'
+    return getNamaLingkunganFromAnyIdentifier(id)
   }
 
   const getRoleBadge = (role?: string) => {

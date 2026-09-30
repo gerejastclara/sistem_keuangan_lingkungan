@@ -934,7 +934,7 @@ export default function JurnalPage() {
             <span>Mode Monitoring Paroki: Hanya memantau hasil akhir transaksi jurnal kas bendahara lingkungan (Read-Only).</span>
           </div>
           <Link href="/dashboard/paroki/bendahara">
-            <Button size="sm" className="bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold rounded-lg cursor-pointer">
+            <Button size="sm" variant="outline" className="border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg cursor-pointer">
               Monitoring Kas Seluruh Lingkungan
             </Button>
           </Link>

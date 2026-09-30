@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { getAllMasterLingkungan, formatNamaLingkungan } from '@/lib/constants'
+import { getAllMasterLingkungan, formatNamaLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { ensureDummyKksForLingkungan, getDummyAnggotaForKk, getDummyGolonganForKk, santaClaraStats } from '@/lib/dummyData'
 import { KepalaKeluarga, AnggotaKeluarga, GolonganKeluarga } from '@/lib/types'
@@ -172,8 +172,18 @@ export default function ParokiSekretariatPage() {
       })
     })
 
+    const isMatchLing = (itemLingId: string, filterId: string) => {
+      if (!filterId || filterId === 'ALL') return true
+      if (itemLingId === filterId) return true
+      const uuid1 = getLingkunganDbUuid(itemLingId)
+      const uuid2 = getLingkunganDbUuid(filterId)
+      if (uuid1 && (uuid1 === filterId || uuid1 === uuid2)) return true
+      if (uuid2 && (itemLingId === uuid2)) return true
+      return false
+    }
+
     const filtered = list.filter(item => {
-      if (selectedLingkunganDafu !== 'ALL' && item.lingkunganId !== selectedLingkunganDafu) {
+      if (!isMatchLing(item.lingkunganId, selectedLingkunganDafu)) {
         return false
       }
       if (filterGolongan !== 'ALL') {
@@ -191,7 +201,7 @@ export default function ParokiSekretariatPage() {
     })
 
     // Compute Stats for current selection
-    const relevantList = selectedLingkunganDafu === 'ALL' ? list : list.filter(i => i.lingkunganId === selectedLingkunganDafu)
+    const relevantList = selectedLingkunganDafu === 'ALL' ? list : list.filter(i => isMatchLing(i.lingkunganId, selectedLingkunganDafu))
     let totalJiwa = 0
     let tidakMampu = 0
     let rentan = 0
@@ -425,12 +435,12 @@ export default function ParokiSekretariatPage() {
             <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Terintegrasi Realtime</div>
-                  <div className="text-2xl font-black text-[#004085] mt-0.5">100% Otomatis</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Tersinkron ke Sekretaris Lingkungan</div>
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Kepala Keluarga</div>
+                  <div className="text-2xl font-black text-slate-900 mt-0.5">{allFlattenedKks.length} KK</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">Seluruh Lingkungan St. Clara</div>
                 </div>
-                <div className="w-11 h-11 rounded-xl bg-[#EBF2FC] text-[#004085] flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-6 h-6" />
+                <div className="w-11 h-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                  <Users className="w-6 h-6" />
                 </div>
               </CardContent>
             </Card>
@@ -590,11 +600,11 @@ export default function ParokiSekretariatPage() {
               <div className="w-full sm:w-64 space-y-1">
                 <Label className="text-[10px] uppercase font-bold text-slate-500">Pilih Lingkungan</Label>
                 <Select value={selectedLingkunganDafu} onValueChange={(val) => setSelectedLingkunganDafu(val || 'ALL')}>
-                  <SelectTrigger className="bg-white border-slate-300 text-slate-900 text-xs font-bold rounded-xl h-10">
-                    <SelectValue placeholder="Pilih Lingkungan" />
+                  <SelectTrigger className="bg-white border-slate-300 text-slate-900 text-xs font-semibold rounded-xl h-10">
+                    <span className="truncate">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganDafu)}</span>
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs max-h-72">
-                    <SelectItem value="ALL" className="font-extrabold text-[#004085]">
+                    <SelectItem value="ALL" className="font-semibold text-slate-800">
                       ⭐ Semua Lingkungan (69 Lingkungan)
                     </SelectItem>
                     {allLingkungan.map(ling => (
@@ -694,33 +704,27 @@ export default function ParokiSekretariatPage() {
                             {formatNamaLingkungan(item.lingkunganNama)}
                           </TableCell>
                           <TableCell>
-                            <div className="font-bold text-slate-900">{item.kk.nama_kk}</div>
-                            <div className="text-[11px] text-slate-500">{item.kk.alamat || 'Alamat sesuai DAFU'}</div>
+                            <div className="font-semibold text-slate-900">{item.kk.nama_kk}</div>
+                            {item.kk.no_kk && item.kk.no_kk !== '-' && (
+                              <div className="text-[11px] text-slate-500 font-mono mt-0.5">No. KK: {item.kk.no_kk}</div>
+                            )}
                           </TableCell>
-                          <TableCell className="font-mono text-slate-600">{item.kk.no_kk || '-'}</TableCell>
+                          <TableCell className="font-mono text-slate-600">{item.kk.no_kk && item.kk.no_kk !== '-' ? item.kk.no_kk : '-'}</TableCell>
                           <TableCell>
-                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                              String(gol.golongan) === 'Tidak Mampu'
-                                ? 'bg-rose-100 text-rose-800'
-                                : String(gol.golongan).includes('Rentan') || String(gol.golongan).includes('Prasejahtera')
-                                ? 'bg-amber-100 text-amber-800'
-                                : String(gol.golongan) === 'Menengah'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-emerald-100 text-emerald-800'
-                            }`}>
+                            <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                               {gol.golongan}
                             </span>
                           </TableCell>
-                          <TableCell className="text-center font-bold text-slate-800">
+                          <TableCell className="text-center font-semibold text-slate-800">
                             {anggota.length} <span className="text-[10px] text-slate-500 font-normal">Jiwa</span>
                           </TableCell>
                           <TableCell className="text-center">
                             {item.kk.is_biduk !== false ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> KAJ
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                                KAJ
                               </span>
                             ) : (
-                              <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                              <span className="text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">
                                 Non-KAJ
                               </span>
                             )}

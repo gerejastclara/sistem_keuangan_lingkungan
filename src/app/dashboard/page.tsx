@@ -1448,14 +1448,14 @@ export default function DashboardOverviewPage() {
           {userRole === 'PAROKI' ? (
             <>
               <Link href="/dashboard/paroki/sekretaris">
-                <Button className="bg-[#004085] hover:bg-[#003366] text-white font-bold px-3.5 py-2.5 rounded-xl shadow-xs cursor-pointer transition-all text-xs">
-                  <Users className="w-4 h-4 mr-1.5 text-white" />
+                <Button className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold px-3.5 py-2.5 rounded-xl shadow-2xs cursor-pointer transition-all text-xs">
+                  <Users className="w-4 h-4 mr-1.5 text-slate-600" />
                   Sekretariat Paroki
                 </Button>
               </Link>
               <Link href="/dashboard/paroki/bendahara">
-                <Button className="bg-amber-700 hover:bg-amber-800 text-white font-bold px-3.5 py-2.5 rounded-xl shadow-xs cursor-pointer transition-all text-xs">
-                  <CreditCard className="w-4 h-4 mr-1.5 text-white" />
+                <Button className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold px-3.5 py-2.5 rounded-xl shadow-2xs cursor-pointer transition-all text-xs">
+                  <CreditCard className="w-4 h-4 mr-1.5 text-slate-600" />
                   Monitoring Kas & Setoran
                 </Button>
               </Link>

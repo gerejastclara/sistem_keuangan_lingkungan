@@ -341,3 +341,32 @@ export function findLingkunganByQuery(query: string): { id: string; nama_lingkun
 
   return null;
 }
+
+export function getNamaLingkunganFromAnyIdentifier(val?: string | null): string {
+  if (!val || val === 'ALL' || val === 'all') return 'Semua Lingkungan (69 Lingkungan)';
+  const trimmed = val.trim();
+
+  // 1. Cek reverse lookup di MASTER_LINGKUNGAN_UUID_MAP
+  for (const [name, uuid] of Object.entries(MASTER_LINGKUNGAN_UUID_MAP)) {
+    if (uuid.toLowerCase() === trimmed.toLowerCase()) {
+      return formatNamaLingkungan(name);
+    }
+  }
+
+  // 2. Cek di getAllMasterLingkungan()
+  const all = getAllMasterLingkungan();
+  const found = all.find(
+    (m) =>
+      m.id.toLowerCase() === trimmed.toLowerCase() ||
+      m.slug.toLowerCase() === trimmed.toLowerCase() ||
+      m.nama_lingkungan.toLowerCase() === trimmed.toLowerCase() ||
+      m.csv_id.toLowerCase() === trimmed.toLowerCase()
+  );
+  if (found) return formatNamaLingkungan(found.nama_lingkungan);
+
+  // 3. Coba findLingkunganByQuery
+  const queried = findLingkunganByQuery(trimmed);
+  if (queried) return formatNamaLingkungan(queried.nama_lingkungan);
+
+  return formatNamaLingkungan(trimmed);
+}
