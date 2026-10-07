@@ -126,17 +126,30 @@ export default function KartuSetoranPage() {
       setLoading(true)
       try {
         const { data: { user } } = await supabase.auth.getUser()
+        const cookieRole = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_role=').pop()?.split(';').shift() : '') || ''
+        const cookieLingId = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_lingkungan_id=').pop()?.split(';').shift() : '') || ''
+        let cookieLingNama = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_lingkungan_nama=').pop()?.split(';').shift() : '') || ''
+        try { cookieLingNama = decodeURIComponent(cookieLingNama) } catch (e) {}
+
+        const cookieUsername = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_username=').pop()?.split(';').shift() : '') || ''
         let rawDemoEmail = typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() || '' : ''
         try {
           rawDemoEmail = decodeURIComponent(rawDemoEmail)
         } catch (e) {}
-        const effectiveEmail = user?.email || rawDemoEmail || ''
-        const effectiveRole = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_role=').pop()?.split(';').shift() : '') || ''
+        const effectiveEmail = user?.email || rawDemoEmail || cookieUsername || ''
+        const effectiveRole = cookieRole || ''
 
         let targetLingkunganId: string | null = null
         let targetLingkunganNama: string | null = null
 
-        if (effectiveRole !== 'PAROKI' && effectiveEmail) {
+        // 1. Jika Bendahara/Sekretaris, prioritaskan data sesi lingkungan di cookie
+        if (effectiveRole !== 'PAROKI' && cookieLingId) {
+          targetLingkunganId = cookieLingId
+          targetLingkunganNama = cookieLingNama || null
+        }
+
+        // 2. Jika belum ketemu, cari dari query email / username
+        if (!targetLingkunganId && effectiveRole !== 'PAROKI' && effectiveEmail) {
           const matched = findLingkunganByQuery(effectiveEmail)
           if (matched) {
             targetLingkunganId = matched.id
@@ -144,9 +157,21 @@ export default function KartuSetoranPage() {
           }
         }
 
+        // 3. Fallback ke selected_lingkungan_id di localStorage (misal peran Paroki)
         if (!targetLingkunganId) {
           targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
         }
+
+        // 4. Pastikan nama lingkungan selalu terisi kanonikal dari ID
+        if (!targetLingkunganNama && targetLingkunganId) {
+          const allM = getAllMasterLingkungan()
+          const targetUuid = getLingkunganDbUuid(targetLingkunganId)
+          const found = allM.find(l => l.id === targetLingkunganId || l.slug === targetLingkunganId || getLingkunganDbUuid(l.id) === targetUuid)
+          if (found) {
+            targetLingkunganNama = found.nama_lingkungan
+          }
+        }
+
         if (!targetLingkunganId) {
           const { data: lData } = await supabase.from('lingkungan').select('id, nama_lingkungan').limit(1).maybeSingle()
           if (lData) {
@@ -157,12 +182,7 @@ export default function KartuSetoranPage() {
 
         if (targetLingkunganNama) {
           setLingkunganName(targetLingkunganNama)
-        } else if (targetLingkunganId) {
-          const allM = getAllMasterLingkungan()
-          const found = allM.find(l => l.id === targetLingkunganId)
-          if (found) setLingkunganName(found.nama_lingkungan)
         }
-
         setLingkunganId(targetLingkunganId)
 
         if (targetLingkunganId) {
@@ -268,8 +288,21 @@ export default function KartuSetoranPage() {
                   if (!j.kk_id && parsed.id) j.kk_id = parsed.id
                 } catch (e) {}
               } else if (j.no_bukti === 'BBM/004/09/2026' || j.id === '39480d56-45b3-4118-a4f8-420bbcad4d0b') {
-                j.kepala_keluarga = { id: 'kk-padre-pio-1-1856', nama_kk: 'Agustinus Jemiyo', lingkungan_id: j.lingkungan_id } as any
-                j.kk_id = 'kk-padre-pio-1-1856'
+                const found = finalKks.find(k => k.nama_kk.toLowerCase().includes('jemiyo')) || { id: 'kk-padre-pio-1-1856', nama_kk: 'Agustinus Jemiyo' }
+                j.kepala_keluarga = { id: found.id, nama_kk: found.nama_kk, lingkungan_id: j.lingkungan_id } as any
+                j.kk_id = found.id
+              } else if (j.keterangan) {
+                const kkMatch = j.keterangan.match(/\[KK:\s*([^\]]+)\]/i)
+                if (kkMatch) {
+                  const nameFromKet = kkMatch[1].trim()
+                  const found = finalKks.find(k => k.nama_kk.toLowerCase().trim() === nameFromKet.toLowerCase())
+                  if (found) {
+                    j.kepala_keluarga = found as any
+                    j.kk_id = found.id
+                  } else {
+                    j.kepala_keluarga = { id: `kk-${nameFromKet}`, nama_kk: nameFromKet, lingkungan_id: j.lingkungan_id } as any
+                  }
+                }
               }
             }
           })
@@ -330,7 +363,16 @@ export default function KartuSetoranPage() {
       } else if (j.kepala_keluarga?.nama_kk) {
         const found = kkList.find(k => k.nama_kk.toLowerCase().trim() === j.kepala_keluarga!.nama_kk.toLowerCase().trim())
         if (found) effectiveKkId = found.id
-      } else {
+      } else if (j.keterangan) {
+        const kkMatch = j.keterangan.match(/\[KK:\s*([^\]]+)\]/i)
+        if (kkMatch) {
+          const nameFromKet = kkMatch[1].trim()
+          const found = kkList.find(k => k.nama_kk.toLowerCase().trim() === nameFromKet.toLowerCase())
+          if (found) effectiveKkId = found.id
+        }
+      }
+
+      if (!effectiveKkId || effectiveKkId === 'umum') {
         const cached = typeof window !== 'undefined' ? localStorage.getItem(`tx_kk_${j.id}`) : null
         if (cached) {
           try {
@@ -342,7 +384,8 @@ export default function KartuSetoranPage() {
             }
           } catch (e) {}
         } else if (j.no_bukti === 'BBM/004/09/2026' || j.id === '39480d56-45b3-4118-a4f8-420bbcad4d0b') {
-          effectiveKkId = 'kk-padre-pio-1-1856'
+          const found = kkList.find(k => k.nama_kk.toLowerCase().includes('jemiyo'))
+          effectiveKkId = found ? found.id : 'kk-padre-pio-1-1856'
         }
       }
     }

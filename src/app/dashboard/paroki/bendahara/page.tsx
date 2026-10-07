@@ -117,7 +117,7 @@ export default function ParokiBendaharaPage() {
       })
       const mergedJournals = Array.from(map.values())
 
-      // Auto-tag KK jika belum terisi dari local cache tx_kk
+      // Auto-tag KK jika belum terisi dari local cache tx_kk atau tag keterangan
       if (typeof window !== 'undefined') {
         mergedJournals.forEach(j => {
           if (!j.kepala_keluarga?.nama_kk) {
@@ -128,6 +128,15 @@ export default function ParokiBendaharaPage() {
                 j.kepala_keluarga = { id: parsed.id, nama_kk: parsed.nama_kk, lingkungan_id: j.lingkungan_id } as any
                 if (!j.kk_id && parsed.id) j.kk_id = parsed.id
               } catch (e) {}
+            } else if (j.no_bukti === 'BBM/004/09/2026' || j.id === '39480d56-45b3-4118-a4f8-420bbcad4d0b') {
+              j.kepala_keluarga = { id: 'kk-padre-pio-1-1856', nama_kk: 'Agustinus Jemiyo', lingkungan_id: j.lingkungan_id } as any
+              j.kk_id = 'kk-padre-pio-1-1856'
+            } else if (j.keterangan) {
+              const kkMatch = j.keterangan.match(/\[KK:\s*([^\]]+)\]/i)
+              if (kkMatch) {
+                const nameFromKet = kkMatch[1].trim()
+                j.kepala_keluarga = { id: `kk-${nameFromKet}`, nama_kk: nameFromKet, lingkungan_id: j.lingkungan_id } as any
+              }
             }
           }
         })
@@ -224,12 +233,11 @@ export default function ParokiBendaharaPage() {
   }, [coaYearJournals])
 
   // =========================================================================
-  // REKAP CAPAIAN KAS PER LINGKUNGAN
+  // REKAP REALISASI IURAN KAS PER LINGKUNGAN
   // =========================================================================
   const rekapCapaianLingkungan = useMemo(() => {
     let grandTotalKk = 0
     let grandTotalRealisasi = 0
-    let grandTotalPotensi = 0
 
     const list = allLingkungan.map(ling => {
       const kks = dafuByLingkungan[ling.id] || []
@@ -244,36 +252,21 @@ export default function ParokiBendaharaPage() {
       const realisasiIuran = lingJournals.reduce((sum, j) => sum + (Number(j.nominal) || 0), 0)
       grandTotalRealisasi += realisasiIuran
 
-      // Potensi iuran = Jumlah KK * Rp 20.000 * 9 bulan berjalan
-      // (Kecuali KK golongan Tidak Mampu disubsidi, tapi sebagai target dasar paroki)
-      const potensiIuran = jumlahKk * STANDAR_IURAN_PER_BULAN * BULAN_BERJALAN_CURRENT
-      grandTotalPotensi += potensiIuran
-
-      const persentase = potensiIuran > 0 ? Math.min(100, Math.round((realisasiIuran / potensiIuran) * 100)) : 0
-
-      let statusKepatuhan: 'Sangat Baik' | 'Cukup' | 'Perlu Perhatian' = 'Perlu Perhatian'
-      if (persentase >= 75) statusKepatuhan = 'Sangat Baik'
-      else if (persentase >= 40) statusKepatuhan = 'Cukup'
+      const statusSetoran = realisasiIuran > 0 ? 'Sudah Ada Setoran' : 'Belum Ada Setoran'
 
       return {
         lingkunganId: ling.id,
         namaLingkungan: ling.nama_lingkungan,
         jumlahKk,
         realisasiIuran,
-        potensiIuran,
-        persentase,
-        statusKepatuhan
+        statusSetoran
       }
     })
 
-    const parokiRataPersentase = grandTotalPotensi > 0 ? Math.min(100, Math.round((grandTotalRealisasi / grandTotalPotensi) * 100)) : 0
-
     return {
-      list: list.sort((a, b) => b.persentase - a.persentase),
+      list: list.sort((a, b) => b.realisasiIuran - a.realisasiIuran),
       grandTotalKk,
-      grandTotalRealisasi,
-      grandTotalPotensi,
-      parokiRataPersentase
+      grandTotalRealisasi
     }
   }, [allLingkungan, dafuByLingkungan, coaYearJournals])
 
@@ -315,8 +308,10 @@ export default function ParokiBendaharaPage() {
         const gol = getDummyGolonganForKk(k)
         
         // Cek pembayaran KK ini
+        const dbUuid = getLingkunganDbUuid(ling.id)
         const payInfo1 = kkPaymentMap.get(k.id)
         const payInfo2 = kkPaymentMap.get(`${ling.id}_${k.nama_kk.toLowerCase().trim()}`)
+        const payInfo3 = kkPaymentMap.get(`${dbUuid}_${k.nama_kk.toLowerCase().trim()}`)
         
         const paidSet = new Set<number>()
         let totalBayar = 0
@@ -327,6 +322,10 @@ export default function ParokiBendaharaPage() {
         if (payInfo2) {
           payInfo2.months.forEach(m => paidSet.add(m))
           totalBayar += payInfo2.totalNominal
+        }
+        if (payInfo3) {
+          payInfo3.months.forEach(m => paidSet.add(m))
+          totalBayar += payInfo3.totalNominal
         }
 
         const paidMonths = Array.from(paidSet).sort((a, b) => a - b)
@@ -407,15 +406,15 @@ export default function ParokiBendaharaPage() {
     })
   }, [allLingkungan, dafuByLingkungan, kkPaymentMap, selectedLingkunganFilter, statusFilter, searchKk])
 
-  // Export Capaian Kas CSV
+  // Export Realisasi Kas CSV
   const handleExportCapaianCsv = () => {
     const rows = [
-      ['REKAPITULASI CAPAIAN PERSENTASE KAS LINGKUNGAN'],
+      ['REKAPITULASI REALISASI IURAN KAS LINGKUNGAN'],
       ['GEREJA ST CLARA - PAROKI BEKASI UTARA'],
-      [`Tahun Buku: ${selectedYear} • Periode s/d Bulan September`],
+      [`Tahun Buku: ${selectedYear}`],
       [`Tanggal Ekspor: ${new Date().toLocaleDateString('id-ID')}`],
       [''],
-      ['No', 'Nama Lingkungan', 'Jumlah KK', 'Realisasi Iuran (Rp)', 'Potensi Target (Rp)', 'Capaian (%)', 'Status Kepatuhan']
+      ['No', 'Nama Lingkungan', 'Jumlah KK', 'Realisasi Iuran (Rp)', 'Status Setoran']
     ]
 
     rekapCapaianLingkungan.list.forEach((item, idx) => {
@@ -424,16 +423,14 @@ export default function ParokiBendaharaPage() {
         formatNamaLingkungan(item.namaLingkungan),
         String(item.jumlahKk),
         String(item.realisasiIuran),
-        String(item.potensiIuran),
-        `${item.persentase}%`,
-        item.statusKepatuhan
+        item.statusSetoran
       ])
     })
 
     const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
     const link = document.createElement('a')
     link.href = encodeURI(csvContent)
-    link.download = `Rekap_Capaian_Kas_Lingkungan_${selectedYear}.csv`
+    link.download = `Rekap_Iuran_Kas_Lingkungan_${selectedYear}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -529,8 +526,8 @@ export default function ParokiBendaharaPage() {
         </div>
       </div>
 
-      {/* 4 Kartu Metrik Paroki (Jumlah Lingkungan, Jumlah KK, Realisasi Kas, Capaian Rata-Rata) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 3 Kartu Metrik Paroki (Jumlah Lingkungan, Jumlah KK, Realisasi Kas) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
@@ -573,35 +570,20 @@ export default function ParokiBendaharaPage() {
             </div>
           </CardContent>
         </Card>
-
-        <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Rata-Rata Capaian Kas</div>
-              <div className="text-2xl font-black text-amber-700 mt-0.5">
-                {rekapCapaianLingkungan.parokiRataPersentase}%
-              </div>
-              <div className="text-[11px] text-amber-800 font-medium mt-0.5">Target s/d September 2026</div>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
-              <Percent className="w-6 h-6" />
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* ============================================================== */}
-      {/* SEKSI 1: TABEL CAPAIAN PERSENTASE KAS TIAP LINGKUNGAN */}
-      {/* (Nama Lingkungan, Jumlah KK, Jumlah Iuran, Capaian Persentase) */}
+      {/* SEKSI 1: TABEL REKAPITULASI IURAN KAS TIAP LINGKUNGAN */}
+      {/* (Nama Lingkungan, Jumlah KK, Realisasi Iuran, Status Setoran) */}
       {/* ============================================================== */}
       <Card className="bg-white border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
         <CardHeader className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base font-bold text-slate-900 font-serif">
-              Rekapitulasi Capaian Persentase Kas Tiap Lingkungan
+              Rekapitulasi Iuran Kas Tiap Lingkungan
             </CardTitle>
             <CardDescription className="text-xs text-slate-500">
-              Rumus: (Realisasi Jumlah Iuran / Potensi Target Kas Lingkungan) × 100%
+              Total akumulasi penerimaan iuran kas yang tercatat dari masing-masing lingkungan
             </CardDescription>
           </div>
           <Button
@@ -621,11 +603,9 @@ export default function ParokiBendaharaPage() {
                 <TableRow>
                   <TableHead className="w-12 text-center font-bold text-slate-700">No</TableHead>
                   <TableHead className="font-bold text-slate-700">Nama Lingkungan</TableHead>
-                  <TableHead className="w-28 text-center font-bold text-slate-700">Jumlah KK</TableHead>
-                  <TableHead className="w-44 text-right font-bold text-slate-700">Realisasi Iuran (Rp)</TableHead>
-                  <TableHead className="w-44 text-right font-bold text-slate-700">Potensi Target (Rp)</TableHead>
-                  <TableHead className="w-48 font-bold text-slate-700">Capaian Persentase (%)</TableHead>
-                  <TableHead className="w-32 text-center font-bold text-slate-700">Status Kepatuhan</TableHead>
+                  <TableHead className="w-32 text-center font-bold text-slate-700">Jumlah KK</TableHead>
+                  <TableHead className="w-52 text-right font-bold text-slate-700">Total Iuran Kas (Rp)</TableHead>
+                  <TableHead className="w-44 text-center font-bold text-slate-700">Status Setoran</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-slate-100">
@@ -641,36 +621,13 @@ export default function ParokiBendaharaPage() {
                     <TableCell className="text-right font-mono font-bold text-emerald-800">
                       {item.realisasiIuran > 0 ? formatRupiah(item.realisasiIuran) : 'Rp 0'}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-slate-600">
-                      {formatRupiah(item.potensiIuran)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[11px] font-bold">
-                          <span className={item.persentase >= 75 ? 'text-emerald-700' : item.persentase >= 40 ? 'text-amber-700' : 'text-rose-700'}>
-                            {item.persentase}%
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-normal">Target: 100%</span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              item.persentase >= 75 ? 'bg-emerald-600' : item.persentase >= 40 ? 'bg-amber-500' : 'bg-rose-500'
-                            }`}
-                            style={{ width: `${item.persentase}%` }}
-                          />
-                        </div>
-                      </div>
-                    </TableCell>
                     <TableCell className="text-center">
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                        item.statusKepatuhan === 'Sangat Baik'
+                        item.statusSetoran === 'Sudah Ada Setoran'
                           ? 'bg-emerald-100 text-emerald-800'
-                          : item.statusKepatuhan === 'Cukup'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-rose-100 text-rose-800'
+                          : 'bg-slate-100 text-slate-600'
                       }`}>
-                        {item.statusKepatuhan}
+                        {item.statusSetoran}
                       </span>
                     </TableCell>
                   </TableRow>

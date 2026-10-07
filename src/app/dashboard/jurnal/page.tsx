@@ -144,10 +144,10 @@ export default function JurnalPage() {
     return 'Rp ' + val.toLocaleString('id-ID')
   }
 
-  // Helper untuk membersihkan prefix nomor dokumen [BKM/...] [KAS] dari keterangan
+  // Helper untuk membersihkan prefix nomor dokumen [BKM/...] [KAS] dan tag [KK: ...] dari keterangan
   const cleanDisplayKeterangan = (ket: string | undefined | null): string => {
     if (!ket) return ''
-    return ket.replace(/^(\[[^\]]+\]\s*)+/g, '').trim()
+    return ket.replace(/^(\[[^\]]+\]\s*)+/g, '').replace(/\[KK:\s*[^\]]+\]/gi, '').trim()
   }
 
   const handleNominalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -362,7 +362,20 @@ export default function JurnalPage() {
               j.kepala_keluarga = { id: parsed.id, nama_kk: parsed.nama_kk, lingkungan_id: j.lingkungan_id } as any
             } catch (e) {}
           } else if (j.no_bukti === 'BBM/004/09/2026' || j.id === '39480d56-45b3-4118-a4f8-420bbcad4d0b') {
-            j.kepala_keluarga = { id: 'kk-padre-pio-1-1856', nama_kk: 'Agustinus Jemiyo', lingkungan_id: j.lingkungan_id } as any
+            const found = kkList.find(k => k.nama_kk.toLowerCase().includes('jemiyo')) || { id: 'kk-padre-pio-1-1856', nama_kk: 'Agustinus Jemiyo' }
+            j.kepala_keluarga = { id: found.id, nama_kk: found.nama_kk, lingkungan_id: j.lingkungan_id } as any
+          } else if (j.keterangan) {
+            const kkMatch = j.keterangan.match(/\[KK:\s*([^\]]+)\]/i)
+            if (kkMatch) {
+              const nameFromKet = kkMatch[1].trim()
+              const found = kkList.find(k => k.nama_kk.toLowerCase().trim() === nameFromKet.toLowerCase())
+              if (found) {
+                j.kepala_keluarga = found as any
+                j.kk_id = found.id
+              } else {
+                j.kepala_keluarga = { id: `kk-${nameFromKet}`, nama_kk: nameFromKet, lingkungan_id: j.lingkungan_id } as any
+              }
+            }
           } else if (j.kk_id) {
             const found = kkList.find(k => k.id === j.kk_id)
             if (found) j.kepala_keluarga = { id: found.id, nama_kk: found.nama_kk, lingkungan_id: j.lingkungan_id } as any
@@ -576,6 +589,9 @@ export default function JurnalPage() {
     const kkObj = kkList.find(k => k.id === step3KkId)
     const rawKet = step5Keterangan.trim() || (step2ManualJenis ? step2ManualJenis : resolveCoaDetails(step2Jenis).nama_akun)
     let displayKet = rawKet
+    if (kkObj && !displayKet.includes('[KK:')) {
+      displayKet = `${displayKet} [KK: ${kkObj.nama_kk}]`.trim()
+    }
     if (step1Arus === 'MASUK') {
       if (sumberSetoran === 'ORANG_LAIN' && sumberSetoranPenalang.trim()) {
         const penalangTag = `(Ditalangi ${sumberSetoranPenalang.trim()})`

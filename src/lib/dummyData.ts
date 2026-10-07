@@ -29,7 +29,7 @@ if (typeof window !== 'undefined') {
     const keysToPurge = ['custom_kks_all_store', 'custom_anggota_all_store', 'custom_golongan_all_store']
     keysToPurge.forEach(k => {
       const raw = localStorage.getItem(k)
-      if (raw && (raw.includes('dummy-') || raw.includes('Anastasia Gunawan') || raw.includes('Petrus Sugeng'))) {
+      if (raw && (raw.includes('dummy-') || raw.includes('Anastasia Gunawan') || raw.includes('Petrus Sugeng') || raw.toLowerCase().includes('"dimas"') || raw.toLowerCase().includes('"nama_kk":"dimas"'))) {
         localStorage.removeItem(k)
       }
     })
@@ -37,7 +37,7 @@ if (typeof window !== 'undefined') {
       const key = localStorage.key(i)
       if (key && (key.startsWith('custom_kks_') || key.startsWith('custom_anggota_') || key.startsWith('custom_golongan_'))) {
         const val = localStorage.getItem(key)
-        if (val && (val.includes('dummy-') || val.includes('Anastasia Gunawan') || val.includes('Petrus Sugeng'))) {
+        if (val && (val.includes('dummy-') || val.includes('Anastasia Gunawan') || val.includes('Petrus Sugeng') || val.toLowerCase().includes('"dimas"') || val.toLowerCase().includes('"nama_kk":"dimas"'))) {
           localStorage.removeItem(key)
         }
       }
@@ -56,11 +56,12 @@ export function getRealKkListForLingkungan(lingkunganId: string, namaLingkungan?
     return data.kksByLingkungan[lingkunganId]
   }
 
-  // Resolve canonical name if not provided
-  let resolvedName = namaLingkungan || ''
+  // Resolve canonical name if not provided or if generic (e.g. 'Lingkungan')
+  let resolvedName = (namaLingkungan && namaLingkungan.trim().toLowerCase() !== 'lingkungan') ? namaLingkungan : ''
   if (!resolvedName && lingkunganId) {
     const all = getAllMasterLingkungan()
-    const found = all.find(l => l.id === lingkunganId || l.slug === lingkunganId)
+    const targetUuid = getLingkunganDbUuid(lingkunganId)
+    const found = all.find(l => l.id === lingkunganId || l.slug === lingkunganId || getLingkunganDbUuid(l.id) === targetUuid)
     if (found) resolvedName = found.nama_lingkungan
   }
 
@@ -123,7 +124,14 @@ export function ensureDummyKksForLingkungan(
   // Merge any locally saved / custom user entries (from Supabase or localStorage), strictly ignoring any legacy dummy IDs or deleted entries
   if (existingList && existingList.length > 0) {
     existingList.forEach(k => {
-      if (k && k.id && !k.id.startsWith('dummy-') && !k.id.includes('dummy') && !deletedSet.has(k.id)) {
+      if (
+        k &&
+        k.id &&
+        !k.id.startsWith('dummy-') &&
+        !k.id.includes('dummy') &&
+        k.nama_kk.toLowerCase().trim() !== 'dimas' &&
+        !deletedSet.has(k.id)
+      ) {
         combinedMap.set(k.id, k)
       }
     })
