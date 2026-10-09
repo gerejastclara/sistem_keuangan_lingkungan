@@ -71,7 +71,7 @@ export default function FormSetoranPage() {
         if (kkData && kkData.length > 0) {
           setKkList(kkData)
         } else {
-          setKkList(ensureDummyKksForLingkungan(dbLingkId, lName, []))
+          setKkList(ensureDummyKksForLingkungan(dbLingkId, effNama, []))
         }
 
         // Load Jurnal
