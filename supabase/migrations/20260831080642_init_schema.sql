@@ -178,13 +178,14 @@ INSERT INTO COA (id, nama_akun, tipe) VALUES
 ('5250', 'Bantuan Sosial Internal', 'DEBIT'),
 ('5260', 'Bantuan Sosial Eksternal', 'DEBIT'),
 ('5270', 'Pastoran (Dahar Romo)', 'DEBIT'),
-('5280', 'Sumbangan Dana ASAK', 'DEBIT'),
-('5290', 'Sumbangan Dana Pastoran', 'DEBIT'),
-('5300', 'Sumbangan Dana APP', 'DEBIT'),
-('5310', 'Sumbangan Dana Aksi Natal', 'DEBIT'),
-('5320', 'Sumbangan Dana PPG', 'DEBIT'),
-('5340', 'Sumbangan Kematian / St. Yusuf', 'DEBIT'),
-('5350', 'Pengeluaran Lainnya', 'DEBIT');
+('5280', 'Sumbangan kematian/St. Yusuf', 'DEBIT'),
+('5290', 'Sumbangan Dana ASAK', 'DEBIT'),
+('5300', 'Sumbangan Dana Pastoran', 'DEBIT'),
+('5310', 'Sumbangan Dana APP', 'DEBIT'),
+('5320', 'Sumbangan Dana Aksi Natal', 'DEBIT'),
+('5340', 'Sumbangan Dana PPG', 'DEBIT'),
+('5350', 'Kolekte yg disetor ke Paroki', 'DEBIT'),
+('5900', 'Pengeluaran lainnya', 'DEBIT');
 
 -- INITIAL SEED DATA FOR LINGKUNGAN
 INSERT INTO LINGKUNGAN (nama_lingkungan) VALUES
