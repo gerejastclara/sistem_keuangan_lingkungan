@@ -9,7 +9,7 @@ import { formatNamaLingkungan, getLingkunganDbUuid } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Printer, RefreshCw } from 'lucide-react'
+import { Printer, RefreshCw, Check } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
 
 export default function FormSetoranPage() {
@@ -141,22 +141,39 @@ export default function FormSetoranPage() {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Jenis Dana (Berdasarkan COA)</label>
-              <Select value={selectedCoaId} onValueChange={(val) => { if (val) setSelectedCoaId(val) }}>
-                <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium">
-                  <SelectValue placeholder="Pilih Jenis Form..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-64">
-                  {formCoaOptions.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      <span className="font-mono text-xs font-bold text-slate-500 mr-2">{c.id}</span>
-                      {c.nama_akun}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+            <div className="space-y-2.5 col-span-1 sm:col-span-2">
+              <label className="text-xs font-bold text-slate-700">Pilih Jenis Dana Form (COA)</label>
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                {formCoaOptions.map(coa => {
+                  const isSelected = selectedCoaId === coa.id
+                  return (
+                    <button
+                      key={coa.id}
+                      type="button"
+                      onClick={() => setSelectedCoaId(coa.id)}
+                      className={`text-left p-2.5 rounded-xl border transition cursor-pointer shrink-0 w-48 ${
+                        isSelected
+                          ? 'bg-slate-100 border-slate-400 text-slate-900 shadow-xs ring-1 ring-slate-400'
+                          : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-200 text-slate-800 border border-slate-300">
+                          {coa.id}
+                        </span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-slate-800" />}
+                      </div>
+                      <div className="font-bold text-xs text-slate-900 truncate" title={coa.nama_akun}>
+                        {coa.nama_akun}
+                      </div>
+                      <div className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
+                        {coa.kategori}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             <div className="space-y-1.5">
