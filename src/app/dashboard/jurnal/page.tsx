@@ -37,54 +37,6 @@ import {
   Search
 } from 'lucide-react'
 
-// Standard options from Image 5 for Uang Masuk
-const PENERIMAAN_OPTIONS = [
-  { code: '4100', name: 'Iuran Kas Lingkungan' },
-  { code: '4110', name: 'Kolekte Ibadat Sabda' },
-  { code: '4120', name: 'Sumbangan Dahar Romo' },
-  { code: '4200', name: 'Sumbangan ASAK' },
-  { code: '4300', name: 'Iuran Dana Kematian/St. Yusuf' },
-  { code: '4400', name: 'Kolekte Misa Lingkungan' },
-  { code: '4500', name: 'Sumbangan Umat' },
-  { code: '4600', name: 'Bantuan dari Paroki' },
-  { code: '4700', name: 'Dana APP' },
-  { code: '4800', name: 'Dana Aksi Natal' },
-  { code: '1300', name: 'Pengembalian Dana Talangan Dahar Romo (1300)' },
-  { code: '1400', name: 'Pengembalian Dana Talangan Santo Yusuf (1400)' },
-  { code: '4900', name: 'Penerimaan Lainnya' }
-]
-
-// Standard options from MASTER LAP for Uang Keluar
-const PENGELUARAN_OPTIONS = [
-  { code: '5100', name: 'Misa' },
-  { code: '5110', name: 'Ibadat Sabda' },
-  { code: '5120', name: 'Rosario' },
-  { code: '5130', name: 'Koor' },
-  { code: '5140', name: 'Stipendium/ Iura stolae' },
-  { code: '5150', name: 'Bina iman' },
-  { code: '5160', name: 'Pendalaman kitab suci' },
-  { code: '5170', name: 'Kepemudaan' },
-  { code: '5180', name: 'Kerasulan keluarga' },
-  { code: '5190', name: 'Pendidikan calon imam' },
-  { code: '5200', name: 'Rapat / pertemuan lingkungan' },
-  { code: '5210', name: 'Perayaan (Natal / Paskah / HUT)' },
-  { code: '5220', name: 'Inventaris (Pembelian / Pemeliharaan)' },
-  { code: '5230', name: 'Administrasi' },
-  { code: '5240', name: 'Kegiatan rohani lain (retret, rekoleksi, dsb)' },
-  { code: '5250', name: 'Bantuan Sosial Internal (umat lingkungan)' },
-  { code: '5260', name: 'Bantuan Sosial Eksternal (umat luar lingkungan)' },
-  { code: '5270', name: 'Pastoran (dahar Romo)' },
-  { code: '5280', name: 'Sumbangan kematian/St. Yusuf' },
-  { code: '5290', name: 'Sumbangan Dana ASAK' },
-  { code: '5300', name: 'Sumbangan Dana Pastoran' },
-  { code: '5310', name: 'Sumbangan Dana APP' },
-  { code: '5320', name: 'Sumbangan Dana Aksi Natal' },
-  { code: '5340', name: 'Sumbangan Dana PPG' },
-  { code: '5350', name: 'Kolekte yg disetor ke Paroki' },
-  { code: '1300', name: 'Penyaluran Dana Talangan Dahar Romo (1300)' },
-  { code: '1400', name: 'Penyaluran Dana Talangan Santo Yusuf (1400)' },
-  { code: '5900', name: 'Pengeluaran lainnya' }
-]
 
 export default function JurnalPage() {
   const supabase = createClient()
@@ -96,6 +48,14 @@ export default function JurnalPage() {
 
   const [kkList, setKkList] = useState<KepalaKeluarga[]>([])
   const [coaList, setCoaList] = useState<MasterCOAItem[]>([])
+
+  const penerimaanOptions = coaList
+    .filter((c) => c.kategori === 'PENERIMAAN' || c.id === '1300' || c.id === '1400')
+    .map((c) => ({ code: c.id, name: c.nama_akun }))
+
+  const pengeluaranOptions = coaList
+    .filter((c) => c.kategori === 'PENGELUARAN' || c.id === '1300' || c.id === '1400')
+    .map((c) => ({ code: c.id, name: c.nama_akun }))
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
   const [saldoAwalBank, setSaldoAwalBank] = useState<number>(0)
 
@@ -513,7 +473,7 @@ export default function JurnalPage() {
   const resolveCoaDetails = (code: string) => {
     const found = coaList.find(c => c.id === code)
     if (found) return found
-    const allP = [...PENERIMAAN_OPTIONS, ...PENGELUARAN_OPTIONS]
+    const allP = [...penerimaanOptions, ...pengeluaranOptions]
     const fallback = allP.find(p => p.code === code)
     return {
       id: code,
@@ -1078,7 +1038,7 @@ export default function JurnalPage() {
               >
                 <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium">
                   {(() => {
-                    const activeList = step1Arus === 'MASUK' ? PENERIMAAN_OPTIONS : PENGELUARAN_OPTIONS
+                    const activeList = step1Arus === 'MASUK' ? penerimaanOptions : pengeluaranOptions
                     const matched = activeList.find((i) => i.code === step2Jenis)
                     if (!matched) return <SelectValue placeholder="-- Pilih jenis transaksi & COA --" />
                     return (
@@ -1093,7 +1053,7 @@ export default function JurnalPage() {
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-72">
                   {step1Arus === 'MASUK' ? (
-                    PENERIMAAN_OPTIONS.map((item) => (
+                    penerimaanOptions.map((item) => (
                       <SelectItem key={item.code} value={item.code}>
                         <div className="flex items-center gap-2 py-0.5">
                           <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 px-1.5 py-0.5 rounded shrink-0">
@@ -1104,7 +1064,7 @@ export default function JurnalPage() {
                       </SelectItem>
                     ))
                   ) : (
-                    PENGELUARAN_OPTIONS.map((item) => (
+                    pengeluaranOptions.map((item) => (
                       <SelectItem key={item.code} value={item.code}>
                         <div className="flex items-center gap-2 py-0.5">
                           <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 px-1.5 py-0.5 rounded shrink-0">
