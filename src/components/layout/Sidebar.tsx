@@ -140,7 +140,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         item.href === '/dashboard/dana-talangan' ||
         item.href === '/dashboard/laporan' ||
         item.href === '/dashboard/aset' ||
-        item.href === '/dashboard/kartu-setoran'
+        item.href === '/dashboard/kartu-setoran' ||
+        item.href === '/dashboard/form-setoran'
       )
     }
     if (userRole === 'PAROKI') {
