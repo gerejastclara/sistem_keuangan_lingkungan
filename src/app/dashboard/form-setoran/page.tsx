@@ -50,7 +50,8 @@ export default function FormSetoranPage() {
         setLingkunganId(dbLingkId)
 
         if (dbLingkId) {
-          const peng = getPengurusForLingkungan(dbLingkId)
+          const { data: profil } = await supabase.from('profil_lingkungan').select('*').eq('id', dbLingkId)
+          const peng = getPengurusForLingkungan(dbLingkId, lName, profil?.[0] || {})
           setPengurus(peng)
         }
 
@@ -67,7 +68,7 @@ export default function FormSetoranPage() {
         if (kkData && kkData.length > 0) {
           setKkList(kkData)
         } else {
-          setKkList(ensureDummyKksForLingkungan(dbLingkId, lName))
+          setKkList(ensureDummyKksForLingkungan(dbLingkId, lName, []))
         }
 
         // Load Jurnal
@@ -143,7 +144,7 @@ export default function FormSetoranPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700">Jenis Dana (Berdasarkan COA)</label>
-              <Select value={selectedCoaId} onValueChange={setSelectedCoaId}>
+              <Select value={selectedCoaId} onValueChange={(val) => { if (val) setSelectedCoaId(val) }}>
                 <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium">
                   <SelectValue placeholder="Pilih Jenis Form..." />
                 </SelectTrigger>
@@ -160,7 +161,7 @@ export default function FormSetoranPage() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700">Tahun Transaksi</label>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <Select value={selectedYear} onValueChange={(val) => { if (val) setSelectedYear(val) }}>
                 <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium">
                   <SelectValue placeholder="Pilih Tahun" />
                 </SelectTrigger>
