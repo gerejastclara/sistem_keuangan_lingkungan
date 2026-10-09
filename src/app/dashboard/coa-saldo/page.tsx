@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { UserProfile, COA } from '@/lib/types'
-import { getAllMasterCOA, saveCustomCOA, syncAllCoaToDatabase, MasterCOAItem } from '@/lib/masterCoa'
+import { getAllMasterCOA, saveCustomCOA, deleteCustomCOA, syncAllCoaToDatabase, MasterCOAItem, DEFAULT_MASTER_COA_LIST } from '@/lib/masterCoa'
 import { formatRupiah } from '@/lib/utils'
 import { findLingkunganByQuery } from '@/lib/constants'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -25,7 +25,8 @@ import {
   RefreshCw,
   Database,
   Info,
-  Pencil
+  Pencil,
+  Trash2
 } from 'lucide-react'
 
 const MONTH_OPTIONS = [
@@ -316,6 +317,24 @@ export default function CoaSaldoPage() {
     setTimeout(() => setSuccessMsg(null), 3500)
   }
 
+  const handleDeleteCOA = async (id: string, nama: string) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus akun COA ${id} - ${nama}?\n\nPerhatian: Pastikan akun ini belum pernah dipakai di jurnal transaksi!`)) {
+      return
+    }
+
+    // 1. Hapus dari local storage
+    const updatedList = deleteCustomCOA(id)
+    setCoaList(updatedList)
+
+    // 2. Hapus dari Supabase
+    try {
+      await supabase.from('coa').delete().eq('id', id)
+    } catch (err) {}
+
+    setSuccessMsg(`Akun COA ${id} - ${nama} berhasil dihapus!`)
+    setTimeout(() => setSuccessMsg(null), 3500)
+  }
+
   const handleSyncCoaDatabase = async () => {
     setSyncingCoa(true)
     const result = await syncAllCoaToDatabase(supabase)
@@ -600,7 +619,7 @@ export default function CoaSaldoPage() {
                         {c.tipe}
                       </span>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center flex justify-center items-center gap-2">
                       <Button
                         type="button"
                         size="sm"
@@ -612,6 +631,20 @@ export default function CoaSaldoPage() {
                         <Pencil className="w-3.5 h-3.5 text-slate-500" />
                         <span>Edit</span>
                       </Button>
+
+                      {!DEFAULT_MASTER_COA_LIST.some(defaultItem => defaultItem.id === c.id) && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteCOA(c.id, c.nama_akun)}
+                          className="h-7 px-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer border border-rose-200 shadow-2xs"
+                          title="Hapus akun COA ini"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                          <span>Hapus</span>
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

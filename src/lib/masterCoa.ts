@@ -149,6 +149,24 @@ export function saveCustomCOA(item: MasterCOAItem): MasterCOAItem[] {
   return updated
 }
 
+export function deleteCustomCOA(id: string): MasterCOAItem[] {
+  const current = getAllMasterCOA()
+  // Hanya menghapus COA custom, COA bawaan (DEFAULT) tidak akan terhapus karena akan di-merge kembali
+  const filtered = current.filter((c) => c.id !== id)
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(CUSTOM_COA_STORAGE_KEY, JSON.stringify(filtered))
+      window.dispatchEvent(new Event('coaDataUpdated'))
+      window.dispatchEvent(new Event('storage'))
+    } catch (e) {
+      console.error('Error deleting custom COA:', e)
+    }
+  }
+
+  return filtered
+}
+
 /**
  * Sinkronisasi seluruh COA ke database Supabase tabel `coa`
  */
