@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { JurnalTransaksi, KepalaKeluarga } from '@/lib/types'
 import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { getAllMasterCOA, MasterCOAItem } from '@/lib/masterCoa'
-import { formatNamaLingkungan, getLingkunganDbUuid } from '@/lib/constants'
+import { formatNamaLingkungan, getLingkunganDbUuid, getAllMasterLingkungan } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -30,28 +30,31 @@ export default function FormSetoranPage() {
     async function loadData() {
       setLoading(true)
       try {
-        const { data: userData } = await supabase.auth.getUser()
-        if (!userData?.user) return
-
-        const email = userData.user.email || ''
-        const lingNameMatch = email.match(/^bendahara\.(.+?)@/)
-        let lName = 'Umum'
-        if (lingNameMatch) {
-          lName = lingNameMatch[1].replace(/\./g, ' ')
-        } else if (email.includes('ketua')) {
-          const kMatch = email.match(/^ketua\.(.+?)@/)
-          if (kMatch) lName = kMatch[1].replace(/\./g, ' ')
-        } else if (email.includes('paroki')) {
-          lName = 'Paroki'
+        let savedLId = typeof window !== 'undefined' ? localStorage.getItem('selected_lingkungan_id') : null
+        const cookies = typeof document !== 'undefined' ? document.cookie : ''
+        const getCookieVal = (name: string) => {
+          const v = `; ${cookies}`
+          const p = v.split(`; ${name}=`)
+          if (p.length === 2) return decodeURIComponent(p.pop()!.split(';').shift()!)
+          return null
         }
-        setLingkunganName(lName.toUpperCase())
 
-        const dbLingkId = getLingkunganDbUuid(lName)
-        setLingkunganId(dbLingkId)
+        let effId = savedLId || getCookieVal('demo_user_lingkungan_id') || 'lingkungan-1'
+        let effNama = getCookieVal('demo_user_lingkungan_nama') || 'St. Maria'
 
+        const master = getAllMasterLingkungan()
+        const matched = master.find((m) => m.id === effId)
+        if (matched) {
+          effNama = matched.nama_lingkungan
+        }
+
+        setLingkunganId(effId)
+        setLingkunganName(effNama)
+
+        const dbLingkId = effId
         if (dbLingkId) {
           const { data: profil } = await supabase.from('profil_lingkungan').select('*').eq('id', dbLingkId)
-          const peng = getPengurusForLingkungan(dbLingkId, lName, profil?.[0] || {})
+          const peng = getPengurusForLingkungan(dbLingkId, effNama, profil?.[0] || {})
           setPengurus(peng)
         }
 
