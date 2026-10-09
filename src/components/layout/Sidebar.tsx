@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   FileText,
   HandCoins,
+  Printer
 } from 'lucide-react'
 import { UserRole } from '@/lib/types'
 
@@ -108,6 +109,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'Kartu Setoran',
       href: '/dashboard/kartu-setoran',
       icon: CreditCard,
+      roles: ['BENDAHARA', 'PAROKI'],
+    },
+    {
+      title: 'Form Setoran (PDF)',
+      href: '/dashboard/form-setoran',
+      icon: Printer,
       roles: ['BENDAHARA', 'PAROKI'],
     },
   ]
