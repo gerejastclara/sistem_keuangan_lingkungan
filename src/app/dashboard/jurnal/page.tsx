@@ -1155,7 +1155,7 @@ export default function JurnalPage() {
                     >
                       <span>Bayar Sendiri (Mandiri)</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'SENDIRI' ? 'bg-emerald-100 text-emerald-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                        sumberSetoran === 'SENDIRI' ? 'bg-slate-100 text-slate-500 font-medium' : 'bg-slate-100/70 text-slate-400'
                       }`}>
                         Umat Mandiri
                       </span>
@@ -1173,7 +1173,7 @@ export default function JurnalPage() {
                     >
                       <span>Ditalangi Paroki</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'PAROKI' ? 'bg-sky-100 text-sky-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                        sumberSetoran === 'PAROKI' ? 'bg-sky-50 text-sky-600 font-medium' : 'bg-slate-100/70 text-slate-400'
                       }`}>
                         Talangan Paroki
                       </span>
@@ -1191,7 +1191,7 @@ export default function JurnalPage() {
                     >
                       <span>Dari Dana Lingkungan</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-purple-100 text-purple-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                        sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-indigo-50 text-indigo-600 font-medium' : 'bg-slate-100/70 text-slate-400'
                       }`}>
                         Disubsidi Kas
                       </span>
@@ -1209,7 +1209,7 @@ export default function JurnalPage() {
                     >
                       <span>Ditalangi Orang Lain</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'ORANG_LAIN' ? 'bg-amber-100 text-amber-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                        sumberSetoran === 'ORANG_LAIN' ? 'bg-amber-50 text-amber-600 font-medium' : 'bg-slate-100/70 text-slate-400'
                       }`}>
                         Talangan Donatur
                       </span>
@@ -1481,15 +1481,15 @@ export default function JurnalPage() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span
-                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
                                   j.tipe_arus === 'MASUK'
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                    : 'bg-rose-50 text-rose-800 border-rose-200'
+                                    ? 'bg-teal-50/50 text-teal-600 border-teal-100/50'
+                                    : 'bg-rose-50/50 text-rose-600 border-rose-100/50'
                                 }`}
                               >
                                 {j.tipe_arus === 'MASUK' ? 'Uang Masuk' : 'Uang Keluar'}
                               </span>
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-50/50 text-slate-500 border border-slate-200/50">
                                 {isKas ? 'KAS' : 'BANK'}
                               </span>
                             </div>
@@ -1513,12 +1513,12 @@ export default function JurnalPage() {
                             <span
                               className={`inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded border ${
                                 j.sumber_setoran === 'DANA_LINGKUNGAN'
-                                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                  ? 'bg-indigo-50/50 text-indigo-600 border-indigo-100/50'
                                   : j.sumber_setoran === 'PAROKI'
-                                  ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                  ? 'bg-sky-50/50 text-sky-600 border-sky-100/50'
                                   : j.sumber_setoran === 'ORANG_LAIN'
-                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  ? 'bg-amber-50/50 text-amber-600 border-amber-100/50'
+                                  : 'bg-slate-50/50 text-slate-500 border-slate-200/50'
                               }`}
                             >
                               {j.sumber_setoran === 'DANA_LINGKUNGAN'
