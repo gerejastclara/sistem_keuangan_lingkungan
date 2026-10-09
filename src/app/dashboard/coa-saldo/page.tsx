@@ -331,6 +331,7 @@ export default function CoaSaldoPage() {
       await supabase.from('coa').delete().eq('id', id)
     } catch (err) {}
 
+    setIsEditCoaOpen(false)
     setSuccessMsg(`Akun COA ${id} - ${nama} berhasil dihapus!`)
     setTimeout(() => setSuccessMsg(null), 3500)
   }
@@ -619,7 +620,7 @@ export default function CoaSaldoPage() {
                         {c.tipe}
                       </span>
                     </TableCell>
-                    <TableCell className="text-center flex justify-center items-center gap-2">
+                    <TableCell className="text-center">
                       <Button
                         type="button"
                         size="sm"
@@ -631,20 +632,6 @@ export default function CoaSaldoPage() {
                         <Pencil className="w-3.5 h-3.5 text-slate-500" />
                         <span>Edit</span>
                       </Button>
-
-                      {!DEFAULT_MASTER_COA_LIST.some(defaultItem => defaultItem.id === c.id) && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteCOA(c.id, c.nama_akun)}
-                          className="h-7 px-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer border border-rose-200 shadow-2xs"
-                          title="Hapus akun COA ini"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                          <span>Hapus</span>
-                        </Button>
-                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -864,21 +851,32 @@ export default function CoaSaldoPage() {
               </div>
             </div>
 
-            <DialogFooter className="pt-3">
+            <DialogFooter className="pt-3 flex flex-col sm:flex-row sm:justify-between items-center w-full gap-3 sm:gap-0">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsEditCoaOpen(false)}
-                className="border-slate-300 text-slate-700 rounded-xl cursor-pointer"
+                onClick={() => handleDeleteCOA(editingCoaCode, editingCoaName)}
+                className="w-full sm:w-auto border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 rounded-xl cursor-pointer shadow-none"
               >
-                Batal
+                <Trash2 className="w-4 h-4 mr-1.5" />
+                Hapus Akun
               </Button>
-              <Button
-                type="submit"
-                className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl px-5 h-10 cursor-pointer transition-all"
-              >
-                Simpan Perubahan
-              </Button>
+              <div className="flex gap-2 w-full sm:w-auto justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditCoaOpen(false)}
+                  className="border-slate-300 text-slate-700 rounded-xl cursor-pointer"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl px-5 h-10 cursor-pointer transition-all"
+                >
+                  Simpan Perubahan
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>
