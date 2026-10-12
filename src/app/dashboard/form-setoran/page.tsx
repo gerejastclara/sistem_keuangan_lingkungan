@@ -5,12 +5,29 @@ import { createClient } from '@/utils/supabase/client'
 import { JurnalTransaksi, KepalaKeluarga } from '@/lib/types'
 import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { getAllMasterCOA, MasterCOAItem } from '@/lib/masterCoa'
-import { formatNamaLingkungan, getLingkunganDbUuid, getAllMasterLingkungan } from '@/lib/constants'
+import { formatNamaLingkungan, getLingkunganDbUuid, getAllMasterLingkungan, getWilayahForLingkungan } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Printer, RefreshCw, Check } from 'lucide-react'
+import { Printer, RefreshCw, Check, FileText, Table as TableIcon } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
+
+function angkaKeTerbilang(nilai: number): string {
+  if (nilai <= 0) return ''
+  const satuan = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas']
+  function sebut(n: number): string {
+    if (n < 12) return satuan[n]
+    if (n < 20) return sebut(n - 10) + ' Belas'
+    if (n < 100) return sebut(Math.floor(n / 10)) + ' Puluh ' + sebut(n % 10)
+    if (n < 200) return 'Seratus ' + sebut(n - 100)
+    if (n < 1000) return sebut(Math.floor(n / 100)) + ' Ratus ' + sebut(n % 100)
+    if (n < 2000) return 'Seribu ' + sebut(n - 1000)
+    if (n < 1000000) return sebut(Math.floor(n / 1000)) + ' Ribu ' + sebut(n % 1000)
+    if (n < 1000000000) return sebut(Math.floor(n / 1000000)) + ' Juta ' + sebut(n % 1000000)
+    return sebut(Math.floor(n / 1000000000)) + ' Milyar ' + sebut(n % 1000000000)
+  }
+  return (sebut(Math.floor(nilai)).trim() + ' Rupiah').replace(/\s+/g, ' ')
+}
 
 export default function FormSetoranPage() {
   const supabase = createClient()
@@ -23,8 +40,9 @@ export default function FormSetoranPage() {
   const [coaList, setCoaList] = useState<MasterCOAItem[]>([])
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
 
-  const [selectedCoaId, setSelectedCoaId] = useState<string>('')
+  const [selectedCoaId, setSelectedCoaId] = useState<string>('4300')
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString())
+  const [formTemplate, setFormTemplate] = useState<'TANDA_TERIMA' | 'REKAP_AMPLOP'>('TANDA_TERIMA')
 
   useEffect(() => {
     async function loadData() {
@@ -60,6 +78,12 @@ export default function FormSetoranPage() {
 
         const masterCoa = getAllMasterCOA()
         setCoaList(masterCoa)
+
+        // Default to St. Yusuf (4300) if not set or found
+        if (!selectedCoaId && masterCoa.length > 0) {
+          const stYusuf = masterCoa.find(c => c.id === '4300') || masterCoa[0]
+          setSelectedCoaId(stYusuf.id)
+        }
 
         // Load KK
         const { data: kkData } = await supabase
@@ -104,7 +128,7 @@ export default function FormSetoranPage() {
   const formCoaOptions = coaList.filter(c => c.kategori === 'PENERIMAAN' || c.kategori === 'PENGELUARAN' || c.id === '1300' || c.id === '1400')
 
   // Prepare table matrix data
-  const matrixData = kkList.map(kk => {
+  const matrixData = kkList.map((kk, idx) => {
     let yearlyTotal = 0
     const monthlyStatus: Record<number, boolean> = {}
 
@@ -123,6 +147,7 @@ export default function FormSetoranPage() {
 
     return {
       kk,
+      envelopeNo: kk.no_kk || String(idx + 1).padStart(3, '0'),
       monthlyStatus,
       yearlyTotal
     }
@@ -131,6 +156,19 @@ export default function FormSetoranPage() {
   // Calculate total across all KKs
   const grandTotal = matrixData.reduce((sum, row) => sum + row.yearlyTotal, 0)
 
+  // Compute clean title for Dana header
+  const getCleanDanaTitle = () => {
+    if (selectedCoa?.id === '4300' || selectedCoa?.nama_akun?.toLowerCase().includes('yusuf')) {
+      return 'DANA ST. YUSUF'
+    }
+    const cleanName = selectedCoa?.nama_akun
+      ?.replace(/^Iuran /i, '')
+      ?.replace(/^Sumbangan /i, '')
+      ?.replace(/^Dana /i, '')
+      ?.toUpperCase() || 'UMAT'
+    return `DANA ${cleanName}`
+  }
+
   return (
     <div className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 relative min-h-screen pb-20 font-sans">
       
@@ -138,12 +176,44 @@ export default function FormSetoranPage() {
       <div className="print:hidden space-y-6 mb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Form Setoran PDF</h1>
-            <p className="text-slate-500 mt-1 text-sm font-medium">Buat formulir cetak untuk St. Yusuf, APP, Pastoran terintegrasi Jurnal Transaksi.</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Form Setoran &amp; Rekapitulasi PDF</h1>
+            <p className="text-slate-500 mt-1 text-sm font-medium">Kop surat resmi Paroki Santa Clara untuk formulir cetak Bendahara Lingkungan (St. Yusuf, APP, Dahar Romo, Rekapitulasi Amplop).</p>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
+        {/* TEMPLATE PICKER & COA SELECTOR */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-5">
+          {/* Format Template Tabs */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-2">Pilih Format Formulir</label>
+            <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 gap-1">
+              <button
+                type="button"
+                onClick={() => setFormTemplate('TANDA_TERIMA')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  formTemplate === 'TANDA_TERIMA'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-300'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <TableIcon className="w-4 h-4 text-[#18539E]" />
+                Tanda Terima Setoran (Matriks 12 Bulan)
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormTemplate('REKAP_AMPLOP')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  formTemplate === 'REKAP_AMPLOP'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-300'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <FileText className="w-4 h-4 text-[#18539E]" />
+                Rekapitulasi Amplop
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
             <div className="space-y-2.5 col-span-1 sm:col-span-2">
               <label className="text-xs font-bold text-slate-700">Pilih Jenis Dana Form (COA)</label>
@@ -197,7 +267,7 @@ export default function FormSetoranPage() {
               <Button 
                 onClick={handlePrint}
                 disabled={!isPrintReady || loading}
-                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Printer className="w-5 h-5" />}
                 {loading ? 'Memuat Data...' : 'Cetak / Simpan PDF'}
@@ -207,149 +277,263 @@ export default function FormSetoranPage() {
         </div>
       </div>
 
-      {/* DOCUMENT PREVIEW (Styled for Print) */}
+      {/* DOCUMENT PREVIEW (Styled for Print - Exactly Matches Authentic Documents) */}
       {isPrintReady && !loading && (
-        <div className="bg-white border border-slate-200 shadow-xl mx-auto rounded-none print:shadow-none print:border-none" style={{ maxWidth: '210mm', minHeight: '297mm' }}>
+        <div className="bg-white border border-slate-300 shadow-xl mx-auto rounded-none print:shadow-none print:border-none" style={{ maxWidth: '210mm', minHeight: '297mm' }}>
           <div className="p-8 sm:p-12 print:p-0 print:m-0 font-serif text-black">
             
-            {/* KOP SURAT */}
-            <div className="flex justify-between items-start mb-6">
-              {/* Logo / Left side */}
-              <div className="w-24 flex items-center justify-center">
-                {/* Fallback to SVG if logo.png doesn't exist. User can replace public/logo.png later */}
-                <div className="relative w-16 h-16 border-2 border-black rounded-full flex flex-col items-center justify-center overflow-hidden">
-                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                     <span className="text-3xl font-black">†</span>
-                   </div>
-                   <svg className="w-16 h-16 absolute inset-0 text-black opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                     <circle cx="12" cy="12" r="11"/>
-                   </svg>
+            {/* ========================================================= */}
+            {/* FORMAT 1: TANDA TERIMA SETORAN (PERSIS GAMBAR 1)          */}
+            {/* ========================================================= */}
+            {formTemplate === 'TANDA_TERIMA' && (
+              <>
+                {/* KOP SURAT RESMI PAROKI SANTA CLARA */}
+                <div className="flex justify-between items-start mb-4">
+                  {/* Logo Paroki Santa Clara di sebelah kiri */}
+                  <div className="w-20 shrink-0 flex items-center justify-start">
+                    <img
+                      src="/logo-kop-paroki.png"
+                      alt="Logo Paroki St. Clara"
+                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                      onError={(e) => {
+                        ;(e.currentTarget as HTMLImageElement).src = '/logo-st-clara.jpg'
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Judul Tengah */}
+                  <div className="flex-1 text-center pl-2">
+                    <h2 className="text-base sm:text-xl font-bold uppercase tracking-[0.25em] underline underline-offset-4 mb-1">
+                      TANDA TERIMA SETORAN
+                    </h2>
+                    <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider">
+                      PAROKI ST. CLARA - BEKASI UTARA
+                    </h3>
+                  </div>
+                  
+                  {/* Judul Kanan (DANA ST. YUSUF) */}
+                  <div className="w-48 text-right flex flex-col justify-start pt-1">
+                    <h1 className="text-lg sm:text-2xl font-black font-sans uppercase tracking-tight leading-none break-words">
+                      {getCleanDanaTitle()}
+                    </h1>
+                  </div>
                 </div>
-              </div>
-              
-              {/* Center Text */}
-              <div className="flex-1 text-center">
-                <h2 className="text-lg sm:text-xl font-bold uppercase tracking-wider underline underline-offset-4 mb-1">
-                  Tanda Terima Setoran
-                </h2>
-                <h3 className="text-sm sm:text-base font-bold uppercase tracking-wide">
-                  Paroki St. Clara - Bekasi Utara
-                </h3>
-              </div>
-              
-              {/* Right Title */}
-              <div className="w-48 text-right flex flex-col justify-start pt-2">
-                <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight leading-none break-words">
-                  DANA {selectedCoa?.nama_akun?.replace(/Sumbangan /i, '')?.replace(/Iuran /i, '')?.toUpperCase() || 'UMAT'}
-                </h1>
-              </div>
-            </div>
 
-            {/* INFO HEADER */}
-            <div className="flex flex-col sm:flex-row justify-between items-end mb-3 text-xs sm:text-sm font-bold uppercase gap-4 sm:gap-0">
-              <div className="flex gap-2 w-full sm:w-1/2 items-end">
-                <span>LINGKUNGAN :</span>
-                <span className="border-b border-black flex-1 border-dashed inline-block h-5 leading-5">{formatNamaLingkungan(lingkunganName)}</span>
-              </div>
-              <div className="flex gap-4 sm:gap-8 items-end">
-                <div className="flex gap-2 items-end">
-                  <span className="lowercase font-normal">bulan:</span>
-                  <span className="w-16 sm:w-20 border-b border-black border-dashed inline-block h-5"></span>
+                {/* INFO HEADER */}
+                <div className="flex flex-col sm:flex-row justify-between items-end mb-3 text-xs sm:text-sm font-bold uppercase gap-2 sm:gap-0">
+                  <div className="flex gap-2 w-full sm:w-1/2 items-end">
+                    <span>LINGKUNGAN :</span>
+                    <span className="border-b border-black flex-1 border-dashed inline-block h-5 leading-5 pl-1">
+                      {formatNamaLingkungan(lingkunganName)}
+                    </span>
+                  </div>
+                  <div className="flex gap-4 sm:gap-8 items-end">
+                    <div className="flex gap-2 items-end">
+                      <span className="lowercase font-normal">bulan:</span>
+                      <span className="w-16 sm:w-20 border-b border-black border-dashed inline-block h-5"></span>
+                    </div>
+                    <div className="flex gap-2 items-end">
+                      <span>TAHUN :</span>
+                      <span className="w-16 sm:w-24 border-b border-black border-dashed inline-block h-5 text-center leading-5">
+                        {selectedYear}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-2 items-end">
-                  <span>TAHUN :</span>
-                  <span className="w-16 sm:w-24 border-b border-black border-dashed inline-block h-5 text-center leading-5">{selectedYear}</span>
-                </div>
-              </div>
-            </div>
 
-            {/* TABLE */}
-            <div className="overflow-x-auto w-full">
-              <table className="w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
-                <thead>
-                  <tr className="border border-black">
-                    <th rowSpan={2} className="border border-black p-1 w-8 font-bold">No.</th>
-                    <th rowSpan={2} className="border border-black p-1 font-bold">NAMA KELUARGA</th>
-                    <th colSpan={12} className="border border-black p-1 font-bold">BULAN</th>
-                    <th rowSpan={2} className="border border-black p-1 w-20 sm:w-24 font-bold">JUMLAH<br/><span className="font-normal">(Rp)</span></th>
-                    <th rowSpan={2} className="border border-black p-1 w-24 sm:w-32 font-bold">KETERANGAN</th>
-                  </tr>
-                  <tr className="border border-black">
-                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                      <th key={m} className="border border-black p-0.5 sm:p-1 w-5 sm:w-6 font-bold">{m}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {matrixData.map((row, idx) => (
-                    <tr key={row.kk.id} className="border border-black">
-                      <td className="border border-black p-1 text-center">{idx + 1}</td>
-                      <td className="border border-black p-1 px-2 font-medium">{row.kk.nama_kk}</td>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                        <td key={m} className="border border-black p-1 text-center font-bold text-emerald-800 print:text-black">
-                          {row.monthlyStatus[m] ? '✓' : ''}
+                {/* TABLE MATRIKS 12 BULAN */}
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
+                    <thead>
+                      <tr className="border border-black">
+                        <th rowSpan={2} className="border border-black p-1 w-8 font-bold text-center">No.</th>
+                        <th rowSpan={2} className="border border-black p-1 font-bold text-left px-2">NAMA KELUARGA</th>
+                        <th colSpan={12} className="border border-black p-1 font-bold text-center">BULAN</th>
+                        <th rowSpan={2} className="border border-black p-1 w-20 sm:w-24 font-bold text-center">JUMLAH<br/><span className="font-normal">(Rp)</span></th>
+                        <th rowSpan={2} className="border border-black p-1 w-24 sm:w-32 font-bold text-center">KETERANGAN</th>
+                      </tr>
+                      <tr className="border border-black">
+                        {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                          <th key={m} className="border border-black p-0.5 sm:p-1 w-5 sm:w-6 font-bold text-center">{m}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matrixData.map((row, idx) => (
+                        <tr key={row.kk.id} className="border border-black">
+                          <td className="border border-black p-1 text-center font-medium">{idx + 1}</td>
+                          <td className="border border-black p-1 px-2 font-medium">{row.kk.nama_kk}</td>
+                          {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                            <td key={m} className="border border-black p-1 text-center font-bold text-emerald-800 print:text-black">
+                              {row.monthlyStatus[m] ? '✓' : ''}
+                            </td>
+                          ))}
+                          <td className="border border-black p-1 text-right font-medium pr-2">
+                            {row.yearlyTotal > 0 ? row.yearlyTotal.toLocaleString('id-ID') : ''}
+                          </td>
+                          <td className="border border-black p-1 text-center font-medium italic text-[10px]">
+                            {row.yearlyTotal > 0 ? 'Sudah Bayar' : ''}
+                          </td>
+                        </tr>
+                      ))}
+                      
+                      {/* Empty rows padding up to 35 rows */}
+                      {Array.from({ length: Math.max(0, 32 - matrixData.length) }).map((_, idx) => (
+                        <tr key={`empty-${idx}`} className="border border-black h-6">
+                          <td className="border border-black p-1 text-center">{matrixData.length + idx + 1}</td>
+                          <td className="border border-black p-1"></td>
+                          {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                            <td key={`e-${m}`} className="border border-black p-1"></td>
+                          ))}
+                          <td className="border border-black p-1"></td>
+                          <td className="border border-black p-1"></td>
+                        </tr>
+                      ))}
+                      
+                      {/* TOTAL ROW */}
+                      <tr className="border-t-2 border-black font-bold">
+                        <td colSpan={14} className="border border-black p-1.5 text-center">JUMLAH</td>
+                        <td className="border-2 border-black p-1.5 text-right pr-2">
+                          {grandTotal > 0 ? grandTotal.toLocaleString('id-ID') : ''}
                         </td>
-                      ))}
-                      <td className="border border-black p-1 text-right font-medium pr-2">
-                        {row.yearlyTotal > 0 ? row.yearlyTotal.toLocaleString('id-ID') : ''}
-                      </td>
-                      <td className="border border-black p-1 text-center font-medium italic">
-                        {row.yearlyTotal > 0 ? 'Sudah Bayar' : ''}
-                      </td>
-                    </tr>
-                  ))}
-                  
-                  {/* Empty rows to make the table look full if there are too few KKs */}
-                  {Array.from({ length: Math.max(0, 35 - matrixData.length) }).map((_, idx) => (
-                    <tr key={`empty-${idx}`} className="border border-black h-6">
-                      <td className="border border-black p-1 text-center">{matrixData.length + idx + 1}</td>
-                      <td className="border border-black p-1"></td>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                        <td key={`e-${m}`} className="border border-black p-1"></td>
-                      ))}
-                      <td className="border border-black p-1"></td>
-                      <td className="border border-black p-1"></td>
-                    </tr>
-                  ))}
-                  
-                  {/* TOTAL ROW */}
-                  <tr className="border-t-2 border-black font-bold">
-                    <td colSpan={14} className="border border-black p-1.5 text-center">JUMLAH</td>
-                    <td className="border-2 border-black p-1.5 text-right pr-2">
-                      {grandTotal > 0 ? grandTotal.toLocaleString('id-ID') : ''}
-                    </td>
-                    <td className="border border-black p-1.5"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                        <td className="border border-black p-1.5"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
 
-            {/* FOOTER SIGNATURES */}
+            {/* ========================================================= */}
+            {/* FORMAT 2: REKAPITULASI AMPLOP (PERSIS GAMBAR 2)           */}
+            {/* ========================================================= */}
+            {formTemplate === 'REKAP_AMPLOP' && (
+              <>
+                {/* KOP SURAT RESMI PAROKI SANTA CLARA */}
+                <div className="flex justify-between items-start mb-4">
+                  {/* Logo Paroki Santa Clara di sebelah kiri */}
+                  <div className="w-20 shrink-0 flex items-center justify-start">
+                    <img
+                      src="/logo-kop-paroki.png"
+                      alt="Logo Paroki St. Clara"
+                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                      onError={(e) => {
+                        ;(e.currentTarget as HTMLImageElement).src = '/logo-st-clara.jpg'
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Judul Tengah */}
+                  <div className="flex-1 text-left pl-4">
+                    <h2 className="text-base sm:text-xl font-bold uppercase tracking-wider underline underline-offset-4 mb-1">
+                      REKAPITULASI AMPLOP {selectedCoa?.nama_akun?.replace(/^Iuran /i, '')?.replace(/^Sumbangan /i, '') ? `(${selectedCoa.nama_akun.replace(/^Iuran /i, '').replace(/^Sumbangan /i, '')})` : '....................................................'} Thn {selectedYear || '........'}
+                    </h2>
+                    <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider">
+                      PAROKI ST. CLARA - BEKASI UTARA
+                    </h3>
+                  </div>
+                </div>
+
+                {/* INFO HEADER: LINGKUNGAN & WILAYAH */}
+                <div className="flex justify-between items-end mb-3 text-xs sm:text-sm font-bold uppercase">
+                  <div className="flex gap-2 w-1/2 items-end">
+                    <span>LINGKUNGAN :</span>
+                    <span className="border-b border-black flex-1 border-dashed inline-block h-5 leading-5 pl-1">
+                      {formatNamaLingkungan(lingkunganName)}
+                    </span>
+                  </div>
+                  <div className="flex gap-2 w-1/3 items-end justify-end">
+                    <span>WILAYAH :</span>
+                    <span className="w-32 border-b border-black border-dashed inline-block h-5 leading-5 text-center">
+                      {getWilayahForLingkungan(lingkunganName)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* TABLE REKAPITULASI AMPLOP */}
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
+                    <thead>
+                      <tr className="border border-black">
+                        <th className="border border-black p-1.5 w-12 font-bold text-center">No.</th>
+                        <th className="border border-black p-1.5 w-28 font-bold text-center">No. AMPLOP</th>
+                        <th className="border border-black p-1.5 font-bold text-left px-3">NAMA</th>
+                        <th className="border border-black p-1.5 w-36 font-bold text-center">JUMLAH (Rp)</th>
+                        <th className="border border-black p-1.5 w-40 font-bold text-center">KETERANGAN</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matrixData.map((row, idx) => (
+                        <tr key={row.kk.id} className="border border-black h-7">
+                          <td className="border border-black p-1 text-center font-medium">{idx + 1}</td>
+                          <td className="border border-black p-1 text-center font-mono font-medium">{row.envelopeNo}</td>
+                          <td className="border border-black p-1 px-3 font-medium">{row.kk.nama_kk}</td>
+                          <td className="border border-black p-1 text-right font-medium pr-3">
+                            {row.yearlyTotal > 0 ? row.yearlyTotal.toLocaleString('id-ID') : ''}
+                          </td>
+                          <td className="border border-black p-1 text-center font-medium italic text-[10px]">
+                            {row.yearlyTotal > 0 ? 'Diterima' : ''}
+                          </td>
+                        </tr>
+                      ))}
+                      
+                      {/* Empty rows padding up to 32 rows */}
+                      {Array.from({ length: Math.max(0, 32 - matrixData.length) }).map((_, idx) => (
+                        <tr key={`empty-amplop-${idx}`} className="border border-black h-7">
+                          <td className="border border-black p-1 text-center">{matrixData.length + idx + 1}</td>
+                          <td className="border border-black p-1"></td>
+                          <td className="border border-black p-1"></td>
+                          <td className="border border-black p-1"></td>
+                          <td className="border border-black p-1"></td>
+                        </tr>
+                      ))}
+                      
+                      {/* TOTAL ROW */}
+                      <tr className="border-t-2 border-black font-bold">
+                        <td colSpan={3} className="border border-black p-1.5 text-center">JUMLAH</td>
+                        <td className="border-2 border-black p-1.5 text-right pr-3">
+                          {grandTotal > 0 ? grandTotal.toLocaleString('id-ID') : ''}
+                        </td>
+                        <td className="border border-black p-1.5"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {/* FOOTER SIGNATURES & TERBILANG */}
             <div className="mt-4">
-              <div className="flex items-center gap-2 mb-6 text-sm font-bold">
+              <div className="flex items-center gap-2 mb-6 text-xs sm:text-sm font-bold">
                 <span>TERBILANG :</span>
-                <div className="flex-1 border-2 border-black h-8 bg-slate-50 print:bg-transparent"></div>
+                <div className="flex-1 border-2 border-black h-8 px-3 flex items-center text-xs font-semibold uppercase bg-slate-50 print:bg-transparent tracking-wide">
+                  {grandTotal > 0 ? angkaKeTerbilang(grandTotal) : ''}
+                </div>
               </div>
 
               <div className="flex justify-between items-start text-xs sm:text-sm font-bold text-center px-4">
                 <div className="flex flex-col items-center w-40">
-                  <div className="mb-16">Diterima Oleh :</div>
+                  <div className="mb-14">Diterima Oleh :</div>
                   <div className="border-b border-black border-dashed w-full"></div>
                   <div className="mt-1 font-normal">Sekretariat Paroki</div>
                 </div>
                 
                 <div className="flex flex-col items-center w-40">
-                  <div className="mb-16">Disetujui oleh:</div>
+                  <div className="mb-14">Disetujui oleh:</div>
                   <div className="border-b border-black border-dashed w-full relative">
-                     <span className="absolute -top-4 w-full text-center font-normal capitalize"></span>
+                     <span className="absolute -top-5 w-full text-center font-normal text-xs capitalize truncate">
+                       {pengurus?.ketua_nama && pengurus.ketua_nama !== 'Susunan pengurus belum ditentukan' ? `(${pengurus.ketua_nama})` : ''}
+                     </span>
                   </div>
                   <div className="mt-1 font-normal">Ketua Lingkungan</div>
                 </div>
 
                 <div className="flex flex-col items-center w-40">
-                  <div className="mb-16">Disetor Oleh :</div>
+                  <div className="mb-14">Disetor Oleh :</div>
                   <div className="border-b border-black border-dashed w-full relative">
-                     <span className="absolute -top-4 w-full text-center font-normal capitalize"></span>
+                     <span className="absolute -top-5 w-full text-center font-normal text-xs capitalize truncate">
+                       {pengurus?.bendahara_nama && pengurus.bendahara_nama !== 'Susunan pengurus belum ditentukan' ? `(${pengurus.bendahara_nama})` : ''}
+                     </span>
                   </div>
                   <div className="mt-1 font-normal">Bendahara Lingkungan</div>
                 </div>
@@ -397,3 +581,4 @@ export default function FormSetoranPage() {
     </div>
   )
 }
+
