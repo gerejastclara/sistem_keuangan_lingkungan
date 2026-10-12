@@ -254,21 +254,23 @@ export default function FormSetoranPage() {
                     key={f.id}
                     type="button"
                     onClick={() => setSelectedFormId(f.id)}
-                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       isSelected
-                        ? 'bg-slate-900 border-slate-900 text-white shadow-sm ring-1 ring-slate-900'
-                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                        ? 'bg-white border-slate-400 text-slate-900 shadow-xs ring-2 ring-slate-300/80'
+                        : 'bg-white/60 border-slate-200 text-slate-500 hover:bg-white hover:border-slate-300 hover:text-slate-800'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full mb-1">
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
-                        isSelected ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider border ${
+                        isSelected 
+                          ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs' 
+                          : 'bg-slate-50 text-slate-400 border-slate-100'
                       }`}>
                         {f.labelBadge}
                       </span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-slate-800 shrink-0" />}
                     </div>
-                    <div className="font-bold text-xs truncate mt-1">
+                    <div className={`text-xs truncate mt-1 ${isSelected ? 'font-bold text-slate-900' : 'font-medium text-slate-600'}`}>
                       {f.name}
                     </div>
                   </button>
