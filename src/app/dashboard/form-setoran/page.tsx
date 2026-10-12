@@ -31,7 +31,6 @@ function angkaKeTerbilang(nilai: number): string {
 export interface FormConfigItem {
   id: string
   name: string
-  labelBadge: string
   formatType: 'MATRIKS' | 'AMPLOP'
   headerRightText?: string
   amplopLabel?: string
@@ -42,8 +41,8 @@ export interface FormConfigItem {
 // 7 Form Resmi Sesuai Permintaan User:
 // 1. Santo Yusuf (Matriks 12 Bulan)
 // 2. Dana Pastoran (Matriks 12 Bulan)
-// 3. Dana APP (Rekapitulasi Amplop)
-// 4. Dana HPS (Rekapitulasi Amplop)
+// 3. Dana APP (Rekapitulasi Amplop - Tanpa No. Amplop)
+// 4. Dana HPS (Rekapitulasi Amplop - Tanpa No. Amplop)
 // 5. Dana ASAK (Matriks 12 Bulan)
 // 6. Dana PPG (Matriks 12 Bulan)
 // 7. Dana CYTM (Matriks 12 Bulan)
@@ -51,7 +50,6 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
   {
     id: 'santo-yusuf',
     name: 'Santo Yusuf',
-    labelBadge: 'Matriks 12 Bln',
     formatType: 'MATRIKS',
     headerRightText: 'DANA ST. YUSUF',
     coaCodes: ['4300', '1400', '5280'],
@@ -60,7 +58,6 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
   {
     id: 'pastoran',
     name: 'Dana Pastoran',
-    labelBadge: 'Matriks 12 Bln',
     formatType: 'MATRIKS',
     headerRightText: 'DANA PASTORAN',
     coaCodes: ['4120', '1300', '5270', '5300'],
@@ -69,7 +66,6 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
   {
     id: 'app',
     name: 'Dana APP',
-    labelBadge: 'Rekap Amplop',
     formatType: 'AMPLOP',
     amplopLabel: 'APP',
     coaCodes: ['4700', '5310'],
@@ -78,7 +74,6 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
   {
     id: 'hps',
     name: 'Dana HPS',
-    labelBadge: 'Rekap Amplop',
     formatType: 'AMPLOP',
     amplopLabel: 'HPS',
     coaCodes: [],
@@ -87,7 +82,6 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
   {
     id: 'asak',
     name: 'Dana ASAK',
-    labelBadge: 'Matriks 12 Bln',
     formatType: 'MATRIKS',
     headerRightText: 'DANA ASAK',
     coaCodes: ['4200', '5290'],
@@ -96,7 +90,6 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
   {
     id: 'ppg',
     name: 'Dana PPG',
-    labelBadge: 'Matriks 12 Bln',
     formatType: 'MATRIKS',
     headerRightText: 'DANA PPG',
     coaCodes: ['5340'],
@@ -105,7 +98,6 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
   {
     id: 'cytm',
     name: 'Dana CYTM',
-    labelBadge: 'Matriks 12 Bln',
     formatType: 'MATRIKS',
     headerRightText: 'DANA CYTM',
     coaCodes: [],
@@ -254,25 +246,14 @@ export default function FormSetoranPage() {
                     key={f.id}
                     type="button"
                     onClick={() => setSelectedFormId(f.id)}
-                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    className={`py-3 px-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-1.5 ${
                       isSelected
-                        ? 'bg-white border-slate-400 text-slate-900 shadow-xs ring-2 ring-slate-300/80'
-                        : 'bg-white/60 border-slate-200 text-slate-500 hover:bg-white hover:border-slate-300 hover:text-slate-800'
+                        ? 'bg-white border-slate-400 text-slate-900 shadow-xs ring-2 ring-slate-300/80 font-bold'
+                        : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300 hover:text-slate-900 font-medium'
                     }`}
                   >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider border ${
-                        isSelected 
-                          ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs' 
-                          : 'bg-slate-50 text-slate-400 border-slate-100'
-                      }`}>
-                        {f.labelBadge}
-                      </span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-slate-800 shrink-0" />}
-                    </div>
-                    <div className={`text-xs truncate mt-1 ${isSelected ? 'font-bold text-slate-900' : 'font-medium text-slate-600'}`}>
-                      {f.name}
-                    </div>
+                    <span className="text-xs truncate">{f.name}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-slate-800 shrink-0" />}
                   </button>
                 )
               })}
@@ -312,7 +293,7 @@ export default function FormSetoranPage() {
           <div className="p-8 sm:p-12 print:p-0 print:m-0 font-serif text-black">
             
             {/* ========================================================================= */}
-            {/* FORMAT 1: REKAPITULASI AMPLOP (OTOMATIS UNTUK DANA APP & DANA HPS)        */}
+            {/* FORMAT 1: REKAPITULASI DANA APP & DANA HPS (LANGSUNG NAMA, JUMLAH, KET)   */}
             {/* ========================================================================= */}
             {isAmplopFormat ? (
               <>
@@ -357,23 +338,21 @@ export default function FormSetoranPage() {
                   </div>
                 </div>
 
-                {/* TABLE REKAPITULASI AMPLOP */}
+                {/* TABLE REKAPITULASI DANA APP / HPS (TANPA NO. AMPLOP) */}
                 <div className="overflow-x-auto w-full">
                   <table className="w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
                     <thead>
                       <tr className="border border-black">
                         <th className="border border-black p-1.5 w-12 font-bold text-center">No.</th>
-                        <th className="border border-black p-1.5 w-28 font-bold text-center">No. AMPLOP</th>
                         <th className="border border-black p-1.5 font-bold text-left px-3">NAMA</th>
-                        <th className="border border-black p-1.5 w-36 font-bold text-center">JUMLAH (Rp)</th>
-                        <th className="border border-black p-1.5 w-40 font-bold text-center">KETERANGAN</th>
+                        <th className="border border-black p-1.5 w-44 sm:w-52 font-bold text-center">JUMLAH (Rp)</th>
+                        <th className="border border-black p-1.5 w-48 sm:w-56 font-bold text-center">KETERANGAN</th>
                       </tr>
                     </thead>
                     <tbody>
                       {matrixData.map((row, idx) => (
                         <tr key={row.kk.id} className="border border-black h-7">
                           <td className="border border-black p-1 text-center font-medium">{idx + 1}</td>
-                          <td className="border border-black p-1 text-center font-mono font-medium">{row.envelopeNo}</td>
                           <td className="border border-black p-1 px-3 font-medium">{row.kk.nama_kk}</td>
                           <td className="border border-black p-1 text-right font-medium pr-3">
                             {row.yearlyTotal > 0 ? row.yearlyTotal.toLocaleString('id-ID') : ''}
@@ -391,13 +370,12 @@ export default function FormSetoranPage() {
                           <td className="border border-black p-1"></td>
                           <td className="border border-black p-1"></td>
                           <td className="border border-black p-1"></td>
-                          <td className="border border-black p-1"></td>
                         </tr>
                       ))}
                       
                       {/* TOTAL ROW */}
                       <tr className="border-t-2 border-black font-bold">
-                        <td colSpan={3} className="border border-black p-1.5 text-center">JUMLAH</td>
+                        <td colSpan={2} className="border border-black p-1.5 text-center">JUMLAH</td>
                         <td className="border-2 border-black p-1.5 text-right pr-3">
                           {grandTotal > 0 ? grandTotal.toLocaleString('id-ID') : ''}
                         </td>
