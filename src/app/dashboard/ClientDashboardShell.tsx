@@ -76,14 +76,14 @@ export function ClientDashboardShell({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   return (
-    <div className="flex h-screen bg-[#F5F6F9] text-[#1B2130] overflow-hidden">
+    <div className="flex h-screen bg-[#F5F6F9] text-[#1B2130] overflow-hidden print:h-auto print:overflow-visible print:bg-white">
       <Sidebar
         userRole={userProfile?.role}
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
       />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:h-auto print:overflow-visible">
         <Navbar
           userProfile={userProfile}
           lingkunganList={lingkunganList}
@@ -94,7 +94,7 @@ export function ClientDashboardShell({
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F5F6F9] text-[#1B2130]">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F5F6F9] text-[#1B2130] print:h-auto print:overflow-visible print:p-0 print:bg-white">
           {children}
         </main>
       </div>

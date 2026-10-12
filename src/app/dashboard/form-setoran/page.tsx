@@ -60,8 +60,8 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
     name: 'Dana Pastoran',
     formatType: 'MATRIKS',
     headerRightText: 'DANA PASTORAN',
-    coaCodes: ['4120', '1300', '5270', '5300'],
-    coaKeywords: ['pastoran', 'dahar romo']
+    coaCodes: ['5300', '4120'],
+    coaKeywords: ['pastoran']
   },
   {
     id: 'app',
@@ -434,8 +434,8 @@ export default function FormSetoranPage() {
 
       {/* DOCUMENT PREVIEW (Styled for Print - Exactly Matches Authentic Documents) */}
       {!loading && (
-        <div className="bg-white border border-slate-300 shadow-xl mx-auto rounded-none print:shadow-none print:border-none" style={{ maxWidth: '210mm', minHeight: '297mm' }}>
-          <div className="p-8 sm:p-12 print:p-0 print:m-0 font-serif text-black">
+        <div className="print-sheet bg-white border border-slate-300 shadow-xl mx-auto rounded-none print:shadow-none print:border-none print:m-0 print:p-0" style={{ maxWidth: '210mm', minHeight: '297mm' }}>
+          <div className="print-sheet-inner p-8 sm:p-12 print:p-0 print:m-0 font-serif text-black">
             
             {/* ========================================================================= */}
             {/* FORMAT 1: REKAPITULASI DANA APP & DANA HPS (LANGSUNG NAMA, JUMLAH, KET)   */}
@@ -443,13 +443,13 @@ export default function FormSetoranPage() {
             {isAmplopFormat ? (
               <>
                 {/* KOP SURAT RESMI PAROKI SANTA CLARA */}
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex justify-between items-start mb-4 print-kop">
                   {/* Logo Paroki Santa Clara di sebelah kiri */}
                   <div className="w-20 shrink-0 flex items-center justify-start">
                     <img
                       src="/logo-kop-paroki.png"
                       alt="Logo Paroki St. Clara"
-                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                      className="w-16 h-16 sm:w-20 sm:h-20 print-kop-logo object-contain"
                       onError={(e) => {
                         ;(e.currentTarget as HTMLImageElement).src = '/logo-st-clara.jpg'
                       }}
@@ -458,17 +458,17 @@ export default function FormSetoranPage() {
                   
                   {/* Judul Tengah */}
                   <div className="flex-1 text-left pl-4">
-                    <h2 className="text-base sm:text-xl font-bold uppercase tracking-wider underline underline-offset-4 mb-1">
+                    <h2 className="text-base sm:text-xl print-kop-title font-bold uppercase tracking-wider underline underline-offset-4 mb-1">
                       REKAPITULASI AMPLOP {selectedForm.amplopLabel ? `${selectedForm.amplopLabel} ` : ''}.................................................... Thn {selectedYear || '........'}
                     </h2>
-                    <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider">
+                    <h3 className="text-xs sm:text-sm print-kop-sub font-bold uppercase tracking-wider">
                       PAROKI ST. CLARA - BEKASI UTARA
                     </h3>
                   </div>
                 </div>
 
                 {/* INFO HEADER: LINGKUNGAN & WILAYAH */}
-                <div className="flex justify-between items-end mb-3 text-xs sm:text-sm font-bold uppercase">
+                <div className="flex justify-between items-end mb-3 print-info-row text-xs sm:text-sm font-bold uppercase">
                   <div className="flex gap-2 w-1/2 items-end">
                     <span>LINGKUNGAN :</span>
                     <span className="border-b border-black flex-1 border-dashed inline-block h-5 leading-5 pl-1">
@@ -485,7 +485,7 @@ export default function FormSetoranPage() {
 
                 {/* TABLE REKAPITULASI DANA APP / HPS (TANPA NO. AMPLOP) */}
                 <div className="overflow-x-auto w-full">
-                  <table className="w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
+                  <table className="print-table w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
                     <thead>
                       <tr className="border border-black">
                         <th className="border border-black p-1.5 w-12 font-bold text-center">No.</th>
@@ -509,7 +509,7 @@ export default function FormSetoranPage() {
                       ))}
                       
                       {/* Empty rows padding up to 32 rows */}
-                      {Array.from({ length: Math.max(0, 32 - matrixData.length) }).map((_, idx) => (
+                      {Array.from({ length: Math.max(0, (matrixData.length > 32 ? 0 : 32) - matrixData.length) }).map((_, idx) => (
                         <tr key={`empty-amplop-${idx}`} className="border border-black h-7">
                           <td className="border border-black p-1 text-center">{matrixData.length + idx + 1}</td>
                           <td className="border border-black p-1"></td>
@@ -536,13 +536,13 @@ export default function FormSetoranPage() {
               /* ========================================================================= */
               <>
                 {/* KOP SURAT RESMI PAROKI SANTA CLARA */}
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex justify-between items-start mb-4 print-kop">
                   {/* Logo Paroki Santa Clara di sebelah kiri */}
                   <div className="w-20 shrink-0 flex items-center justify-start">
                     <img
                       src="/logo-kop-paroki.png"
                       alt="Logo Paroki St. Clara"
-                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                      className="w-16 h-16 sm:w-20 sm:h-20 print-kop-logo object-contain"
                       onError={(e) => {
                         ;(e.currentTarget as HTMLImageElement).src = '/logo-st-clara.jpg'
                       }}
@@ -551,24 +551,24 @@ export default function FormSetoranPage() {
                   
                   {/* Judul Tengah */}
                   <div className="flex-1 text-center pl-2">
-                    <h2 className="text-base sm:text-xl font-bold uppercase tracking-[0.25em] underline underline-offset-4 mb-1">
+                    <h2 className="text-base sm:text-xl print-kop-title font-bold uppercase tracking-[0.25em] underline underline-offset-4 mb-1">
                       TANDA TERIMA SETORAN
                     </h2>
-                    <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider">
+                    <h3 className="text-xs sm:text-sm print-kop-sub font-bold uppercase tracking-wider">
                       PAROKI ST. CLARA - BEKASI UTARA
                     </h3>
                   </div>
                   
                   {/* Judul Kanan (DANA ST. YUSUF, DANA PASTORAN, DLL) */}
                   <div className="w-48 text-right flex flex-col justify-start pt-1">
-                    <h1 className="text-lg sm:text-2xl font-black font-sans uppercase tracking-tight leading-none break-words">
+                    <h1 className="text-lg sm:text-2xl print-kop-header-right font-black font-sans uppercase tracking-tight leading-none break-words">
                       {selectedForm.headerRightText || 'DANA UMAT'}
                     </h1>
                   </div>
                 </div>
 
                 {/* INFO HEADER */}
-                <div className="flex flex-col sm:flex-row justify-between items-end mb-3 text-xs sm:text-sm font-bold uppercase gap-2 sm:gap-0">
+                <div className="flex flex-col sm:flex-row justify-between items-end mb-3 print-info-row text-xs sm:text-sm font-bold uppercase gap-2 sm:gap-0">
                   <div className="flex gap-2 w-full sm:w-1/2 items-end">
                     <span>LINGKUNGAN :</span>
                     <span className="border-b border-black flex-1 border-dashed inline-block h-5 leading-5 pl-1">
@@ -587,7 +587,7 @@ export default function FormSetoranPage() {
 
                 {/* TABLE MATRIKS 12 BULAN */}
                 <div className="overflow-x-auto w-full">
-                  <table className="w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
+                  <table className="print-table w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
                     <thead>
                       <tr className="border border-black">
                         <th rowSpan={2} className="border border-black p-1 w-8 font-bold text-center">No.</th>
@@ -608,7 +608,7 @@ export default function FormSetoranPage() {
                           <td className="border border-black p-1 text-center font-medium">{idx + 1}</td>
                           <td className="border border-black p-1 px-2 font-medium">{row.kk.nama_kk}</td>
                           {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                            <td key={m} className="border border-black p-1 text-center font-bold text-emerald-800 print:text-black">
+                            <td key={m} className="border border-black p-1 text-center font-bold text-emerald-800 print:text-black check-mark">
                               {row.monthlyStatus[m] ? '✓' : ''}
                             </td>
                           ))}
@@ -621,8 +621,8 @@ export default function FormSetoranPage() {
                         </tr>
                       ))}
                       
-                      {/* Empty rows padding up to 32 rows */}
-                      {Array.from({ length: Math.max(0, 32 - matrixData.length) }).map((_, idx) => (
+                      {/* Empty rows padding up to 32 rows if less than 32 */}
+                      {Array.from({ length: Math.max(0, (matrixData.length > 32 ? 0 : 32) - matrixData.length) }).map((_, idx) => (
                         <tr key={`empty-${idx}`} className="border border-black h-6">
                           <td className="border border-black p-1 text-center">{matrixData.length + idx + 1}</td>
                           <td className="border border-black p-1"></td>
@@ -649,23 +649,23 @@ export default function FormSetoranPage() {
             )}
 
             {/* FOOTER SIGNATURES & TERBILANG */}
-            <div className="mt-4">
-              <div className="flex items-center gap-2 mb-6 text-xs sm:text-sm font-bold">
+            <div className="mt-4 print-footer">
+              <div className="flex items-center gap-2 mb-6 print-footer-terbilang text-xs sm:text-sm font-bold">
                 <span>TERBILANG :</span>
-                <div className="flex-1 border-2 border-black h-8 px-3 flex items-center text-xs font-semibold uppercase bg-slate-50 print:bg-transparent tracking-wide">
+                <div className="print-footer-terbilang-box flex-1 border-2 border-black h-8 px-3 flex items-center text-xs font-semibold uppercase bg-slate-50 print:bg-transparent tracking-wide">
                   {grandTotal > 0 ? angkaKeTerbilang(grandTotal) : ''}
                 </div>
               </div>
 
-              <div className="flex justify-between items-start text-xs sm:text-sm font-bold text-center px-4">
+              <div className="print-signatures flex justify-between items-start text-xs sm:text-sm font-bold text-center px-4">
                 <div className="flex flex-col items-center w-40">
-                  <div className="mb-14">Diterima Oleh :</div>
+                  <div className="mb-14 print-sign-gap">Diterima Oleh :</div>
                   <div className="border-b border-black border-dashed w-full"></div>
                   <div className="mt-1 font-normal">Sekretariat Paroki</div>
                 </div>
                 
                 <div className="flex flex-col items-center w-40">
-                  <div className="mb-14">Disetujui oleh:</div>
+                  <div className="mb-14 print-sign-gap">Disetujui oleh:</div>
                   <div className="border-b border-black border-dashed w-full relative">
                      <span className="absolute -top-5 w-full text-center font-normal text-xs capitalize truncate">
                        {pengurus?.ketua_nama && pengurus.ketua_nama !== 'Susunan pengurus belum ditentukan' ? `(${pengurus.ketua_nama})` : ''}
@@ -675,7 +675,7 @@ export default function FormSetoranPage() {
                 </div>
 
                 <div className="flex flex-col items-center w-40">
-                  <div className="mb-14">Disetor Oleh :</div>
+                  <div className="mb-14 print-sign-gap">Disetor Oleh :</div>
                   <div className="border-b border-black border-dashed w-full relative">
                      <span className="absolute -top-5 w-full text-center font-normal text-xs capitalize truncate">
                        {pengurus?.bendahara_nama && pengurus.bendahara_nama !== 'Susunan pengurus belum ditentukan' ? `(${pengurus.bendahara_nama})` : ''}
@@ -693,34 +693,111 @@ export default function FormSetoranPage() {
       {/* GLOBAL STYLES FOR PRINTING */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          body {
+          html, body {
             background-color: white !important;
             color: black !important;
-          }
-          nav, aside, header, footer {
-            display: none !important;
-          }
-          .print\\:hidden {
-            display: none !important;
-          }
-          .print\\:m-0 {
+            height: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
             margin: 0 !important;
-          }
-          .print\\:p-0 {
             padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
-          .print\\:shadow-none {
-            box-shadow: none !important;
+          div, main, section, article {
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
           }
-          .print\\:border-none {
-            border: none !important;
-          }
-          .print\\:bg-transparent {
-            background-color: transparent !important;
+          nav, aside, header, footer, .print\\:hidden {
+            display: none !important;
           }
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 4mm 5mm 4mm 5mm;
+          }
+          .print-sheet {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-height: auto !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+          }
+          .print-sheet-inner {
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .print-kop {
+            margin-bottom: 3px !important;
+          }
+          .print-kop-logo {
+            width: 38px !important;
+            height: 38px !important;
+          }
+          .print-kop-title {
+            font-size: 11pt !important;
+            margin-bottom: 1px !important;
+            letter-spacing: 0.12em !important;
+          }
+          .print-kop-sub {
+            font-size: 7.5pt !important;
+          }
+          .print-kop-header-right {
+            font-size: 11pt !important;
+            line-height: 1.1 !important;
+          }
+          .print-info-row {
+            margin-bottom: 2px !important;
+            font-size: 7.5pt !important;
+          }
+          .print-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            table-layout: fixed !important;
+          }
+          .print-table th {
+            padding: 1px 1px !important;
+            font-size: 6.5pt !important;
+            line-height: 1.1 !important;
+            height: 12px !important;
+            border-width: 1px !important;
+          }
+          .print-table td {
+            padding: 0.5px 1.5px !important;
+            font-size: 6.8pt !important;
+            line-height: 1.1 !important;
+            height: 11.5px !important;
+            border-width: 1px !important;
+          }
+          .check-mark {
+            font-size: 8pt !important;
+            line-height: 1 !important;
+            font-weight: 900 !important;
+          }
+          .print-footer {
+            margin-top: 3px !important;
+          }
+          .print-footer-terbilang {
+            margin-bottom: 3px !important;
+            font-size: 7pt !important;
+          }
+          .print-footer-terbilang-box {
+            height: 16px !important;
+            font-size: 6.8pt !important;
+            padding: 0 4px !important;
+            line-height: 16px !important;
+          }
+          .print-signatures {
+            margin-top: 2px !important;
+            font-size: 7.2pt !important;
+          }
+          .print-sign-gap {
+            margin-bottom: 20px !important;
           }
         }
       `}} />
