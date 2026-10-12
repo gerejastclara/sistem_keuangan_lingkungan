@@ -5,12 +5,11 @@ import { createClient } from '@/utils/supabase/client'
 import { JurnalTransaksi, KepalaKeluarga } from '@/lib/types'
 import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { getAllMasterCOA, MasterCOAItem } from '@/lib/masterCoa'
-import { formatNamaLingkungan, getLingkunganDbUuid, getAllMasterLingkungan, getWilayahForLingkungan } from '@/lib/constants'
+import { formatNamaLingkungan, getAllMasterLingkungan, getWilayahForLingkungan } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Printer, RefreshCw, Check, FileText, Table as TableIcon } from 'lucide-react'
-import { formatRupiah } from '@/lib/utils'
+import { Printer, RefreshCw, Check } from 'lucide-react'
 
 function angkaKeTerbilang(nilai: number): string {
   if (nilai <= 0) return ''
@@ -29,6 +28,91 @@ function angkaKeTerbilang(nilai: number): string {
   return (sebut(Math.floor(nilai)).trim() + ' Rupiah').replace(/\s+/g, ' ')
 }
 
+export interface FormConfigItem {
+  id: string
+  name: string
+  labelBadge: string
+  formatType: 'MATRIKS' | 'AMPLOP'
+  headerRightText?: string
+  amplopLabel?: string
+  coaCodes: string[]
+  coaKeywords: string[]
+}
+
+// 7 Form Resmi Sesuai Permintaan User:
+// 1. Santo Yusuf (Matriks 12 Bulan)
+// 2. Dana Pastoran (Matriks 12 Bulan)
+// 3. Dana APP (Rekapitulasi Amplop)
+// 4. Dana HPS (Rekapitulasi Amplop)
+// 5. Dana ASAK (Matriks 12 Bulan)
+// 6. Dana PPG (Matriks 12 Bulan)
+// 7. Dana CYTM (Matriks 12 Bulan)
+const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
+  {
+    id: 'santo-yusuf',
+    name: 'Santo Yusuf',
+    labelBadge: 'Matriks 12 Bln',
+    formatType: 'MATRIKS',
+    headerRightText: 'DANA ST. YUSUF',
+    coaCodes: ['4300', '1400', '5280'],
+    coaKeywords: ['yusuf', 'kematian']
+  },
+  {
+    id: 'pastoran',
+    name: 'Dana Pastoran',
+    labelBadge: 'Matriks 12 Bln',
+    formatType: 'MATRIKS',
+    headerRightText: 'DANA PASTORAN',
+    coaCodes: ['4120', '1300', '5270', '5300'],
+    coaKeywords: ['pastoran', 'dahar romo']
+  },
+  {
+    id: 'app',
+    name: 'Dana APP',
+    labelBadge: 'Rekap Amplop',
+    formatType: 'AMPLOP',
+    amplopLabel: 'APP',
+    coaCodes: ['4700', '5310'],
+    coaKeywords: ['app', 'aksi puasa']
+  },
+  {
+    id: 'hps',
+    name: 'Dana HPS',
+    labelBadge: 'Rekap Amplop',
+    formatType: 'AMPLOP',
+    amplopLabel: 'HPS',
+    coaCodes: [],
+    coaKeywords: ['hps', 'pangan']
+  },
+  {
+    id: 'asak',
+    name: 'Dana ASAK',
+    labelBadge: 'Matriks 12 Bln',
+    formatType: 'MATRIKS',
+    headerRightText: 'DANA ASAK',
+    coaCodes: ['4200', '5290'],
+    coaKeywords: ['asak', 'sekolah']
+  },
+  {
+    id: 'ppg',
+    name: 'Dana PPG',
+    labelBadge: 'Matriks 12 Bln',
+    formatType: 'MATRIKS',
+    headerRightText: 'DANA PPG',
+    coaCodes: ['5340'],
+    coaKeywords: ['ppg', 'pembangunan gereja']
+  },
+  {
+    id: 'cytm',
+    name: 'Dana CYTM',
+    labelBadge: 'Matriks 12 Bln',
+    formatType: 'MATRIKS',
+    headerRightText: 'DANA CYTM',
+    coaCodes: [],
+    coaKeywords: ['cytm', 'youth']
+  }
+]
+
 export default function FormSetoranPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
@@ -37,12 +121,10 @@ export default function FormSetoranPage() {
   const [pengurus, setPengurus] = useState<PengurusLingkungan | null>(null)
 
   const [kkList, setKkList] = useState<KepalaKeluarga[]>([])
-  const [coaList, setCoaList] = useState<MasterCOAItem[]>([])
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
 
-  const [selectedCoaId, setSelectedCoaId] = useState<string>('4300')
+  const [selectedFormId, setSelectedFormId] = useState<string>('santo-yusuf')
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString())
-  const [formTemplate, setFormTemplate] = useState<'TANDA_TERIMA' | 'REKAP_AMPLOP'>('TANDA_TERIMA')
 
   useEffect(() => {
     async function loadData() {
@@ -74,15 +156,6 @@ export default function FormSetoranPage() {
           const { data: profil } = await supabase.from('profil_lingkungan').select('*').eq('id', dbLingkId)
           const peng = getPengurusForLingkungan(dbLingkId, effNama, profil?.[0] || {})
           setPengurus(peng)
-        }
-
-        const masterCoa = getAllMasterCOA()
-        setCoaList(masterCoa)
-
-        // Default to St. Yusuf (4300) if not set or found
-        if (!selectedCoaId && masterCoa.length > 0) {
-          const stYusuf = masterCoa.find(c => c.id === '4300') || masterCoa[0]
-          setSelectedCoaId(stYusuf.id)
         }
 
         // Load KK
@@ -121,23 +194,26 @@ export default function FormSetoranPage() {
     window.print()
   }
 
-  const selectedCoa = coaList.find(c => c.id === selectedCoaId)
-  const isPrintReady = selectedCoaId !== '' && selectedYear !== ''
+  const selectedForm = DAFTAR_FORM_TERSEDIA.find(f => f.id === selectedFormId) || DAFTAR_FORM_TERSEDIA[0]
+  const isAmplopFormat = selectedForm.formatType === 'AMPLOP'
 
-  // Filter COA for the dropdown (usually Penerimaan like St Yusuf, Pastoran, APP, HPS, etc)
-  const formCoaOptions = coaList.filter(c => c.kategori === 'PENERIMAAN' || c.kategori === 'PENGELUARAN' || c.id === '1300' || c.id === '1400')
-
-  // Prepare table matrix data
+  // Prepare table data matching the selected fund
   const matrixData = kkList.map((kk, idx) => {
     let yearlyTotal = 0
     const monthlyStatus: Record<number, boolean> = {}
 
-    // Find transactions for this KK in the selected year and selected COA
-    const txs = jurnalList.filter(j => 
-      j.kk_id === kk.id && 
-      j.tanggal.startsWith(selectedYear) && 
-      (j.coa_debit === selectedCoaId || j.coa_kredit === selectedCoaId)
-    )
+    // Find transactions for this KK in the selected year and matched COA
+    const txs = jurnalList.filter(j => {
+      if (j.kk_id !== kk.id || !j.tanggal.startsWith(selectedYear)) return false
+      
+      // Match by exact COA codes
+      const matchCode = selectedForm.coaCodes.some(c => c === j.coa_debit || c === j.coa_kredit)
+      if (matchCode) return true
+
+      // Match by keywords in transaction description/memo if any
+      const desc = (j.keterangan || '').toLowerCase()
+      return selectedForm.coaKeywords.some(kw => desc.includes(kw))
+    })
 
     txs.forEach(tx => {
       const month = parseInt(tx.tanggal.split('-')[1], 10)
@@ -156,103 +232,56 @@ export default function FormSetoranPage() {
   // Calculate total across all KKs
   const grandTotal = matrixData.reduce((sum, row) => sum + row.yearlyTotal, 0)
 
-  // Compute clean title for Dana header
-  const getCleanDanaTitle = () => {
-    if (selectedCoa?.id === '4300' || selectedCoa?.nama_akun?.toLowerCase().includes('yusuf')) {
-      return 'DANA ST. YUSUF'
-    }
-    const cleanName = selectedCoa?.nama_akun
-      ?.replace(/^Iuran /i, '')
-      ?.replace(/^Sumbangan /i, '')
-      ?.replace(/^Dana /i, '')
-      ?.toUpperCase() || 'UMAT'
-    return `DANA ${cleanName}`
-  }
-
   return (
     <div className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 relative min-h-screen pb-20 font-sans">
       
       {/* CONTROL PANEL (Hidden during print) */}
       <div className="print:hidden space-y-6 mb-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Form Setoran &amp; Rekapitulasi PDF</h1>
-            <p className="text-slate-500 mt-1 text-sm font-medium">Kop surat resmi Paroki Santa Clara untuk formulir cetak Bendahara Lingkungan (St. Yusuf, APP, Dahar Romo, Rekapitulasi Amplop).</p>
-          </div>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Formulir Cetak PDF Bendahara</h1>
+          <p className="text-slate-500 mt-1 text-sm font-medium">Kop surat resmi Paroki Santa Clara untuk 7 formulir: Santo Yusuf, Dana Pastoran, Dana APP, Dana HPS, Dana ASAK, Dana PPG, dan Dana CYTM.</p>
         </div>
 
-        {/* TEMPLATE PICKER & COA SELECTOR */}
+        {/* SELEKSI 7 DANA RESMI */}
         <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-5">
-          {/* Format Template Tabs */}
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-2">Pilih Format Formulir</label>
-            <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 gap-1">
-              <button
-                type="button"
-                onClick={() => setFormTemplate('TANDA_TERIMA')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  formTemplate === 'TANDA_TERIMA'
-                    ? 'bg-white text-slate-900 shadow-xs border border-slate-300'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <TableIcon className="w-4 h-4 text-[#18539E]" />
-                Tanda Terima Setoran (Matriks 12 Bulan)
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormTemplate('REKAP_AMPLOP')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  formTemplate === 'REKAP_AMPLOP'
-                    ? 'bg-white text-slate-900 shadow-xs border border-slate-300'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <FileText className="w-4 h-4 text-[#18539E]" />
-                Rekapitulasi Amplop
-              </button>
+            <label className="text-xs font-bold text-slate-700 block mb-2.5">Pilih Formulir Dana (Otomatis Format Sesuai Jenis Dana)</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+              {DAFTAR_FORM_TERSEDIA.map(f => {
+                const isSelected = selectedFormId === f.id
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setSelectedFormId(f.id)}
+                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'bg-slate-900 border-slate-900 text-white shadow-sm ring-1 ring-slate-900'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full mb-1">
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                        isSelected ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {f.labelBadge}
+                      </span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
+                    </div>
+                    <div className="font-bold text-xs truncate mt-1">
+                      {f.name}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
-            <div className="space-y-2.5 col-span-1 sm:col-span-2">
-              <label className="text-xs font-bold text-slate-700">Pilih Jenis Dana Form (COA)</label>
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
-                {formCoaOptions.map(coa => {
-                  const isSelected = selectedCoaId === coa.id
-                  return (
-                    <button
-                      key={coa.id}
-                      type="button"
-                      onClick={() => setSelectedCoaId(coa.id)}
-                      className={`text-left p-2.5 rounded-xl border transition cursor-pointer shrink-0 w-48 ${
-                        isSelected
-                          ? 'bg-slate-100 border-slate-400 text-slate-900 shadow-xs ring-1 ring-slate-400'
-                          : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-200 text-slate-800 border border-slate-300">
-                          {coa.id}
-                        </span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-slate-800" />}
-                      </div>
-                      <div className="font-bold text-xs text-slate-900 truncate" title={coa.nama_akun}>
-                        {coa.nama_akun}
-                      </div>
-                      <div className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
-                        {coa.kategori}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Tahun Transaksi</label>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-slate-100">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <label className="text-xs font-bold text-slate-700 shrink-0">Tahun:</label>
               <Select value={selectedYear} onValueChange={(val) => { if (val) setSelectedYear(val) }}>
-                <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium">
+                <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-10 w-32 text-xs font-bold">
                   <SelectValue placeholder="Pilih Tahun" />
                 </SelectTrigger>
                 <SelectContent>
@@ -263,151 +292,27 @@ export default function FormSetoranPage() {
               </Select>
             </div>
 
-            <div>
-              <Button 
-                onClick={handlePrint}
-                disabled={!isPrintReady || loading}
-                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Printer className="w-5 h-5" />}
-                {loading ? 'Memuat Data...' : 'Cetak / Simpan PDF'}
-              </Button>
-            </div>
+            <Button 
+              onClick={handlePrint}
+              disabled={loading}
+              className="w-full sm:w-auto h-10 px-6 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
+            >
+              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+              {loading ? 'Memuat Data...' : 'Cetak / Simpan PDF'}
+            </Button>
           </div>
         </div>
       </div>
 
       {/* DOCUMENT PREVIEW (Styled for Print - Exactly Matches Authentic Documents) */}
-      {isPrintReady && !loading && (
+      {!loading && (
         <div className="bg-white border border-slate-300 shadow-xl mx-auto rounded-none print:shadow-none print:border-none" style={{ maxWidth: '210mm', minHeight: '297mm' }}>
           <div className="p-8 sm:p-12 print:p-0 print:m-0 font-serif text-black">
             
-            {/* ========================================================= */}
-            {/* FORMAT 1: TANDA TERIMA SETORAN (PERSIS GAMBAR 1)          */}
-            {/* ========================================================= */}
-            {formTemplate === 'TANDA_TERIMA' && (
-              <>
-                {/* KOP SURAT RESMI PAROKI SANTA CLARA */}
-                <div className="flex justify-between items-start mb-4">
-                  {/* Logo Paroki Santa Clara di sebelah kiri */}
-                  <div className="w-20 shrink-0 flex items-center justify-start">
-                    <img
-                      src="/logo-kop-paroki.png"
-                      alt="Logo Paroki St. Clara"
-                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
-                      onError={(e) => {
-                        ;(e.currentTarget as HTMLImageElement).src = '/logo-st-clara.jpg'
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Judul Tengah */}
-                  <div className="flex-1 text-center pl-2">
-                    <h2 className="text-base sm:text-xl font-bold uppercase tracking-[0.25em] underline underline-offset-4 mb-1">
-                      TANDA TERIMA SETORAN
-                    </h2>
-                    <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider">
-                      PAROKI ST. CLARA - BEKASI UTARA
-                    </h3>
-                  </div>
-                  
-                  {/* Judul Kanan (DANA ST. YUSUF) */}
-                  <div className="w-48 text-right flex flex-col justify-start pt-1">
-                    <h1 className="text-lg sm:text-2xl font-black font-sans uppercase tracking-tight leading-none break-words">
-                      {getCleanDanaTitle()}
-                    </h1>
-                  </div>
-                </div>
-
-                {/* INFO HEADER */}
-                <div className="flex flex-col sm:flex-row justify-between items-end mb-3 text-xs sm:text-sm font-bold uppercase gap-2 sm:gap-0">
-                  <div className="flex gap-2 w-full sm:w-1/2 items-end">
-                    <span>LINGKUNGAN :</span>
-                    <span className="border-b border-black flex-1 border-dashed inline-block h-5 leading-5 pl-1">
-                      {formatNamaLingkungan(lingkunganName)}
-                    </span>
-                  </div>
-                  <div className="flex gap-4 sm:gap-8 items-end">
-                    <div className="flex gap-2 items-end">
-                      <span className="lowercase font-normal">bulan:</span>
-                      <span className="w-16 sm:w-20 border-b border-black border-dashed inline-block h-5"></span>
-                    </div>
-                    <div className="flex gap-2 items-end">
-                      <span>TAHUN :</span>
-                      <span className="w-16 sm:w-24 border-b border-black border-dashed inline-block h-5 text-center leading-5">
-                        {selectedYear}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* TABLE MATRIKS 12 BULAN */}
-                <div className="overflow-x-auto w-full">
-                  <table className="w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
-                    <thead>
-                      <tr className="border border-black">
-                        <th rowSpan={2} className="border border-black p-1 w-8 font-bold text-center">No.</th>
-                        <th rowSpan={2} className="border border-black p-1 font-bold text-left px-2">NAMA KELUARGA</th>
-                        <th colSpan={12} className="border border-black p-1 font-bold text-center">BULAN</th>
-                        <th rowSpan={2} className="border border-black p-1 w-20 sm:w-24 font-bold text-center">JUMLAH<br/><span className="font-normal">(Rp)</span></th>
-                        <th rowSpan={2} className="border border-black p-1 w-24 sm:w-32 font-bold text-center">KETERANGAN</th>
-                      </tr>
-                      <tr className="border border-black">
-                        {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                          <th key={m} className="border border-black p-0.5 sm:p-1 w-5 sm:w-6 font-bold text-center">{m}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {matrixData.map((row, idx) => (
-                        <tr key={row.kk.id} className="border border-black">
-                          <td className="border border-black p-1 text-center font-medium">{idx + 1}</td>
-                          <td className="border border-black p-1 px-2 font-medium">{row.kk.nama_kk}</td>
-                          {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                            <td key={m} className="border border-black p-1 text-center font-bold text-emerald-800 print:text-black">
-                              {row.monthlyStatus[m] ? '✓' : ''}
-                            </td>
-                          ))}
-                          <td className="border border-black p-1 text-right font-medium pr-2">
-                            {row.yearlyTotal > 0 ? row.yearlyTotal.toLocaleString('id-ID') : ''}
-                          </td>
-                          <td className="border border-black p-1 text-center font-medium italic text-[10px]">
-                            {row.yearlyTotal > 0 ? 'Sudah Bayar' : ''}
-                          </td>
-                        </tr>
-                      ))}
-                      
-                      {/* Empty rows padding up to 35 rows */}
-                      {Array.from({ length: Math.max(0, 32 - matrixData.length) }).map((_, idx) => (
-                        <tr key={`empty-${idx}`} className="border border-black h-6">
-                          <td className="border border-black p-1 text-center">{matrixData.length + idx + 1}</td>
-                          <td className="border border-black p-1"></td>
-                          {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                            <td key={`e-${m}`} className="border border-black p-1"></td>
-                          ))}
-                          <td className="border border-black p-1"></td>
-                          <td className="border border-black p-1"></td>
-                        </tr>
-                      ))}
-                      
-                      {/* TOTAL ROW */}
-                      <tr className="border-t-2 border-black font-bold">
-                        <td colSpan={14} className="border border-black p-1.5 text-center">JUMLAH</td>
-                        <td className="border-2 border-black p-1.5 text-right pr-2">
-                          {grandTotal > 0 ? grandTotal.toLocaleString('id-ID') : ''}
-                        </td>
-                        <td className="border border-black p-1.5"></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-
-            {/* ========================================================= */}
-            {/* FORMAT 2: REKAPITULASI AMPLOP (PERSIS GAMBAR 2)           */}
-            {/* ========================================================= */}
-            {formTemplate === 'REKAP_AMPLOP' && (
+            {/* ========================================================================= */}
+            {/* FORMAT 1: REKAPITULASI AMPLOP (OTOMATIS UNTUK DANA APP & DANA HPS)        */}
+            {/* ========================================================================= */}
+            {isAmplopFormat ? (
               <>
                 {/* KOP SURAT RESMI PAROKI SANTA CLARA */}
                 <div className="flex justify-between items-start mb-4">
@@ -426,7 +331,7 @@ export default function FormSetoranPage() {
                   {/* Judul Tengah */}
                   <div className="flex-1 text-left pl-4">
                     <h2 className="text-base sm:text-xl font-bold uppercase tracking-wider underline underline-offset-4 mb-1">
-                      REKAPITULASI AMPLOP {selectedCoa?.nama_akun?.replace(/^Iuran /i, '')?.replace(/^Sumbangan /i, '') ? `(${selectedCoa.nama_akun.replace(/^Iuran /i, '').replace(/^Sumbangan /i, '')})` : '....................................................'} Thn {selectedYear || '........'}
+                      REKAPITULASI AMPLOP {selectedForm.amplopLabel ? `${selectedForm.amplopLabel} ` : ''}.................................................... Thn {selectedYear || '........'}
                     </h2>
                     <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider">
                       PAROKI ST. CLARA - BEKASI UTARA
@@ -492,6 +397,126 @@ export default function FormSetoranPage() {
                       <tr className="border-t-2 border-black font-bold">
                         <td colSpan={3} className="border border-black p-1.5 text-center">JUMLAH</td>
                         <td className="border-2 border-black p-1.5 text-right pr-3">
+                          {grandTotal > 0 ? grandTotal.toLocaleString('id-ID') : ''}
+                        </td>
+                        <td className="border border-black p-1.5"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              /* ========================================================================= */
+              /* FORMAT 2: TANDA TERIMA SETORAN (SANTO YUSUF, PASTORAN, ASAK, PPG, CYTM)   */
+              /* ========================================================================= */
+              <>
+                {/* KOP SURAT RESMI PAROKI SANTA CLARA */}
+                <div className="flex justify-between items-start mb-4">
+                  {/* Logo Paroki Santa Clara di sebelah kiri */}
+                  <div className="w-20 shrink-0 flex items-center justify-start">
+                    <img
+                      src="/logo-kop-paroki.png"
+                      alt="Logo Paroki St. Clara"
+                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                      onError={(e) => {
+                        ;(e.currentTarget as HTMLImageElement).src = '/logo-st-clara.jpg'
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Judul Tengah */}
+                  <div className="flex-1 text-center pl-2">
+                    <h2 className="text-base sm:text-xl font-bold uppercase tracking-[0.25em] underline underline-offset-4 mb-1">
+                      TANDA TERIMA SETORAN
+                    </h2>
+                    <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider">
+                      PAROKI ST. CLARA - BEKASI UTARA
+                    </h3>
+                  </div>
+                  
+                  {/* Judul Kanan (DANA ST. YUSUF, DANA PASTORAN, DLL) */}
+                  <div className="w-48 text-right flex flex-col justify-start pt-1">
+                    <h1 className="text-lg sm:text-2xl font-black font-sans uppercase tracking-tight leading-none break-words">
+                      {selectedForm.headerRightText || 'DANA UMAT'}
+                    </h1>
+                  </div>
+                </div>
+
+                {/* INFO HEADER */}
+                <div className="flex flex-col sm:flex-row justify-between items-end mb-3 text-xs sm:text-sm font-bold uppercase gap-2 sm:gap-0">
+                  <div className="flex gap-2 w-full sm:w-1/2 items-end">
+                    <span>LINGKUNGAN :</span>
+                    <span className="border-b border-black flex-1 border-dashed inline-block h-5 leading-5 pl-1">
+                      {formatNamaLingkungan(lingkunganName)}
+                    </span>
+                  </div>
+                  <div className="flex gap-4 sm:gap-8 items-end">
+                    <div className="flex gap-2 items-end">
+                      <span className="lowercase font-normal">bulan:</span>
+                      <span className="w-16 sm:w-20 border-b border-black border-dashed inline-block h-5"></span>
+                    </div>
+                    <div className="flex gap-2 items-end">
+                      <span>TAHUN :</span>
+                      <span className="w-16 sm:w-24 border-b border-black border-dashed inline-block h-5 text-center leading-5">
+                        {selectedYear}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* TABLE MATRIKS 12 BULAN */}
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
+                    <thead>
+                      <tr className="border border-black">
+                        <th rowSpan={2} className="border border-black p-1 w-8 font-bold text-center">No.</th>
+                        <th rowSpan={2} className="border border-black p-1 font-bold text-left px-2">NAMA KELUARGA</th>
+                        <th colSpan={12} className="border border-black p-1 font-bold text-center">BULAN</th>
+                        <th rowSpan={2} className="border border-black p-1 w-20 sm:w-24 font-bold text-center">JUMLAH<br/><span className="font-normal">(Rp)</span></th>
+                        <th rowSpan={2} className="border border-black p-1 w-24 sm:w-32 font-bold text-center">KETERANGAN</th>
+                      </tr>
+                      <tr className="border border-black">
+                        {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                          <th key={m} className="border border-black p-0.5 sm:p-1 w-5 sm:w-6 font-bold text-center">{m}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matrixData.map((row, idx) => (
+                        <tr key={row.kk.id} className="border border-black">
+                          <td className="border border-black p-1 text-center font-medium">{idx + 1}</td>
+                          <td className="border border-black p-1 px-2 font-medium">{row.kk.nama_kk}</td>
+                          {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                            <td key={m} className="border border-black p-1 text-center font-bold text-emerald-800 print:text-black">
+                              {row.monthlyStatus[m] ? '✓' : ''}
+                            </td>
+                          ))}
+                          <td className="border border-black p-1 text-right font-medium pr-2">
+                            {row.yearlyTotal > 0 ? row.yearlyTotal.toLocaleString('id-ID') : ''}
+                          </td>
+                          <td className="border border-black p-1 text-center font-medium italic text-[10px]">
+                            {row.yearlyTotal > 0 ? 'Sudah Bayar' : ''}
+                          </td>
+                        </tr>
+                      ))}
+                      
+                      {/* Empty rows padding up to 32 rows */}
+                      {Array.from({ length: Math.max(0, 32 - matrixData.length) }).map((_, idx) => (
+                        <tr key={`empty-${idx}`} className="border border-black h-6">
+                          <td className="border border-black p-1 text-center">{matrixData.length + idx + 1}</td>
+                          <td className="border border-black p-1"></td>
+                          {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                            <td key={`e-${m}`} className="border border-black p-1"></td>
+                          ))}
+                          <td className="border border-black p-1"></td>
+                          <td className="border border-black p-1"></td>
+                        </tr>
+                      ))}
+                      
+                      {/* TOTAL ROW */}
+                      <tr className="border-t-2 border-black font-bold">
+                        <td colSpan={14} className="border border-black p-1.5 text-center">JUMLAH</td>
+                        <td className="border-2 border-black p-1.5 text-right pr-2">
                           {grandTotal > 0 ? grandTotal.toLocaleString('id-ID') : ''}
                         </td>
                         <td className="border border-black p-1.5"></td>
