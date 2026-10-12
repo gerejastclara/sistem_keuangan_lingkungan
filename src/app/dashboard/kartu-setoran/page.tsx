@@ -12,7 +12,6 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { getAllMasterCOA } from '@/lib/masterCoa'
 import {
   CreditCard,
@@ -23,7 +22,6 @@ import {
   ClipboardList,
   Sparkles,
   Info,
-  Coins,
   User,
   Building2
 } from 'lucide-react'
@@ -105,21 +103,6 @@ export default function KartuSetoranPage() {
 
   // Local overrides: key = `${kkId}_${month}` -> SetoranOverrideData | string
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, SetoranOverrideData | string>>({})
-
-  // Modal toggle status pembayaran / talangan
-  const [toggleCellInfo, setToggleCellInfo] = useState<{
-    kkId: string
-    kkNama: string
-    monthNum: number
-    monthName: string
-    nominal: number
-    currentSource: SumberSetoranType
-    penalangNama?: string
-  } | null>(null)
-
-  const [modalSource, setModalSource] = useState<SumberSetoranType>('SENDIRI')
-  const [modalPenalangNama, setModalPenalangNama] = useState<string>('')
-  const [modalNominal, setModalNominal] = useState<number>(20000)
 
   useEffect(() => {
     async function loadData() {
@@ -476,54 +459,6 @@ export default function KartuSetoranPage() {
   const selectedCoaObj = kartuOptions.find(c => c.code === selectedCoa) || kartuOptions[0] || { code: selectedCoa, name: `COA ${selectedCoa}`, labelShort: `COA ${selectedCoa}` }
   const totalKkCount = uniqueKkIdsWithSetoran.size
 
-  // Handler buka modal status/talangan
-  const handleOpenCellModal = (info: {
-    kkId: string
-    kkNama: string
-    monthNum: number
-    monthName: string
-    nominal: number
-    currentSource: SumberSetoranType
-    penalangNama?: string
-  }) => {
-    setToggleCellInfo(info)
-    setModalSource(info.currentSource || 'SENDIRI')
-    setModalPenalangNama(info.penalangNama || '')
-    setModalNominal(info.nominal > 0 ? info.nominal : 20000)
-  }
-
-  // Simpan perubahan sumber/penalang
-  const handleSaveSourceOverride = () => {
-    if (!toggleCellInfo || !lingkunganId) return
-    const key = `${toggleCellInfo.kkId}_${toggleCellInfo.monthNum}`
-    const overrideVal: SetoranOverrideData = {
-      sumber: modalSource,
-      penalangNama: modalSource === 'ORANG_LAIN' ? modalPenalangNama.trim() : undefined,
-      nominal: modalNominal > 0 ? modalNominal : (toggleCellInfo.nominal || 20000)
-    }
-    const updated = { ...sourceOverrides, [key]: overrideVal }
-    setSourceOverrides(updated)
-    try {
-      localStorage.setItem(`kartu_setoran_sumber_overrides_${lingkunganId}`, JSON.stringify(updated))
-      window.dispatchEvent(new Event('storage'))
-    } catch (e) {}
-    setToggleCellInfo(null)
-  }
-
-  // Reset / Hapus status override
-  const handleResetSourceOverride = () => {
-    if (!toggleCellInfo || !lingkunganId) return
-    const key = `${toggleCellInfo.kkId}_${toggleCellInfo.monthNum}`
-    const updated = { ...sourceOverrides }
-    delete updated[key]
-    setSourceOverrides(updated)
-    try {
-      localStorage.setItem(`kartu_setoran_sumber_overrides_${lingkunganId}`, JSON.stringify(updated))
-      window.dispatchEvent(new Event('storage'))
-    } catch (e) {}
-    setToggleCellInfo(null)
-  }
-
   // Export to Excel / CSV
   const handleExportExcel = () => {
     const headers = ['No', 'Nama Kepala Keluarga', ...SHORT_MONTHS, 'Total Setoran (Rp)']
@@ -678,24 +613,24 @@ export default function KartuSetoranPage() {
           </div>
 
           {/* PANDUAN WARNA (LEGEND) */}
-          <div className="flex flex-wrap items-center gap-2.5 text-xs bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
-            <span className="font-bold text-slate-700 text-[11px] flex items-center gap-1">
-              <Info className="w-3.5 h-3.5 text-slate-500" /> Keterangan:
+          <div className="flex flex-wrap items-center gap-2.5 text-xs bg-slate-50/80 border border-slate-200/90 px-3 py-2 rounded-xl">
+            <span className="font-semibold text-slate-700 text-[11px] flex items-center gap-1">
+              <Info className="w-3.5 h-3.5 text-slate-400" /> Keterangan:
             </span>
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EAF7EE] text-[#0D6539] border border-[#B7E4C7] font-semibold text-[10px]">
-              <span className="w-2 h-2 rounded-full bg-[#137333]"></span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-medium text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
               Bayar Sendiri
             </div>
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-300 font-semibold text-[10px]">
-              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-sky-50 text-sky-800 border border-sky-200/80 font-medium text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-sky-600"></span>
               Ditalangi Paroki
             </div>
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-800 border border-purple-300 font-semibold text-[10px]">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-50/80 text-purple-800 border border-purple-200/80 font-medium text-[10px]">
               <span className="w-2 h-2 rounded-full bg-purple-600"></span>
               Dana Lingkungan
             </div>
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-[10px]">
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200/80 font-medium text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-amber-600"></span>
               Ditalangi Orang Lain
             </div>
           </div>
@@ -727,7 +662,7 @@ export default function KartuSetoranPage() {
               </div>
               <div className="text-xs text-slate-500 font-medium flex items-center gap-2">
                 <Info className="w-3.5 h-3.5 text-slate-400" />
-                <span>Klik angka atau tanda strip (—) pada bulan untuk mengatur status pembayaran / talangan</span>
+                <span>Data setoran terakumulasi otomatis dari modul Jurnal Transaksi</span>
               </div>
             </div>
 
@@ -776,56 +711,32 @@ export default function KartuSetoranPage() {
                           return (
                             <td key={mNum} className="text-center p-1.5 font-mono text-[11px] border-b border-slate-100">
                               {val > 0 ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenCellModal({
-                                    kkId: kk.id,
-                                    kkNama: kk.nama_kk,
-                                    monthNum: mNum,
-                                    monthName: SHORT_MONTHS[i],
-                                    nominal: val,
-                                    currentSource: sumber,
-                                    penalangNama: penalang
-                                  })}
+                                <span
                                   title={
                                     sumber === 'ORANG_LAIN'
-                                      ? `Ditalangi oleh: ${penalang || 'Donatur'} (${formatRupiah(val)}) - Klik untuk ubah`
+                                      ? `Ditalangi oleh: ${penalang || 'Donatur'} (${formatRupiah(val)})`
                                       : sumber === 'PAROKI'
-                                      ? `Ditalangi Paroki (${formatRupiah(val)}) - Klik untuk ubah`
+                                      ? `Ditalangi Paroki (${formatRupiah(val)})`
                                       : sumber === 'DANA_LINGKUNGAN'
-                                      ? `Ditalangi Dana Kas Lingkungan (${formatRupiah(val)}) - Klik untuk ubah`
-                                      : `Bayar Sendiri (${formatRupiah(val)}) - Klik untuk ubah`
+                                      ? `Ditalangi Dana Kas Lingkungan (${formatRupiah(val)})`
+                                      : `Bayar Sendiri (${formatRupiah(val)})`
                                   }
-                                  className={`inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded font-bold cursor-pointer transition-transform hover:scale-110 shadow-2xs ${
+                                  className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${
                                     sumber === 'ORANG_LAIN'
-                                      ? 'bg-amber-50 text-amber-900 border border-amber-300'
+                                      ? 'bg-amber-50 text-amber-800 border border-amber-200/80'
                                       : sumber === 'PAROKI'
-                                      ? 'bg-blue-50 text-blue-900 border border-blue-300'
+                                      ? 'bg-sky-50 text-sky-800 border border-sky-200/80'
                                       : sumber === 'DANA_LINGKUNGAN'
-                                      ? 'bg-[#F3E8FF] text-[#6B21A8] border border-[#D8B4FE]'
-                                      : 'bg-[#EAF7EE] text-[#0D6539] border border-[#B7E4C7]'
+                                      ? 'bg-purple-50/80 text-purple-800 border border-purple-200/80'
+                                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
                                   }`}
                                 >
                                   <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
-                                  {sumber === 'ORANG_LAIN' && <span className="text-[9px] text-amber-600 font-extrabold" title={penalang}>★</span>}
-                                  {sumber === 'PAROKI' && <span className="text-[9px] text-blue-600 font-extrabold">✝</span>}
-                                </button>
+                                  {sumber === 'ORANG_LAIN' && <span className="text-[10px] text-amber-600 font-bold" title={penalang}>★</span>}
+                                  {sumber === 'PAROKI' && <span className="text-[10px] text-sky-600 font-bold">✝</span>}
+                                </span>
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenCellModal({
-                                    kkId: kk.id,
-                                    kkNama: kk.nama_kk,
-                                    monthNum: mNum,
-                                    monthName: SHORT_MONTHS[i],
-                                    nominal: 0,
-                                    currentSource: 'SENDIRI'
-                                  })}
-                                  className="text-slate-300 hover:text-slate-700 hover:bg-slate-100 px-2 py-0.5 rounded cursor-pointer transition text-xs font-light"
-                                  title={`Klik untuk catat setoran / talangan ${kk.nama_kk} bulan ${SHORT_MONTHS[i]}`}
-                                >
-                                  —
-                                </button>
+                                <span className="text-slate-300 font-light select-none">—</span>
                               )}
                             </td>
                           )
@@ -854,31 +765,30 @@ export default function KartuSetoranPage() {
                         return (
                           <td key={mNum} className="text-center p-1.5 font-mono text-[11px] border-b border-slate-100">
                             {val > 0 ? (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenCellModal({
-                                  kkId: 'umum',
-                                  kkNama: 'Umum / Kolektif',
-                                  monthNum: mNum,
-                                  monthName: SHORT_MONTHS[i],
-                                  nominal: val,
-                                  currentSource: sumber,
-                                  penalangNama: penalang
-                                })}
-                                className={`inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded font-bold cursor-pointer transition-transform hover:scale-110 shadow-2xs ${
+                              <span
+                                title={
                                   sumber === 'ORANG_LAIN'
-                                    ? 'bg-amber-50 text-amber-900 border border-amber-300'
+                                    ? `Ditalangi oleh: ${penalang || 'Donatur'} (${formatRupiah(val)})`
                                     : sumber === 'PAROKI'
-                                    ? 'bg-blue-50 text-blue-900 border border-blue-300'
+                                    ? `Ditalangi Paroki (${formatRupiah(val)})`
                                     : sumber === 'DANA_LINGKUNGAN'
-                                    ? 'bg-[#F3E8FF] text-[#6B21A8] border border-[#D8B4FE]'
-                                    : 'bg-[#EAF7EE] text-[#0D6539] border border-[#B7E4C7]'
+                                    ? `Ditalangi Dana Kas Lingkungan (${formatRupiah(val)})`
+                                    : `Bayar Sendiri (${formatRupiah(val)})`
+                                }
+                                className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${
+                                  sumber === 'ORANG_LAIN'
+                                    ? 'bg-amber-50 text-amber-800 border border-amber-200/80'
+                                    : sumber === 'PAROKI'
+                                    ? 'bg-sky-50 text-sky-800 border border-sky-200/80'
+                                    : sumber === 'DANA_LINGKUNGAN'
+                                    ? 'bg-purple-50/80 text-purple-800 border border-purple-200/80'
+                                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
                                 }`}
                               >
                                 <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
-                              </button>
+                              </span>
                             ) : (
-                              <span className="text-slate-300 font-extralight">—</span>
+                              <span className="text-slate-300 font-extralight select-none">—</span>
                             )}
                           </td>
                         )
@@ -894,189 +804,6 @@ export default function KartuSetoranPage() {
           </div>
         )}
       </div>
-
-      {/* MODAL DIALOG TOGGLE STATUS & SUMBER PEMBAYARAN / TALANGAN */}
-      <Dialog open={!!toggleCellInfo} onOpenChange={(open) => !open && setToggleCellInfo(null)}>
-        <DialogContent className="sm:max-w-md bg-white border-slate-200 text-slate-900 rounded-2xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-slate-900 font-bold text-base flex items-center gap-2">
-              <Coins className="w-5 h-5 text-slate-700" />
-              Status Pembayaran / Talangan Setoran
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Tentukan siapa yang menanggung pembayaran setoran iuran ini (bayar sendiri, ditalangi paroki, kas lingkungan, atau ditalangi donatur/orang lain).
-            </DialogDescription>
-          </DialogHeader>
-
-          {toggleCellInfo && (
-            <div className="space-y-4 py-2 text-xs">
-              {/* Info Box */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                <div className="font-bold text-slate-900 text-sm">{toggleCellInfo.kkNama}</div>
-                <div className="text-slate-600 flex items-center justify-between text-xs">
-                  <span>Bulan: <strong className="text-slate-800">{toggleCellInfo.monthName} {selectedYear}</strong></span>
-                  <span>Jenis: <strong className="text-slate-800">{selectedCoaObj.labelShort}</strong></span>
-                </div>
-                <div className="pt-1">
-                  <Label htmlFor="modalNominalInput" className="text-[11px] font-bold text-slate-700">Nominal Setoran (Rp):</Label>
-                  <Input
-                    id="modalNominalInput"
-                    type="number"
-                    value={modalNominal || ''}
-                    onChange={(e) => setModalNominal(Number(e.target.value) || 0)}
-                    className="h-9 text-xs font-mono font-bold bg-white border-slate-300 mt-1 rounded-xl text-slate-900"
-                    placeholder="Contoh: 20000"
-                  />
-                </div>
-              </div>
-
-              {/* 4 Pilihan Sumber Pembayaran / Talangan */}
-              <div className="space-y-2">
-                <div className="text-[11px] font-bold text-slate-700">Pilih Siapa Yang Menanggung / Menalangi:</div>
-
-                {/* 1. Bayar Sendiri */}
-                <button
-                  type="button"
-                  onClick={() => setModalSource('SENDIRI')}
-                  className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
-                    modalSource === 'SENDIRI'
-                      ? 'border-emerald-600 bg-emerald-50 text-emerald-950 ring-2 ring-emerald-500/20'
-                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-3 h-3 rounded-full bg-[#137333] shrink-0" />
-                    <div>
-                      <div className="font-bold text-xs">Bayar Sendiri (Mandiri)</div>
-                      <div className="text-[11px] text-slate-500">Keluarga membayar sendiri iurannya</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold bg-[#EAF7EE] text-[#0D6539] border border-[#B7E4C7] px-2 py-0.5 rounded">
-                    Hijau
-                  </span>
-                </button>
-
-                {/* 2. Ditalangi Paroki */}
-                <button
-                  type="button"
-                  onClick={() => setModalSource('PAROKI')}
-                  className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
-                    modalSource === 'PAROKI'
-                      ? 'border-blue-600 bg-blue-50 text-blue-950 ring-2 ring-blue-500/20'
-                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-3 h-3 rounded-full bg-blue-600 shrink-0" />
-                    <div>
-                      <div className="font-bold text-xs">Ditalangi Paroki</div>
-                      <div className="text-[11px] text-slate-500">Bantuan / talangan dari Paroki</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-300 px-2 py-0.5 rounded">
-                    Biru
-                  </span>
-                </button>
-
-                {/* 3. Ditalangi Dana Lingkungan */}
-                <button
-                  type="button"
-                  onClick={() => setModalSource('DANA_LINGKUNGAN')}
-                  className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
-                    modalSource === 'DANA_LINGKUNGAN'
-                      ? 'border-purple-600 bg-purple-50 text-purple-950 ring-2 ring-purple-500/20'
-                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-3 h-3 rounded-full bg-purple-600 shrink-0" />
-                    <div>
-                      <div className="font-bold text-xs">Ditalangi Dana Lingkungan</div>
-                      <div className="text-[11px] text-slate-500">Disubsidi / ditanggung kas lingkungan</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-300 px-2 py-0.5 rounded">
-                    Ungu
-                  </span>
-                </button>
-
-                {/* 4. Ditalangi Orang Lain / Donatur */}
-                <button
-                  type="button"
-                  onClick={() => setModalSource('ORANG_LAIN')}
-                  className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
-                    modalSource === 'ORANG_LAIN'
-                      ? 'border-amber-500 bg-amber-50 text-amber-950 ring-2 ring-amber-500/20'
-                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />
-                    <div>
-                      <div className="font-bold text-xs">Ditalangi Orang Lain / Donatur</div>
-                      <div className="text-[11px] text-slate-500">Ditalangi donatur, umat lain, atau pengurus</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300 px-2 py-0.5 rounded">
-                    Kuning / Oranye
-                  </span>
-                </button>
-              </div>
-
-              {/* Input Nama Yang Menalangi jika memilih ORANG_LAIN */}
-              {modalSource === 'ORANG_LAIN' && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5 animate-fadeIn">
-                  <Label htmlFor="penalangNamaInput" className="text-[11px] font-bold text-amber-950">
-                    Nama Yang Menalangi (Keterangan): *
-                  </Label>
-                  <Input
-                    id="penalangNamaInput"
-                    value={modalPenalangNama}
-                    onChange={(e) => setModalPenalangNama(e.target.value)}
-                    placeholder="Contoh: Ditalangi Bpk. Andreas / Donatur X"
-                    className="h-9 text-xs bg-white border-amber-300 rounded-xl text-slate-900"
-                    autoFocus
-                  />
-                  <p className="text-[10px] text-amber-800">
-                    Nama ini akan tersimpan dan tampil saat kartu setoran dilihat.
-                  </p>
-                </div>
-              )}
-
-              <DialogFooter className="pt-2 flex items-center justify-between sm:justify-between gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResetSourceOverride}
-                  className="rounded-xl border-rose-200 text-rose-700 hover:bg-rose-50 text-xs"
-                >
-                  Reset / Hapus
-                </Button>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setToggleCellInfo(null)}
-                    className="rounded-xl border-slate-300 text-slate-700 text-xs"
-                  >
-                    Batal
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleSaveSourceOverride}
-                    className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-xs px-4"
-                  >
-                    Simpan Status
-                  </Button>
-                </div>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

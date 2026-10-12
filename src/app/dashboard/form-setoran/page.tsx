@@ -486,23 +486,29 @@ export default function FormSetoranPage() {
                 {/* TABLE REKAPITULASI DANA APP / HPS (TANPA NO. AMPLOP) */}
                 <div className="overflow-x-auto w-full">
                   <table className="print-table w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
+                    <colgroup>
+                      <col style={{ width: '5%' }} />
+                      <col style={{ width: '45%' }} />
+                      <col style={{ width: '25%' }} />
+                      <col style={{ width: '25%' }} />
+                    </colgroup>
                     <thead>
                       <tr className="border border-black">
-                        <th className="border border-black p-1.5 w-12 font-bold text-center">No.</th>
-                        <th className="border border-black p-1.5 font-bold text-left px-3">NAMA</th>
-                        <th className="border border-black p-1.5 w-44 sm:w-52 font-bold text-center">JUMLAH (Rp)</th>
-                        <th className="border border-black p-1.5 w-48 sm:w-56 font-bold text-center">KETERANGAN</th>
+                        <th className="border border-black p-1.5 font-bold text-center">No.</th>
+                        <th className="border border-black p-1.5 font-bold text-left px-3 col-nama whitespace-nowrap">NAMA</th>
+                        <th className="border border-black p-1.5 font-bold text-center whitespace-nowrap">JUMLAH (Rp)</th>
+                        <th className="border border-black p-1.5 font-bold text-center whitespace-nowrap">KETERANGAN</th>
                       </tr>
                     </thead>
                     <tbody>
                       {matrixData.map((row, idx) => (
                         <tr key={row.kk.id} className="border border-black h-7">
                           <td className="border border-black p-1 text-center font-medium">{idx + 1}</td>
-                          <td className="border border-black p-1 px-3 font-medium">{row.kk.nama_kk}</td>
-                          <td className="border border-black p-1 text-right font-medium pr-3">
+                          <td className="border border-black p-1 px-3 font-medium col-nama whitespace-nowrap text-left">{row.kk.nama_kk}</td>
+                          <td className="border border-black p-1 text-right font-medium pr-3 whitespace-nowrap">
                             {row.yearlyTotal > 0 ? row.yearlyTotal.toLocaleString('id-ID') : ''}
                           </td>
-                          <td className="border border-black p-1 text-center font-medium italic text-[10px]">
+                          <td className="border border-black p-1 text-center font-medium italic text-[10px] whitespace-nowrap">
                             {row.yearlyTotal > 0 ? 'Diterima' : ''}
                           </td>
                         </tr>
@@ -512,7 +518,7 @@ export default function FormSetoranPage() {
                       {Array.from({ length: Math.max(0, (matrixData.length > 32 ? 0 : 32) - matrixData.length) }).map((_, idx) => (
                         <tr key={`empty-amplop-${idx}`} className="border border-black h-7">
                           <td className="border border-black p-1 text-center">{matrixData.length + idx + 1}</td>
-                          <td className="border border-black p-1"></td>
+                          <td className="border border-black p-1 col-nama"></td>
                           <td className="border border-black p-1"></td>
                           <td className="border border-black p-1"></td>
                         </tr>
@@ -521,7 +527,7 @@ export default function FormSetoranPage() {
                       {/* TOTAL ROW */}
                       <tr className="border-t-2 border-black font-bold">
                         <td colSpan={2} className="border border-black p-1.5 text-center">JUMLAH</td>
-                        <td className="border-2 border-black p-1.5 text-right pr-3">
+                        <td className="border-2 border-black p-1.5 text-right pr-3 whitespace-nowrap">
                           {grandTotal > 0 ? grandTotal.toLocaleString('id-ID') : ''}
                         </td>
                         <td className="border border-black p-1.5"></td>
@@ -588,17 +594,26 @@ export default function FormSetoranPage() {
                 {/* TABLE MATRIKS 12 BULAN */}
                 <div className="overflow-x-auto w-full">
                   <table className="print-table w-full border-collapse border-2 border-black text-[10px] sm:text-xs">
+                    <colgroup>
+                      <col style={{ width: '4%' }} />
+                      <col style={{ width: '30%' }} />
+                      {Array.from({ length: 12 }).map((_, i) => (
+                        <col key={i} style={{ width: '3%' }} />
+                      ))}
+                      <col style={{ width: '15%' }} />
+                      <col style={{ width: '15%' }} />
+                    </colgroup>
                     <thead>
                       <tr className="border border-black">
-                        <th rowSpan={2} className="border border-black p-1 w-8 font-bold text-center">No.</th>
-                        <th rowSpan={2} className="border border-black p-1 font-bold text-left px-2">NAMA KELUARGA</th>
+                        <th rowSpan={2} className="border border-black p-1 text-center font-bold">No.</th>
+                        <th rowSpan={2} className="border border-black p-1 px-3 text-left font-bold col-nama whitespace-nowrap">NAMA KELUARGA</th>
                         <th colSpan={12} className="border border-black p-1 font-bold text-center">BULAN</th>
-                        <th rowSpan={2} className="border border-black p-1 w-20 sm:w-24 font-bold text-center">JUMLAH<br/><span className="font-normal">(Rp)</span></th>
-                        <th rowSpan={2} className="border border-black p-1 w-24 sm:w-32 font-bold text-center">KETERANGAN</th>
+                        <th rowSpan={2} className="border border-black p-1 text-center font-bold whitespace-nowrap">JUMLAH<br/><span className="font-normal text-[9px] print:text-[6.5pt]">(Rp)</span></th>
+                        <th rowSpan={2} className="border border-black p-1 text-center font-bold whitespace-nowrap">KETERANGAN</th>
                       </tr>
                       <tr className="border border-black">
                         {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                          <th key={m} className="border border-black p-0.5 sm:p-1 w-5 sm:w-6 font-bold text-center">{m}</th>
+                          <th key={m} className="border border-black p-0.5 sm:p-1 font-bold text-center">{m}</th>
                         ))}
                       </tr>
                     </thead>
@@ -606,16 +621,16 @@ export default function FormSetoranPage() {
                       {matrixData.map((row, idx) => (
                         <tr key={row.kk.id} className="border border-black">
                           <td className="border border-black p-1 text-center font-medium">{idx + 1}</td>
-                          <td className="border border-black p-1 px-2 font-medium">{row.kk.nama_kk}</td>
+                          <td className="border border-black p-1 px-3 font-medium whitespace-nowrap text-left col-nama">{row.kk.nama_kk}</td>
                           {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
                             <td key={m} className="border border-black p-1 text-center font-bold text-emerald-800 print:text-black check-mark">
                               {row.monthlyStatus[m] ? '✓' : ''}
                             </td>
                           ))}
-                          <td className="border border-black p-1 text-right font-medium pr-2">
+                          <td className="border border-black p-1 text-right font-medium pr-3 whitespace-nowrap">
                             {row.yearlyTotal > 0 ? row.yearlyTotal.toLocaleString('id-ID') : ''}
                           </td>
-                          <td className="border border-black p-1 text-center font-medium italic text-[10px]">
+                          <td className="border border-black p-1 text-center font-medium italic text-[10px] print:text-[8pt] whitespace-nowrap">
                             {row.yearlyTotal > 0 ? 'Sudah Bayar' : ''}
                           </td>
                         </tr>
@@ -625,7 +640,7 @@ export default function FormSetoranPage() {
                       {Array.from({ length: Math.max(0, (matrixData.length > 32 ? 0 : 32) - matrixData.length) }).map((_, idx) => (
                         <tr key={`empty-${idx}`} className="border border-black h-6">
                           <td className="border border-black p-1 text-center">{matrixData.length + idx + 1}</td>
-                          <td className="border border-black p-1"></td>
+                          <td className="border border-black p-1 col-nama"></td>
                           {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
                             <td key={`e-${m}`} className="border border-black p-1"></td>
                           ))}
@@ -637,7 +652,7 @@ export default function FormSetoranPage() {
                       {/* TOTAL ROW */}
                       <tr className="border-t-2 border-black font-bold">
                         <td colSpan={14} className="border border-black p-1.5 text-center">JUMLAH</td>
-                        <td className="border-2 border-black p-1.5 text-right pr-2">
+                        <td className="border-2 border-black p-1.5 text-right pr-3 whitespace-nowrap">
                           {grandTotal > 0 ? grandTotal.toLocaleString('id-ID') : ''}
                         </td>
                         <td className="border border-black p-1.5"></td>
@@ -714,7 +729,7 @@ export default function FormSetoranPage() {
           }
           @page {
             size: A4 portrait;
-            margin: 4mm 5mm 4mm 5mm;
+            margin: 5mm 7mm 5mm 7mm;
           }
           .print-sheet {
             width: 100% !important;
@@ -733,71 +748,75 @@ export default function FormSetoranPage() {
             margin: 0 !important;
           }
           .print-kop {
-            margin-bottom: 3px !important;
+            margin-bottom: 4px !important;
           }
           .print-kop-logo {
-            width: 38px !important;
-            height: 38px !important;
+            width: 44px !important;
+            height: 44px !important;
           }
           .print-kop-title {
-            font-size: 11pt !important;
-            margin-bottom: 1px !important;
-            letter-spacing: 0.12em !important;
+            font-size: 11.5pt !important;
+            margin-bottom: 2px !important;
+            letter-spacing: 0.15em !important;
           }
           .print-kop-sub {
-            font-size: 7.5pt !important;
+            font-size: 8pt !important;
           }
           .print-kop-header-right {
-            font-size: 11pt !important;
+            font-size: 12pt !important;
             line-height: 1.1 !important;
           }
           .print-info-row {
-            margin-bottom: 2px !important;
-            font-size: 7.5pt !important;
+            margin-bottom: 3px !important;
+            font-size: 8pt !important;
           }
           .print-table {
             width: 100% !important;
             border-collapse: collapse !important;
-            table-layout: fixed !important;
+            table-layout: auto !important;
           }
           .print-table th {
-            padding: 1px 1px !important;
-            font-size: 6.5pt !important;
-            line-height: 1.1 !important;
-            height: 12px !important;
+            padding: 1.8px 2px !important;
+            font-size: 6.8pt !important;
+            line-height: 1.15 !important;
             border-width: 1px !important;
           }
           .print-table td {
-            padding: 0.5px 1.5px !important;
+            padding: 1.2px 2px !important;
             font-size: 6.8pt !important;
-            line-height: 1.1 !important;
-            height: 11.5px !important;
+            line-height: 1.15 !important;
             border-width: 1px !important;
+          }
+          .print-table .col-nama {
+            white-space: nowrap !important;
+            text-align: left !important;
+            padding-left: 6px !important;
+            padding-right: 4px !important;
           }
           .check-mark {
             font-size: 8pt !important;
             line-height: 1 !important;
-            font-weight: 900 !important;
+            font-weight: bold !important;
           }
           .print-footer {
-            margin-top: 3px !important;
+            margin-top: 4px !important;
           }
           .print-footer-terbilang {
-            margin-bottom: 3px !important;
-            font-size: 7pt !important;
+            margin-bottom: 4px !important;
+            font-size: 7.5pt !important;
           }
           .print-footer-terbilang-box {
-            height: 16px !important;
-            font-size: 6.8pt !important;
+            height: 18px !important;
+            font-size: 7pt !important;
             padding: 0 4px !important;
-            line-height: 16px !important;
+            line-height: 18px !important;
           }
           .print-signatures {
-            margin-top: 2px !important;
-            font-size: 7.2pt !important;
+            margin-top: 3px !important;
+            font-size: 7.5pt !important;
           }
           .print-sign-gap {
-            margin-bottom: 20px !important;
+            margin-bottom: 24px !important;
           }
         }
       `}} />
