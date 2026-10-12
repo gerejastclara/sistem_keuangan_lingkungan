@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { JurnalTransaksi, KepalaKeluarga } from '@/lib/types'
 import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { getAllMasterCOA, MasterCOAItem } from '@/lib/masterCoa'
-import { formatNamaLingkungan, getAllMasterLingkungan, getWilayahForLingkungan } from '@/lib/constants'
+import { formatNamaLingkungan, getAllMasterLingkungan, getWilayahForLingkungan, getLingkunganDbUuid } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -143,43 +143,157 @@ export default function FormSetoranPage() {
         setLingkunganId(effId)
         setLingkunganName(effNama)
 
-        const dbLingkId = effId
+        const dbUuid = getLingkunganDbUuid(effId)
+        const dbLingkId = dbUuid || effId
+
         if (dbLingkId) {
-          const { data: profil } = await supabase.from('profil_lingkungan').select('*').eq('id', dbLingkId)
+          const { data: profil } = await supabase
+            .from('profil_lingkungan')
+            .select('*')
+            .or(`id.eq.${dbUuid},id.eq.${effId}`)
           const peng = getPengurusForLingkungan(dbLingkId, effNama, profil?.[0] || {})
           setPengurus(peng)
         }
 
-        // Load KK
+        // Load KK dari Supabase dan LocalStorage
         const { data: kkData } = await supabase
           .from('kepala_keluarga')
           .select('*')
-          .eq('lingkungan_id', dbLingkId)
+          .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${effId}`)
           .order('nama_kk', { ascending: true })
 
-        if (kkData && kkData.length > 0) {
-          setKkList(kkData)
-        } else {
-          setKkList(ensureDummyKksForLingkungan(dbLingkId, effNama, []))
+        let finalKks = kkData || []
+        if (typeof window !== 'undefined') {
+          const localSaved = localStorage.getItem(`custom_kks_${effId}`) || (dbUuid ? localStorage.getItem(`custom_kks_${dbUuid}`) : null)
+          if (localSaved) {
+            try {
+              const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
+              const map = new Map<string, KepalaKeluarga>()
+              finalKks.forEach(k => map.set(k.id, k))
+              parsed.forEach(k => map.set(k.id, k))
+              finalKks = Array.from(map.values())
+            } catch (e) {}
+          }
+
+          const allSaved = localStorage.getItem('custom_kks_all_store')
+          if (allSaved) {
+            try {
+              const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
+              const matchedAll = allParsed.filter(k => k.lingkungan_id === effId || (dbUuid && k.lingkungan_id === dbUuid))
+              const map = new Map<string, KepalaKeluarga>()
+              finalKks.forEach(k => map.set(k.id, k))
+              matchedAll.forEach(k => map.set(k.id, k))
+              finalKks = Array.from(map.values())
+            } catch (e) {}
+          }
         }
 
-        // Load Jurnal
-        const { data: jData } = await supabase
-          .from('jurnal_transaksi')
-          .select('*')
-          .eq('lingkungan_id', dbLingkId)
-          .order('tanggal', { ascending: true })
+        const resolvedKks = ensureDummyKksForLingkungan(effId, effNama, finalKks)
+        setKkList(resolvedKks)
 
-        if (jData) {
-          setJurnalList(jData)
+        // Load Jurnal Transaksi (Cloud Supabase + LocalStorage offline sync)
+        let list: JurnalTransaksi[] = []
+        try {
+          const { data: jData } = await supabase
+            .from('jurnal_transaksi')
+            .select('*, kepala_keluarga:kk_id(nama_kk)')
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${effId}`)
+            .order('tanggal', { ascending: true })
+
+          if (jData && jData.length > 0) {
+            list = jData
+          }
+        } catch (e) {}
+
+        if (typeof window !== 'undefined') {
+          const keys = [`custom_journals_${dbUuid}`, `custom_journals_${effId}`, `custom_journals_csv-${effId}`]
+          const localList: JurnalTransaksi[] = []
+          keys.forEach(k => {
+            const raw = localStorage.getItem(k)
+            if (raw) {
+              try {
+                const parsed = JSON.parse(raw)
+                if (Array.isArray(parsed)) localList.push(...parsed)
+              } catch (e) {}
+            }
+          })
+
+          const rawAll = localStorage.getItem('custom_journals_all_store')
+          if (rawAll) {
+            try {
+              const parsedAll = JSON.parse(rawAll)
+              if (Array.isArray(parsedAll)) {
+                localList.push(...parsedAll.filter((j: any) => j.lingkungan_id === dbUuid || j.lingkungan_id === effId))
+              }
+            } catch (e) {}
+          }
+
+          const map = new Map<string, JurnalTransaksi>()
+          list.forEach(j => map.set(j.id, j))
+          localList.forEach(j => {
+            if (!map.has(j.id)) {
+              map.set(j.id, j)
+            } else {
+              const existing = map.get(j.id)!
+              if (!existing.kk_id && j.kk_id) existing.kk_id = j.kk_id
+              if (!existing.kepala_keluarga && j.kepala_keluarga) existing.kepala_keluarga = j.kepala_keluarga
+              if (!existing.sumber_setoran && j.sumber_setoran) existing.sumber_setoran = j.sumber_setoran
+            }
+          })
+          list = Array.from(map.values())
+
+          // Sinkronkan nama KK dari tx_kk cache, no_bukti, atau keterangan
+          list.forEach(j => {
+            if (!j.kepala_keluarga?.nama_kk) {
+              const cached = localStorage.getItem(`tx_kk_${j.id}`)
+              if (cached) {
+                try {
+                  const parsed = JSON.parse(cached)
+                  j.kepala_keluarga = { id: parsed.id, nama_kk: parsed.nama_kk, lingkungan_id: j.lingkungan_id } as any
+                  if (!j.kk_id && parsed.id) j.kk_id = parsed.id
+                } catch (e) {}
+              } else if (j.keterangan) {
+                const kkMatch = j.keterangan.match(/\[KK:\s*([^\]]+)\]/i)
+                if (kkMatch) {
+                  const nameFromKet = kkMatch[1].trim()
+                  const found = resolvedKks.find(k => k.nama_kk.toLowerCase().trim() === nameFromKet.toLowerCase())
+                  if (found) {
+                    j.kepala_keluarga = found as any
+                    j.kk_id = found.id
+                  } else {
+                    j.kepala_keluarga = { id: `kk-${nameFromKet}`, nama_kk: nameFromKet, lingkungan_id: j.lingkungan_id } as any
+                  }
+                }
+              } else if (j.kk_id) {
+                const found = resolvedKks.find(k => k.id === j.kk_id)
+                if (found) j.kepala_keluarga = { id: found.id, nama_kk: found.nama_kk, lingkungan_id: j.lingkungan_id } as any
+              }
+            }
+          })
         }
+
+        setJurnalList(list)
       } catch (e) {
         console.error(e)
       } finally {
         setLoading(false)
       }
     }
+
     loadData()
+
+    const handleSync = () => {
+      loadData()
+    }
+    window.addEventListener('customJournalsUpdated', handleSync)
+    window.addEventListener('storage', handleSync)
+    window.addEventListener('lingkunganChanged', handleSync)
+
+    return () => {
+      window.removeEventListener('customJournalsUpdated', handleSync)
+      window.removeEventListener('storage', handleSync)
+      window.removeEventListener('lingkunganChanged', handleSync)
+    }
   }, [supabase])
 
   const handlePrint = () => {
@@ -193,23 +307,54 @@ export default function FormSetoranPage() {
   const matrixData = kkList.map((kk, idx) => {
     let yearlyTotal = 0
     const monthlyStatus: Record<number, boolean> = {}
+    const rowKkNama = kk.nama_kk.trim().toLowerCase()
 
     // Find transactions for this KK in the selected year and matched COA
     const txs = jurnalList.filter(j => {
-      if (j.kk_id !== kk.id || !j.tanggal.startsWith(selectedYear)) return false
+      if (!j.tanggal || !j.tanggal.startsWith(selectedYear)) return false
       
-      // Match by exact COA codes
+      // Match by exact COA codes or keywords
       const matchCode = selectedForm.coaCodes.some(c => c === j.coa_debit || c === j.coa_kredit)
-      if (matchCode) return true
-
-      // Match by keywords in transaction description/memo if any
       const desc = (j.keterangan || '').toLowerCase()
-      return selectedForm.coaKeywords.some(kw => desc.includes(kw))
+      const matchKeyword = selectedForm.coaKeywords.some(kw => desc.includes(kw))
+      if (!matchCode && !matchKeyword) return false
+
+      // Match KK identity (ID, Nama di kepala_keluarga, tx_kk cache, atau keterangan)
+      if (j.kk_id && (j.kk_id === kk.id || j.kk_id.toLowerCase() === kk.id.toLowerCase())) return true
+      if (j.kepala_keluarga?.id && (j.kepala_keluarga.id === kk.id || j.kepala_keluarga.id.toLowerCase() === kk.id.toLowerCase())) return true
+
+      const txKkNama = (j.kepala_keluarga?.nama_kk || '').trim().toLowerCase()
+      if (txKkNama && (txKkNama === rowKkNama || txKkNama.includes(rowKkNama) || rowKkNama.includes(txKkNama))) {
+        return true
+      }
+
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem(`tx_kk_${j.id}`)
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached)
+            if (parsed.id === kk.id) return true
+            const parsedNama = (parsed.nama_kk || '').trim().toLowerCase()
+            if (parsedNama && (parsedNama === rowKkNama || parsedNama.includes(rowKkNama) || rowKkNama.includes(parsedNama))) {
+              return true
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (rowKkNama && desc.includes(rowKkNama)) {
+        return true
+      }
+
+      return false
     })
 
     txs.forEach(tx => {
-      const month = parseInt(tx.tanggal.split('-')[1], 10)
-      monthlyStatus[month] = true
+      const parts = tx.tanggal.split('-')
+      const month = parts.length > 1 ? parseInt(parts[1], 10) : NaN
+      if (!isNaN(month) && month >= 1 && month <= 12) {
+        monthlyStatus[month] = true
+      }
       yearlyTotal += Number(tx.nominal)
     })
 
@@ -430,11 +575,7 @@ export default function FormSetoranPage() {
                       {formatNamaLingkungan(lingkunganName)}
                     </span>
                   </div>
-                  <div className="flex gap-4 sm:gap-8 items-end">
-                    <div className="flex gap-2 items-end">
-                      <span className="lowercase font-normal">bulan:</span>
-                      <span className="w-16 sm:w-20 border-b border-black border-dashed inline-block h-5"></span>
-                    </div>
+                  <div className="flex items-end">
                     <div className="flex gap-2 items-end">
                       <span>TAHUN :</span>
                       <span className="w-16 sm:w-24 border-b border-black border-dashed inline-block h-5 text-center leading-5">
