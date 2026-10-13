@@ -667,22 +667,22 @@ export default function KartuSetoranPage() {
             </div>
 
             {/* Matriks 12 Bulan Kartu Setoran dengan Freeze Header Bulan (Sticky top & left) */}
-            <div className="border border-slate-200 rounded-xl overflow-auto max-h-[580px] relative shadow-xs bg-white scrollbar-thin">
+            <div className="border border-slate-200 rounded-xl overflow-auto max-h-[580px] shadow-xs bg-white scrollbar-thin">
               <table className="w-full text-xs text-left border-separate border-spacing-0">
-                <thead className="sticky top-0 z-30 bg-slate-100 shadow-xs">
+                <thead className="bg-slate-100">
                   <tr className="bg-slate-100">
-                    <th className="sticky top-0 left-0 z-40 bg-slate-100 w-12 text-center font-bold text-slate-800 p-2.5 border-b border-r border-slate-300">
+                    <th className="sticky top-0 left-0 z-40 bg-slate-100 w-12 min-w-[48px] max-w-[48px] text-center font-bold text-slate-800 p-2.5 border-b-2 border-r border-slate-300">
                       No
                     </th>
-                    <th className="sticky top-0 left-12 z-40 bg-slate-100 min-w-[200px] font-bold text-slate-800 p-2.5 border-b border-r border-slate-300 shadow-xs">
+                    <th className="sticky top-0 left-12 z-40 bg-slate-100 min-w-[200px] font-bold text-slate-800 p-2.5 border-b-2 border-r border-slate-300 shadow-xs">
                       Kepala Keluarga
                     </th>
                     {SHORT_MONTHS.map((m) => (
-                      <th key={m} className="sticky top-0 z-30 bg-slate-100 w-16 text-center font-bold text-slate-800 p-2.5 border-b border-slate-300">
+                      <th key={m} className="sticky top-0 z-30 bg-slate-100 w-16 min-w-[64px] text-center font-bold text-slate-800 p-2.5 border-b-2 border-slate-300">
                         {m}
                       </th>
                     ))}
-                    <th className="sticky top-0 z-30 bg-slate-100 w-28 text-right font-bold text-slate-800 p-2.5 pr-3 border-b border-slate-300">
+                    <th className="sticky top-0 z-30 bg-slate-100 w-28 min-w-[100px] text-right font-bold text-slate-800 p-2.5 pr-3 border-b-2 border-slate-300">
                       Total (Rp)
                     </th>
                   </tr>
@@ -694,10 +694,10 @@ export default function KartuSetoranPage() {
 
                     return (
                       <tr key={kk.id} className="hover:bg-slate-50/90 transition group">
-                        <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 text-center font-mono text-slate-500 text-[11px] p-2 border-b border-r border-slate-100">
+                        <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 text-center font-mono text-slate-500 text-[11px] p-2 border-b border-r border-slate-100 w-12 min-w-[48px] max-w-[48px]">
                           {idx + 1}
                         </td>
-                        <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50 font-bold text-slate-900 p-2 border-b border-r border-slate-300 shadow-xs">
+                        <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50 font-bold text-slate-900 p-2 border-b border-r border-slate-300 shadow-xs min-w-[200px]">
                           {kk.nama_kk}
                         </td>
                         {Array.from({ length: 12 }, (_, i) => {
@@ -751,8 +751,8 @@ export default function KartuSetoranPage() {
                   {/* Baris Setoran Umum / Kolektif jika ada */}
                   {setoranMap.has('umum') && (
                     <tr className="bg-slate-50/70 hover:bg-slate-50 transition border-t border-slate-200 group">
-                      <td className="sticky left-0 z-10 bg-slate-50 group-hover:bg-slate-100 text-center font-mono text-slate-400 text-[11px] p-2 border-b border-r border-slate-200">-</td>
-                      <td className="sticky left-12 z-10 bg-slate-50 group-hover:bg-slate-100 font-bold text-slate-700 italic p-2 border-b border-r border-slate-300 shadow-xs">
+                      <td className="sticky left-0 z-10 bg-slate-50 group-hover:bg-slate-100 text-center font-mono text-slate-400 text-[11px] p-2 border-b border-r border-slate-200 w-12 min-w-[48px] max-w-[48px]">-</td>
+                      <td className="sticky left-12 z-10 bg-slate-50 group-hover:bg-slate-100 font-bold text-slate-700 italic p-2 border-b border-r border-slate-300 shadow-xs min-w-[200px]">
                         Umum / Kolektif Lingkungan
                       </td>
                       {Array.from({ length: 12 }, (_, i) => {
