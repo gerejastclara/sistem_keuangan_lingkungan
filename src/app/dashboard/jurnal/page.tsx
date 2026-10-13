@@ -59,9 +59,13 @@ export default function JurnalPage() {
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
   const [saldoAwalBank, setSaldoAwalBank] = useState<number>(0)
 
-  // Filter State: Month & Year (Default to September 2026 as per design mockup)
-  const [selectedMonth, setSelectedMonth] = useState<number | 'ALL'>(9)
-  const [selectedYear, setSelectedYear] = useState<number>(2026)
+  // Filter State: Month & Year (Otomatis mengikuti waktu bulan yang sekarang)
+  const [selectedMonth, setSelectedMonth] = useState<number | 'ALL'>(() => {
+    return new Date().getMonth() + 1
+  })
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    return new Date().getFullYear()
+  })
   const [filterArusView, setFilterArusView] = useState<'ALL' | 'MASUK' | 'KELUAR'>('ALL')
   const [searchDocQuery, setSearchDocQuery] = useState('')
 
@@ -79,8 +83,14 @@ export default function JurnalPage() {
   // Step 3: KK
   const [step3KkId, setStep3KkId] = useState<string>('')
 
-  // Step 4: Tanggal & Jumlah
-  const [step4Tanggal, setStep4Tanggal] = useState<string>('2026-09-01')
+  // Step 4: Tanggal & Jumlah (Otomatis hari ini)
+  const [step4Tanggal, setStep4Tanggal] = useState<string>(() => {
+    const d = new Date()
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  })
   const [step4NominalNumeric, setStep4NominalNumeric] = useState<number>(0)
   const [step4NominalInput, setStep4NominalInput] = useState<string>('Rp 0')
 
@@ -849,7 +859,7 @@ export default function JurnalPage() {
               value={String(selectedMonth)}
               onValueChange={(val) => {
                 if (val === 'ALL') setSelectedMonth('ALL')
-                else setSelectedMonth(parseInt(val || '9', 10))
+                else setSelectedMonth(parseInt(val || String(new Date().getMonth() + 1), 10))
               }}
             >
               <SelectTrigger className="bg-white border-slate-300 text-slate-900 font-bold rounded-xl h-11 text-sm">

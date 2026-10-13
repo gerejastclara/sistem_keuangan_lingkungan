@@ -119,9 +119,9 @@ export default function LaporanPage() {
   const [lingkunganName, setLingkunganName] = useState<string>('')
   const [pengurus, setPengurus] = useState<PengurusLingkungan | null>(null)
 
-  // Period: Default to September 2026 as per mockup in Images 2, 3, 4
-  const [selectedMonth, setSelectedMonth] = useState<string>('9')
-  const [selectedYear, setSelectedYear] = useState<number>(2026)
+  // Period: Default to current active month & year
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => String(new Date().getMonth() + 1))
+  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear())
 
   const [saldoAwalBank, setSaldoAwalBank] = useState<number>(0)
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
@@ -440,7 +440,7 @@ export default function LaporanPage() {
             <Label htmlFor="bulan" className="text-xs font-bold text-slate-700">Periode / Bulan</Label>
             <Select
               value={selectedMonth}
-              onValueChange={(val) => setSelectedMonth(val || '9')}
+              onValueChange={(val) => setSelectedMonth(val || String(new Date().getMonth() + 1))}
             >
               <SelectTrigger id="bulan" className="bg-white border-slate-300 text-slate-900 font-bold rounded-xl h-11 text-sm">
                 <SelectValue />
