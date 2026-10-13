@@ -672,31 +672,39 @@ export default function FormSetoranPage() {
                 </div>
               </div>
 
-              <div className="print-signatures flex justify-between items-start text-xs sm:text-sm font-bold text-center px-4">
-                <div className="flex flex-col items-center w-40">
-                  <div className="mb-14 print-sign-gap">Diterima Oleh :</div>
+              <div className="print-signatures flex justify-between items-start text-xs sm:text-sm font-bold text-center px-4 sm:px-8">
+                {/* 1. Sekretariat Paroki */}
+                <div className="flex flex-col items-center w-48 sm:w-56">
+                  <div className="mb-12 print-sign-gap text-center font-bold">Diterima Oleh :</div>
+                  <div className="w-full text-center font-normal text-xs mb-1">
+                    (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)
+                  </div>
                   <div className="border-b border-black border-dashed w-full"></div>
-                  <div className="mt-1 font-normal">Sekretariat Paroki</div>
+                  <div className="mt-1 font-normal text-xs text-center">Sekretariat Paroki</div>
                 </div>
                 
-                <div className="flex flex-col items-center w-40">
-                  <div className="mb-14 print-sign-gap">Disetujui oleh:</div>
-                  <div className="border-b border-black border-dashed w-full relative">
-                     <span className="absolute -top-5 w-full text-center font-normal text-xs capitalize truncate">
-                       {pengurus?.ketua_nama && pengurus.ketua_nama !== 'Susunan pengurus belum ditentukan' ? `(${pengurus.ketua_nama})` : ''}
-                     </span>
+                {/* 2. Ketua Lingkungan */}
+                <div className="flex flex-col items-center w-48 sm:w-56">
+                  <div className="mb-12 print-sign-gap text-center font-bold">Disetujui oleh:</div>
+                  <div className="w-full text-center font-normal text-xs mb-1 whitespace-nowrap">
+                    {pengurus?.ketua_nama && pengurus.ketua_nama !== 'Susunan pengurus belum ditentukan'
+                      ? `(${pengurus.ketua_nama})`
+                      : '(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)'}
                   </div>
-                  <div className="mt-1 font-normal">Ketua Lingkungan</div>
+                  <div className="border-b border-black border-dashed w-full"></div>
+                  <div className="mt-1 font-normal text-xs text-center">Ketua Lingkungan</div>
                 </div>
 
-                <div className="flex flex-col items-center w-40">
-                  <div className="mb-14 print-sign-gap">Disetor Oleh :</div>
-                  <div className="border-b border-black border-dashed w-full relative">
-                     <span className="absolute -top-5 w-full text-center font-normal text-xs capitalize truncate">
-                       {pengurus?.bendahara_nama && pengurus.bendahara_nama !== 'Susunan pengurus belum ditentukan' ? `(${pengurus.bendahara_nama})` : ''}
-                     </span>
+                {/* 3. Bendahara Lingkungan */}
+                <div className="flex flex-col items-center w-48 sm:w-56">
+                  <div className="mb-12 print-sign-gap text-center font-bold">Disetor Oleh :</div>
+                  <div className="w-full text-center font-normal text-xs mb-1 whitespace-nowrap">
+                    {pengurus?.bendahara_nama && pengurus.bendahara_nama !== 'Susunan pengurus belum ditentukan'
+                      ? `(${pengurus.bendahara_nama})`
+                      : '(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)'}
                   </div>
-                  <div className="mt-1 font-normal">Bendahara Lingkungan</div>
+                  <div className="border-b border-black border-dashed w-full"></div>
+                  <div className="mt-1 font-normal text-xs text-center">Bendahara Lingkungan</div>
                 </div>
               </div>
             </div>
@@ -812,11 +820,14 @@ export default function FormSetoranPage() {
             line-height: 18px !important;
           }
           .print-signatures {
-            margin-top: 3px !important;
-            font-size: 7.5pt !important;
+            margin-top: 4px !important;
+            font-size: 7.2pt !important;
+          }
+          .print-signatures div, .print-signatures span {
+            font-size: 7.2pt !important;
           }
           .print-sign-gap {
-            margin-bottom: 24px !important;
+            margin-bottom: 20px !important;
           }
         }
       `}} />
