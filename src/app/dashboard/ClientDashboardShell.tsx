@@ -6,6 +6,7 @@ import { Navbar } from '@/components/layout/Navbar'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { UserProfile, Lingkungan } from '@/lib/types'
 import { createClient } from '@/utils/supabase/client'
+import { purgeAllObsoleteLocalStorageCache } from '@/lib/journalSync'
 
 interface ClientDashboardShellProps {
   initialProfile: UserProfile | null
@@ -40,6 +41,9 @@ export function ClientDashboardShell({
   })
 
   useEffect(() => {
+    // Purge obsolete local storage caches so financial & profile data are 100% database-driven
+    purgeAllObsoleteLocalStorageCache()
+
     // If non-PAROKI, continuously ensure it stays locked to assigned Lingkungan
     if (!isParoki && userProfile?.lingkungan_id) {
       if (selectedLingkunganId !== userProfile.lingkungan_id) {

@@ -179,31 +179,22 @@ export default function LaporanPage() {
         setAllCoas(coas)
 
         if (targetLingkunganId) {
-          // Fetch Saldo Awal & Profil
+          const dbUuid = getLingkunganDbUuid(targetLingkunganId)
+          // Fetch Saldo Awal & Profil directly from Supabase (sole source of truth)
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .eq('lingkungan_id', targetLingkunganId)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .maybeSingle()
 
-          let sa = Number(profil?.saldo_awal || 0)
-          if (sa === 0) {
-            const savedManual = localStorage.getItem(`profil_manual_${targetLingkunganId}`)
-            if (savedManual) {
-              try {
-                const parsed = JSON.parse(savedManual)
-                if (parsed.saldoAwal) sa = Number(parsed.saldoAwal)
-              } catch (e) {}
-            }
-          }
+          const sa = Number(profil?.saldo_awal || 0)
           setSaldoAwalBank(sa)
 
           const pInfo = getPengurusForLingkungan(targetLingkunganId, targetLingkunganNama, profil)
           setPengurus(pInfo)
 
-          // Load Journals from DB + localStorage
+          // Load Journals from DB
           let journals: JurnalTransaksi[] = []
-          const dbUuid = getLingkunganDbUuid(targetLingkunganId)
           let supabaseSuccess = false
           try {
             const { data: dbJournals, error } = await supabase

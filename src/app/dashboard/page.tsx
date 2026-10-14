@@ -348,41 +348,18 @@ export default function DashboardOverviewPage() {
             .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .order('nama_kk', { ascending: true })
 
-            let dbKks = (kks || []).filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
-            const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`) || (dbUuid ? localStorage.getItem(`custom_kks_${dbUuid}`) : null)
-            if (localSaved) {
-              try {
-                const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
-                const combinedMap = new Map<string, KepalaKeluarga>()
-                dbKks.forEach(k => combinedMap.set(k.id, k))
-                parsed.filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy')).forEach(k => combinedMap.set(k.id, k))
-                dbKks = Array.from(combinedMap.values())
-              } catch (e) {}
-            }
-
-            const allSaved = localStorage.getItem('custom_kks_all_store')
-            if (allSaved) {
-              try {
-                const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
-                const matched = allParsed.filter(k => (k.lingkungan_id === targetLingkunganId || (dbUuid && k.lingkungan_id === dbUuid)) && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
-                const combinedMap = new Map<string, KepalaKeluarga>()
-                dbKks.forEach(k => combinedMap.set(k.id, k))
-                matched.forEach(k => combinedMap.set(k.id, k))
-                dbKks = Array.from(combinedMap.values())
-              } catch (e) {}
-            }
-
+            const dbKks = (kks || []).filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
             const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lName, dbKks)
             setKkList(finalKks)
 
           // Load Anggota & Golongan
           await loadAnggotaAndGolongan(finalKks, targetLingkunganId)
 
-          // Load Profil & Pengurus Lingkungan
+          // Load Profil & Pengurus Lingkungan directly from Supabase (sole source of truth)
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .eq('lingkungan_id', targetLingkunganId)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .maybeSingle()
 
           const pInfo = getPengurusForLingkungan(targetLingkunganId, lName, profil)
@@ -390,19 +367,9 @@ export default function DashboardOverviewPage() {
 
           // 4. If Bendahara or Paroki, also load financial data
           if (role !== 'SEKRETARIS') {
-            let sa = Number(profil?.saldo_awal || 0)
-            if (sa === 0) {
-              const savedManual = localStorage.getItem(`profil_manual_${targetLingkunganId}`) || localStorage.getItem(`profil_manual_${getLingkunganDbUuid(targetLingkunganId)}`)
-              if (savedManual) {
-                try {
-                  const parsed = JSON.parse(savedManual)
-                  if (parsed.saldoAwal) sa = Number(parsed.saldoAwal)
-                } catch (e) {}
-              }
-            }
+            const sa = Number(profil?.saldo_awal || 0)
             setSaldoAwal(sa)
 
-            const dbUuid = getLingkunganDbUuid(targetLingkunganId)
             let combinedJournals: any[] = []
             let supabaseSuccess = false
 

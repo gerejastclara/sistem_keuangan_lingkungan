@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { UserProfile, COA } from '@/lib/types'
 import { getAllMasterCOA, saveCustomCOA, deleteCustomCOA, syncAllCoaToDatabase, MasterCOAItem, DEFAULT_MASTER_COA_LIST } from '@/lib/masterCoa'
 import { formatRupiah } from '@/lib/utils'
-import { findLingkunganByQuery } from '@/lib/constants'
+import { findLingkunganByQuery, getLingkunganDbUuid } from '@/lib/constants'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -142,11 +142,12 @@ export default function CoaSaldoPage() {
         syncAllCoaToDatabase(supabase).catch(() => {})
 
         if (targetLingkunganId) {
-          // Fetch Profil Lingkungan
+          const dbUuid = getLingkunganDbUuid(targetLingkunganId)
+          // Fetch Profil Lingkungan directly from Supabase (sole source of truth)
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .eq('lingkungan_id', targetLingkunganId)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .maybeSingle()
 
           if (profil) {
@@ -157,20 +158,11 @@ export default function CoaSaldoPage() {
             setTahunBuku(profil.tahun_buku || '2026')
             setBulanSaldo(profil.bulan_saldo ? String(profil.bulan_saldo) : '')
           } else {
-            // Check localStorage fallback for profil
-            const savedProfil = localStorage.getItem(`profil_manual_${targetLingkunganId}`)
-            if (savedProfil) {
-              try {
-                const parsed = JSON.parse(savedProfil)
-                if (parsed.saldoAwal !== undefined) {
-                  const num = Number(parsed.saldoAwal || 0)
-                  setSaldoAwalNumeric(num)
-                  setSaldoAwalInput(formatCurrencyString(num))
-                }
-                if (parsed.bulanSaldo) setBulanSaldo(String(parsed.bulanSaldo))
-                if (parsed.tahunBuku) setTahunBuku(parsed.tahunBuku)
-              } catch (e) {}
-            }
+            setProfilId(null)
+            setSaldoAwalNumeric(0)
+            setSaldoAwalInput('Rp 0')
+            setTahunBuku('2026')
+            setBulanSaldo('1')
           }
 
           // Check if any journal is posted
@@ -222,17 +214,9 @@ export default function CoaSaldoPage() {
       // Ignored for offline fallback
     }
 
-    // Always update localStorage store so it syncs immediately
-    try {
-      const existing = localStorage.getItem(`profil_manual_${lingkunganId}`)
-      const obj = existing ? JSON.parse(existing) : {}
-      obj.saldoAwal = saldoAwalNumeric
-      obj.tahunBuku = tahunBuku
-      obj.bulanSaldo = bulanSaldo ? parseInt(bulanSaldo, 10) : 1
-      localStorage.setItem(`profil_manual_${lingkunganId}`, JSON.stringify(obj))
-      window.dispatchEvent(new Event('storage'))
+    if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('lingkunganChanged'))
-    } catch (e) {}
+    }
 
     setSaving(false)
     setSuccessMsg('Saldo awal berhasil disimpan dan diperbarui!')

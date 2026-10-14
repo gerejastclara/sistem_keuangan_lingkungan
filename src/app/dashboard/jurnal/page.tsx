@@ -185,56 +185,25 @@ export default function JurnalPage() {
 
         if (targetLingkunganId) {
           const dbUuid = getLingkunganDbUuid(targetLingkunganId)
-          // Fetch KK list from DB + localStorage (which Sekretaris edits)
+          // Fetch KK list directly from DB
           const { data: kks } = await supabase
             .from('kepala_keluarga')
             .select('*')
             .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .order('nama_kk', { ascending: true })
 
-          let dbKks = kks || []
-          const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`) || (dbUuid ? localStorage.getItem(`custom_kks_${dbUuid}`) : null)
-          if (localSaved) {
-            try {
-              const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
-              const combinedMap = new Map<string, KepalaKeluarga>()
-              dbKks.forEach(k => combinedMap.set(k.id, k))
-              parsed.forEach(k => combinedMap.set(k.id, k))
-              dbKks = Array.from(combinedMap.values())
-            } catch (e) {}
-          }
-          const allSaved = localStorage.getItem('custom_kks_all_store')
-          if (allSaved) {
-            try {
-              const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
-              const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId || (dbUuid && k.lingkungan_id === dbUuid))
-              const combinedMap = new Map<string, KepalaKeluarga>()
-              dbKks.forEach(k => combinedMap.set(k.id, k))
-              matched.forEach(k => combinedMap.set(k.id, k))
-              dbKks = Array.from(combinedMap.values())
-            } catch (e) {}
-          }
-
+          const dbKks = kks || []
           const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, targetLingkunganNama || 'Lingkungan', dbKks)
           setKkList(finalKks)
 
-          // Load Profil for Saldo Awal and Officers
+          // Load Profil for Saldo Awal directly from Supabase (sole source of truth)
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .eq('lingkungan_id', targetLingkunganId)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .maybeSingle()
 
-          let sa = Number(profil?.saldo_awal || 0)
-          if (sa === 0) {
-            const savedManual = localStorage.getItem(`profil_manual_${targetLingkunganId}`)
-            if (savedManual) {
-              try {
-                const parsed = JSON.parse(savedManual)
-                if (parsed.saldoAwal) sa = Number(parsed.saldoAwal)
-              } catch (e) {}
-            }
-          }
+          const sa = Number(profil?.saldo_awal || 0)
           setSaldoAwalBank(sa)
 
           const pengurusInfo = getPengurusForLingkungan(targetLingkunganId, targetLingkunganNama, profil)
@@ -325,12 +294,6 @@ export default function JurnalPage() {
     } catch (e) {}
 
     setJurnalList(list)
-
-    // Background sync of offline items if available
-    setTimeout(() => {
-      syncOfflineJournalsToSupabase(list, lId)
-    }, 1200)
-
     return list
   }
 
@@ -398,13 +361,6 @@ export default function JurnalPage() {
     setSyncing(false)
     if (syncedCount > 0) {
       setJurnalList(updated)
-      localStorage.setItem(`custom_journals_${dbUuid}`, JSON.stringify(updated))
-      localStorage.setItem(`custom_journals_${lId}`, JSON.stringify(updated))
-      localStorage.setItem('custom_journals_all_store', JSON.stringify(updated))
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('customJournalsUpdated'))
-        window.dispatchEvent(new Event('storage'))
-      }
       setSyncNotice(`Berhasil menyinkronkan ${syncedCount} transaksi ke Database Supabase!`)
       setTimeout(() => setSyncNotice(null), 4000)
     }
@@ -628,33 +584,6 @@ export default function JurnalPage() {
       kepala_keluarga: kkObj ? { id: kkObj.id, lingkungan_id: dbLingkunganId, nama_kk: kkObj.nama_kk, alamat: kkObj.alamat, is_biduk: kkObj.is_biduk } : undefined
     }
 
-    // Save to local storage under all relevant keys
-    try {
-      const keysToUpdate = [`custom_journals_${dbLingkunganId}`]
-      if (lingkunganId && lingkunganId !== dbLingkunganId) keysToUpdate.push(`custom_journals_${lingkunganId}`)
-      
-      keysToUpdate.forEach(k => {
-        const existing = localStorage.getItem(k)
-        const list = existing ? JSON.parse(existing) : []
-        list.unshift(newTx)
-        localStorage.setItem(k, JSON.stringify(list))
-      })
-
-      const rawAll = localStorage.getItem('custom_journals_all_store')
-      const allList = rawAll ? JSON.parse(rawAll) : []
-      allList.unshift(newTx)
-      localStorage.setItem('custom_journals_all_store', JSON.stringify(allList))
-
-      if (kkObj) {
-        localStorage.setItem(`tx_kk_${createdId}`, JSON.stringify({ id: kkObj.id, nama_kk: kkObj.nama_kk, alamat: kkObj.alamat }))
-      }
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('customJournalsUpdated'))
-        window.dispatchEvent(new Event('storage'))
-      }
-    } catch (e) {}
-
     setJurnalList(prev => [newTx, ...prev])
     setSubmitting(false)
 
@@ -688,28 +617,6 @@ export default function JurnalPage() {
 
     try {
       await supabase.from('jurnal_transaksi').delete().eq('id', id)
-    } catch (e) {}
-
-    const dbUuid = getLingkunganDbUuid(lingkunganId)
-    try {
-      const keys = [`custom_journals_${dbUuid}`]
-      if (lingkunganId && lingkunganId !== dbUuid) keys.push(`custom_journals_${lingkunganId}`)
-      keys.forEach(k => {
-        const raw = localStorage.getItem(k)
-        if (raw) {
-          const list = JSON.parse(raw).filter((j: any) => j.id !== id)
-          localStorage.setItem(k, JSON.stringify(list))
-        }
-      })
-      const rawAll = localStorage.getItem('custom_journals_all_store')
-      if (rawAll) {
-        const list = JSON.parse(rawAll).filter((j: any) => j.id !== id)
-        localStorage.setItem('custom_journals_all_store', JSON.stringify(list))
-      }
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('customJournalsUpdated'))
-        window.dispatchEvent(new Event('storage'))
-      }
     } catch (e) {}
 
     setJurnalList(prev => prev.filter(j => j.id !== id))
