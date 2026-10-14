@@ -6,6 +6,7 @@ import { JurnalTransaksi, KepalaKeluarga } from '@/lib/types'
 import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { getAllMasterCOA, MasterCOAItem } from '@/lib/masterCoa'
 import { formatNamaLingkungan, getAllMasterLingkungan, getWilayahForLingkungan, getLingkunganDbUuid } from '@/lib/constants'
+import { reconcileJournals } from '@/lib/journalSync'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -193,56 +194,24 @@ export default function FormSetoranPage() {
 
         // Load Jurnal Transaksi (Cloud Supabase + LocalStorage offline sync)
         let list: JurnalTransaksi[] = []
+        let supabaseSuccess = false
         try {
-          const { data: jData } = await supabase
+          const { data: jData, error } = await supabase
             .from('jurnal_transaksi')
             .select('*, kepala_keluarga:kk_id(nama_kk)')
             .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${effId}`)
             .order('tanggal', { ascending: true })
 
-          if (jData && jData.length > 0) {
+          if (!error && Array.isArray(jData)) {
+            supabaseSuccess = true
             list = jData
           }
         } catch (e) {}
 
+        list = reconcileJournals(list, dbUuid, effId, supabaseSuccess)
+
+        // Sinkronkan nama KK dari tx_kk cache, no_bukti, atau keterangan
         if (typeof window !== 'undefined') {
-          const keys = [`custom_journals_${dbUuid}`, `custom_journals_${effId}`, `custom_journals_csv-${effId}`]
-          const localList: JurnalTransaksi[] = []
-          keys.forEach(k => {
-            const raw = localStorage.getItem(k)
-            if (raw) {
-              try {
-                const parsed = JSON.parse(raw)
-                if (Array.isArray(parsed)) localList.push(...parsed)
-              } catch (e) {}
-            }
-          })
-
-          const rawAll = localStorage.getItem('custom_journals_all_store')
-          if (rawAll) {
-            try {
-              const parsedAll = JSON.parse(rawAll)
-              if (Array.isArray(parsedAll)) {
-                localList.push(...parsedAll.filter((j: any) => j.lingkungan_id === dbUuid || j.lingkungan_id === effId))
-              }
-            } catch (e) {}
-          }
-
-          const map = new Map<string, JurnalTransaksi>()
-          list.forEach(j => map.set(j.id, j))
-          localList.forEach(j => {
-            if (!map.has(j.id)) {
-              map.set(j.id, j)
-            } else {
-              const existing = map.get(j.id)!
-              if (!existing.kk_id && j.kk_id) existing.kk_id = j.kk_id
-              if (!existing.kepala_keluarga && j.kepala_keluarga) existing.kepala_keluarga = j.kepala_keluarga
-              if (!existing.sumber_setoran && j.sumber_setoran) existing.sumber_setoran = j.sumber_setoran
-            }
-          })
-          list = Array.from(map.values())
-
-          // Sinkronkan nama KK dari tx_kk cache, no_bukti, atau keterangan
           list.forEach(j => {
             if (!j.kepala_keluarga?.nama_kk) {
               const cached = localStorage.getItem(`tx_kk_${j.id}`)

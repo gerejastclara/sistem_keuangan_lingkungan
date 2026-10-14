@@ -8,6 +8,7 @@ import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { getAllMasterCOA, MasterCOAItem } from '@/lib/masterCoa'
 import { formatRupiah, formatDateIndo, MONTH_NAMES } from '@/lib/utils'
 import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getLingkunganDbUuid } from '@/lib/constants'
+import { reconcileJournals, clearLingkunganJournalsCache } from '@/lib/journalSync'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -272,57 +273,26 @@ export default function JurnalPage() {
   const fetchJournals = async (lId: string) => {
     let list: JurnalTransaksi[] = []
     const dbUuid = getLingkunganDbUuid(lId)
+    let supabaseSuccess = false
 
     try {
-      const { data: journals } = await supabase
+      const { data: journals, error } = await supabase
         .from('jurnal_transaksi')
         .select('*, kepala_keluarga:kk_id(nama_kk)')
         .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${lId}`)
         .order('tanggal', { ascending: false })
 
-      if (journals && journals.length > 0) list = journals
+      if (!error && Array.isArray(journals)) {
+        supabaseSuccess = true
+        list = journals
+      }
     } catch (e) {}
 
-    // Merge with localStorage custom journals
+    // Reconcile with localStorage: prune deleted UUIDs if Supabase responded successfully
+    list = reconcileJournals(list, dbUuid, lId, supabaseSuccess)
+
+    // Sinkronkan nama KK dari tx_kk cache, no_bukti, atau kkList
     try {
-      const keys = [`custom_journals_${dbUuid}`, `custom_journals_${lId}`, `custom_journals_csv-${lId}`]
-      const localList: JurnalTransaksi[] = []
-      keys.forEach(k => {
-        const raw = localStorage.getItem(k)
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw)
-            if (Array.isArray(parsed)) localList.push(...parsed)
-          } catch (e) {}
-        }
-      })
-
-      const rawAll = localStorage.getItem('custom_journals_all_store')
-      if (rawAll) {
-        try {
-          const parsedAll = JSON.parse(rawAll)
-          if (Array.isArray(parsedAll)) {
-            localList.push(...parsedAll.filter((j: any) => j.lingkungan_id === dbUuid || j.lingkungan_id === lId))
-          }
-        } catch (e) {}
-      }
-
-      const map = new Map<string, JurnalTransaksi>()
-      list.forEach(j => map.set(j.id, j))
-      localList.forEach(j => {
-        if (!map.has(j.id)) {
-          map.set(j.id, j)
-        } else {
-          // Jika dari Supabase kepala_keluarga kosong tapi di local ada, pertahankan dari local
-          const existing = map.get(j.id)!
-          if (!existing.kepala_keluarga?.nama_kk && j.kepala_keluarga?.nama_kk) {
-            existing.kepala_keluarga = j.kepala_keluarga
-          }
-        }
-      })
-      list = Array.from(map.values()).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
-
-      // Sinkronkan nama KK dari tx_kk cache, no_bukti, atau kkList
       list.forEach(j => {
         if (!j.kepala_keluarga?.nama_kk) {
           const cached = typeof window !== 'undefined' ? localStorage.getItem(`tx_kk_${j.id}`) : null
@@ -890,6 +860,25 @@ export default function JurnalPage() {
                 Jurnal DE
               </Button>
             )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                if (lingkunganId) {
+                  setSyncing(true)
+                  await fetchJournals(lingkunganId)
+                  setSyncing(false)
+                  setSuccessToast('Data jurnal berhasil disinkronkan dengan database Supabase!')
+                  setTimeout(() => setSuccessToast(null), 3000)
+                }
+              }}
+              disabled={syncing}
+              className="border-slate-300 text-slate-700 hover:bg-slate-100 font-bold rounded-xl h-11 px-3.5 text-xs cursor-pointer shadow-2xs flex items-center gap-1.5"
+              title="Segarkan & sinkronkan ulang data dari database Supabase"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-emerald-600' : ''}`} />
+              Segarkan
+            </Button>
             <Button
               type="button"
               variant="outline"

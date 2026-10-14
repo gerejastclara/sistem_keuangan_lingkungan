@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { getAllMasterLingkungan, formatNamaLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
 import { ensureDummyKksForLingkungan, getDummyGolonganForKk } from '@/lib/dummyData'
+import { isStandardUuid } from '@/lib/journalSync'
 import { KepalaKeluarga, JurnalTransaksi, GolonganKeluarga } from '@/lib/types'
 import { formatRupiah, MONTH_NAMES } from '@/lib/utils'
 import { getAllMasterCOA } from '@/lib/masterCoa'
@@ -76,9 +77,13 @@ export default function ParokiBendaharaPage() {
 
       // 2. Load Journals from DB
       let allJournals: JurnalTransaksi[] = []
+      let supabaseSuccess = false
       try {
-        const { data: dbJournals } = await supabase.from('jurnal_transaksi').select('*')
-        if (dbJournals && dbJournals.length > 0) allJournals = dbJournals
+        const { data: dbJournals, error } = await supabase.from('jurnal_transaksi').select('*')
+        if (!error && Array.isArray(dbJournals)) {
+          supabaseSuccess = true
+          allJournals = dbJournals
+        }
       } catch (e) {}
 
       // 3. Load Locally Cached Journals from all Lingkungan
@@ -109,10 +114,12 @@ export default function ParokiBendaharaPage() {
         } catch (e) {}
       }
 
-      // Merge Unique Journals
+      // Merge Unique Journals: prune items deleted in Supabase
+      const cloudIds = new Set(allJournals.map(j => j.id))
       const map = new Map<string, JurnalTransaksi>()
       allJournals.forEach(j => map.set(j.id, j))
       localJournals.forEach(j => {
+        if (supabaseSuccess && isStandardUuid(j.id) && !cloudIds.has(j.id)) return
         if (!map.has(j.id)) map.set(j.id, j)
       })
       const mergedJournals = Array.from(map.values())

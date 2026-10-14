@@ -6,6 +6,7 @@ import { JurnalTransaksi, ProfilLingkungan } from '@/lib/types'
 import { getAllMasterCOA, MasterCOAItem } from '@/lib/masterCoa'
 import { formatRupiah, MONTH_NAMES } from '@/lib/utils'
 import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getLingkunganDbUuid } from '@/lib/constants'
+import { reconcileJournals } from '@/lib/journalSync'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -203,43 +204,20 @@ export default function LaporanPage() {
           // Load Journals from DB + localStorage
           let journals: JurnalTransaksi[] = []
           const dbUuid = getLingkunganDbUuid(targetLingkunganId)
+          let supabaseSuccess = false
           try {
-            const { data: dbJournals } = await supabase
+            const { data: dbJournals, error } = await supabase
               .from('jurnal_transaksi')
               .select('*')
               .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
 
-            if (dbJournals && dbJournals.length > 0) journals = dbJournals
+            if (!error && Array.isArray(dbJournals)) {
+              supabaseSuccess = true
+              journals = dbJournals
+            }
           } catch (e) {}
 
-          const keys = [`custom_journals_${dbUuid}`, `custom_journals_${targetLingkunganId}`, `custom_journals_csv-${targetLingkunganId}`]
-          const localList: JurnalTransaksi[] = []
-          keys.forEach(k => {
-            const raw = localStorage.getItem(k)
-            if (raw) {
-              try {
-                const parsed = JSON.parse(raw)
-                if (Array.isArray(parsed)) localList.push(...parsed)
-              } catch (e) {}
-            }
-          })
-          const rawAll = localStorage.getItem('custom_journals_all_store')
-          if (rawAll) {
-            try {
-              const parsedAll = JSON.parse(rawAll)
-              if (Array.isArray(parsedAll)) {
-                localList.push(...parsedAll.filter((j: any) => j.lingkungan_id === dbUuid || j.lingkungan_id === targetLingkunganId))
-              }
-            } catch (e) {}
-          }
-
-          const map = new Map<string, JurnalTransaksi>()
-          journals.forEach(j => map.set(j.id, j))
-          localList.forEach(j => {
-            if (!map.has(j.id)) map.set(j.id, j)
-          })
-          journals = Array.from(map.values())
-
+          journals = reconcileJournals(journals, dbUuid, targetLingkunganId, supabaseSuccess)
           setJurnalList(journals)
         }
       } catch (err) {

@@ -20,6 +20,7 @@ import {
 } from '@/lib/dummyData'
 import { formatRupiah, formatDateIndo } from '@/lib/utils'
 import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getWilayahForLingkungan, getLingkunganDbUuid } from '@/lib/constants'
+import { reconcileJournals } from '@/lib/journalSync'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import {
@@ -403,55 +404,24 @@ export default function DashboardOverviewPage() {
 
             const dbUuid = getLingkunganDbUuid(targetLingkunganId)
             let combinedJournals: any[] = []
+            let supabaseSuccess = false
 
             // 1. Fetch from Supabase
             try {
-              const { data: journals } = await supabase
+              const { data: journals, error } = await supabase
                 .from('jurnal_transaksi')
                 .select('*, kepala_keluarga:kk_id(nama_kk)')
                 .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
                 .order('tanggal', { ascending: false })
 
-              if (journals && journals.length > 0) {
+              if (!error && Array.isArray(journals)) {
+                supabaseSuccess = true
                 combinedJournals = journals
               }
             } catch (e) {}
 
-            // 2. Merge with localStorage journals (covers offline cache and hybrid entries)
-            try {
-              const keysToCheck = [
-                `custom_journals_${dbUuid}`,
-                `custom_journals_${targetLingkunganId}`,
-                `custom_journals_csv-${targetLingkunganId}`
-              ]
-              const allLocal: any[] = []
-              keysToCheck.forEach(k => {
-                const raw = localStorage.getItem(k)
-                if (raw) {
-                  try {
-                    const parsed = JSON.parse(raw)
-                    if (Array.isArray(parsed)) allLocal.push(...parsed)
-                  } catch (e) {}
-                }
-              })
-
-              const rawAll = localStorage.getItem('custom_journals_all_store')
-              if (rawAll) {
-                try {
-                  const parsedAll = JSON.parse(rawAll)
-                  if (Array.isArray(parsedAll)) {
-                    allLocal.push(...parsedAll.filter((j: any) => j.lingkungan_id === dbUuid || j.lingkungan_id === targetLingkunganId))
-                  }
-                } catch (e) {}
-              }
-
-              const jMap = new Map<string, any>()
-              combinedJournals.forEach(j => jMap.set(j.id, j))
-              allLocal.forEach(j => {
-                if (!jMap.has(j.id)) jMap.set(j.id, j)
-              })
-              combinedJournals = Array.from(jMap.values()).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
-            } catch (e) {}
+            // 2. Reconcile with localStorage journals (covers offline cache and prunes deleted cloud entries)
+            combinedJournals = reconcileJournals(combinedJournals, dbUuid, targetLingkunganId, supabaseSuccess)
 
             let masuk = 0
             let keluar = 0
