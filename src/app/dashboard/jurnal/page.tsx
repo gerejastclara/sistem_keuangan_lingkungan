@@ -203,14 +203,14 @@ export default function JurnalPage() {
             .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .maybeSingle()
 
-          const sa = Number(profil?.saldo_awal || 0)
-          setSaldoAwalBank(sa)
-
           const pengurusInfo = getPengurusForLingkungan(targetLingkunganId, targetLingkunganNama, profil)
           setPengurus(pengurusInfo)
 
-          // Load Journals
-          await fetchJournals(targetLingkunganId)
+          // Load Journals directly from Supabase
+          const fetchedJournals = await fetchJournals(targetLingkunganId)
+          const saTx = fetchedJournals?.find(j => j.no_bukti === '[SA/1100]' || (j.keterangan || '').includes('[SALDO_AWAL]'))
+          const sa = saTx ? Number(saTx.nominal || 0) : Number(profil?.saldo_awal || 0)
+          setSaldoAwalBank(sa)
         }
       } catch (err) {
         console.error('Error loading journal:', err)
@@ -396,6 +396,8 @@ export default function JurnalPage() {
   let totalBulanMasuk = 0
   let totalBulanKeluar = 0
   filteredJournals.forEach((j) => {
+    // Jangan dobel hitung saldo awal ke total pemasukan bulanan
+    if (j.no_bukti === '[SA/1100]' || (j.keterangan || '').includes('[SALDO_AWAL]')) return
     const nom = Number(j.nominal) || 0
     if (j.tipe_arus === 'MASUK') totalBulanMasuk += nom
     else totalBulanKeluar += nom

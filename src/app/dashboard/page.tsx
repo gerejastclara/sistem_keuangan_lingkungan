@@ -388,9 +388,6 @@ export default function DashboardOverviewPage() {
 
           // 4. If Bendahara or Paroki, also load financial data
           if (role !== 'SEKRETARIS') {
-            const sa = Number(profil?.saldo_awal || 0)
-            setSaldoAwal(sa)
-
             let combinedJournals: any[] = []
             let supabaseSuccess = false
 
@@ -411,9 +408,14 @@ export default function DashboardOverviewPage() {
             // 2. Reconcile with localStorage journals (covers offline cache and prunes deleted cloud entries)
             combinedJournals = reconcileJournals(combinedJournals, dbUuid, targetLingkunganId, supabaseSuccess)
 
+            const saTx = combinedJournals.find(j => j.no_bukti === '[SA/1100]' || (j.keterangan || '').includes('[SALDO_AWAL]'))
+            const sa = saTx ? Number(saTx.nominal || 0) : Number(profil?.saldo_awal || 0)
+            setSaldoAwal(sa)
+
             let masuk = 0
             let keluar = 0
             combinedJournals.forEach((j) => {
+              if (j.no_bukti === '[SA/1100]' || (j.keterangan || '').includes('[SALDO_AWAL]')) return
               const nom = Number(j.nominal) || 0
               if (j.tipe_arus === 'MASUK') masuk += nom
               else keluar += nom

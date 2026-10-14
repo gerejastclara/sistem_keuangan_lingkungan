@@ -51,6 +51,7 @@ export default function CoaSaldoPage() {
   const [lingkunganId, setLingkunganId] = useState<string | null>(null)
 
   // Saldo Awal Form State
+  const [saldoAwalTxId, setSaldoAwalTxId] = useState<string | null>(null)
   const [profilId, setProfilId] = useState<string | null>(null)
   const [tahunBuku, setTahunBuku] = useState<string>('2026')
   const [bulanSaldo, setBulanSaldo] = useState<string>('')
@@ -143,22 +144,29 @@ export default function CoaSaldoPage() {
 
         if (targetLingkunganId) {
           const dbUuid = getLingkunganDbUuid(targetLingkunganId)
-          // Fetch Profil Lingkungan directly from Supabase (sole source of truth)
-          const { data: profil } = await supabase
-            .from('profil_lingkungan')
+
+          // Fetch Saldo Awal directly from jurnal_transaksi in Supabase
+          const { data: saTx } = await supabase
+            .from('jurnal_transaksi')
             .select('*')
             .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
+            .or('no_bukti.eq.[SA/1100],keterangan.ilike.%[SALDO_AWAL]%,keterangan.ilike.%Saldo Awal%')
+            .order('tanggal', { ascending: true })
+            .limit(1)
             .maybeSingle()
 
-          if (profil) {
-            setProfilId(profil.id)
-            const num = Number(profil.saldo_awal || 0)
+          if (saTx) {
+            setSaldoAwalTxId(saTx.id)
+            const num = Number(saTx.nominal || 0)
             setSaldoAwalNumeric(num)
             setSaldoAwalInput(formatCurrencyString(num))
-            setTahunBuku(profil.tahun_buku || '2026')
-            setBulanSaldo(profil.bulan_saldo ? String(profil.bulan_saldo) : '')
+            const parts = (saTx.tanggal || '').split('-')
+            if (parts.length >= 2) {
+              setTahunBuku(parts[0] || '2026')
+              setBulanSaldo(String(parseInt(parts[1], 10) || 1))
+            }
           } else {
-            setProfilId(null)
+            setSaldoAwalTxId(null)
             setSaldoAwalNumeric(0)
             setSaldoAwalInput('Rp 0')
             setTahunBuku('2026')
@@ -169,7 +177,7 @@ export default function CoaSaldoPage() {
           const { data: postedJurnals } = await supabase
             .from('jurnal_transaksi')
             .select('is_posted')
-            .eq('lingkungan_id', targetLingkunganId)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .eq('is_posted', true)
             .limit(1)
 
@@ -194,32 +202,58 @@ export default function CoaSaldoPage() {
     setSaving(true)
     setSuccessMsg(null)
 
-    const payload = {
-      lingkungan_id: lingkunganId,
-      saldo_awal: saldoAwalNumeric,
-      tahun_buku: tahunBuku,
-      bulan_saldo: bulanSaldo ? parseInt(bulanSaldo, 10) : 1
+    const dbUuid = getLingkunganDbUuid(lingkunganId)
+    const effectiveYear = (tahunBuku || '2026').trim()
+    const effectiveMonth = bulanSaldo ? parseInt(bulanSaldo, 10) : 1
+    const padMonth = String(effectiveMonth).padStart(2, '0')
+    const tanggalSaldo = `${effectiveYear}-${padMonth}-01`
+
+    const txPayload = {
+      lingkungan_id: dbUuid,
+      kk_id: null,
+      tanggal: tanggalSaldo,
+      tipe_arus: 'MASUK' as const,
+      coa_debit: '1100', // COA 1100 — Bank
+      coa_kredit: '4900', // COA 4900 — Penerimaan Lainnya
+      nominal: saldoAwalNumeric,
+      keterangan: `[SALDO_AWAL] Saldo Awal Bank Buku ${effectiveYear} (Bulan ${effectiveMonth})`,
+      no_bukti: '[SA/1100]',
+      is_posted: false
     }
 
-    let err = null
     try {
-      if (profilId) {
-        const { error } = await supabase.from('profil_lingkungan').update(payload).eq('id', profilId)
-        err = error
+      // 1. Cari apakah transaksi Saldo Awal sudah pernah ada di Supabase
+      let targetId = saldoAwalTxId
+      if (!targetId) {
+        const { data: existingTx } = await supabase
+          .from('jurnal_transaksi')
+          .select('id')
+          .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${lingkunganId}`)
+          .or('no_bukti.eq.[SA/1100],keterangan.ilike.%[SALDO_AWAL]%,keterangan.ilike.%Saldo Awal%')
+          .limit(1)
+          .maybeSingle()
+
+        if (existingTx?.id) targetId = existingTx.id
+      }
+
+      if (targetId) {
+        await supabase.from('jurnal_transaksi').update(txPayload).eq('id', targetId)
+        setSaldoAwalTxId(targetId)
       } else {
-        const { error } = await supabase.from('profil_lingkungan').insert(payload)
-        err = error
+        const { data: inserted } = await supabase.from('jurnal_transaksi').insert(txPayload).select('id').maybeSingle()
+        if (inserted?.id) setSaldoAwalTxId(inserted.id)
       }
     } catch (e) {
-      // Ignored for offline fallback
+      console.error('Error saving saldo awal to jurnal_transaksi:', e)
     }
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('lingkunganChanged'))
+      window.dispatchEvent(new Event('storage'))
     }
 
     setSaving(false)
-    setSuccessMsg('Saldo awal berhasil disimpan dan diperbarui!')
+    setSuccessMsg('Saldo awal berhasil disimpan ke Jurnal Transaksi di database!')
     setTimeout(() => setSuccessMsg(null), 3500)
   }
 

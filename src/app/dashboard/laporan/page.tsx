@@ -187,9 +187,6 @@ export default function LaporanPage() {
             .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .maybeSingle()
 
-          const sa = Number(profil?.saldo_awal || 0)
-          setSaldoAwalBank(sa)
-
           const pInfo = getPengurusForLingkungan(targetLingkunganId, targetLingkunganNama, profil)
           setPengurus(pInfo)
 
@@ -210,6 +207,10 @@ export default function LaporanPage() {
 
           journals = reconcileJournals(journals, dbUuid, targetLingkunganId, supabaseSuccess)
           setJurnalList(journals)
+
+          const saTx = journals.find(j => j.no_bukti === '[SA/1100]' || (j.keterangan || '').includes('[SALDO_AWAL]'))
+          const sa = saTx ? Number(saTx.nominal || 0) : Number(profil?.saldo_awal || 0)
+          setSaldoAwalBank(sa)
         }
       } catch (err) {
         console.error('Error loading report:', err)
@@ -259,9 +260,9 @@ export default function LaporanPage() {
     return total
   }
 
-  // Calculate Total Penerimaan (B)
+  // Calculate Total Penerimaan (B) (tanpa dobel hitung saldo awal)
   const totalPenerimaan = filteredJournals
-    .filter(j => j.tipe_arus === 'MASUK')
+    .filter(j => j.tipe_arus === 'MASUK' && j.no_bukti !== '[SA/1100]' && !(j.keterangan || '').includes('[SALDO_AWAL]'))
     .reduce((sum, j) => sum + (Number(j.nominal) || 0), 0)
 
   // Calculate Total Pengeluaran (C)
