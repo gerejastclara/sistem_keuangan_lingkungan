@@ -770,25 +770,6 @@ export default function JurnalPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={async () => {
-                if (lingkunganId) {
-                  setSyncing(true)
-                  await fetchJournals(lingkunganId)
-                  setSyncing(false)
-                  setSuccessToast('Data jurnal berhasil disinkronkan dengan database Supabase!')
-                  setTimeout(() => setSuccessToast(null), 3000)
-                }
-              }}
-              disabled={syncing}
-              className="border-slate-300 text-slate-700 hover:bg-slate-100 font-bold rounded-xl h-11 px-3.5 text-xs cursor-pointer shadow-2xs flex items-center gap-1.5"
-              title="Segarkan & sinkronkan ulang data dari database Supabase"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-emerald-600' : ''}`} />
-              Segarkan
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
               onClick={handleExportExcel}
               className="border-slate-300 text-slate-700 hover:bg-slate-100 font-bold rounded-xl h-11 px-4 text-xs cursor-pointer shadow-2xs"
             >

@@ -28,6 +28,8 @@ const CATHOLIC_OFFICER_NAMES = [
   { nama: 'Martinus Subroto Tedjokusumo', kontak: '0815-6677-8899' }
 ]
 
+import { getLingkunganDbUuid, getAllMasterLingkungan } from './constants'
+
 export function getPengurusForLingkungan(
   lingkunganId: string | null | undefined,
   namaLingkungan: string | null | undefined,
@@ -35,55 +37,71 @@ export function getPengurusForLingkungan(
     ketua_nama?: string | null
     bendahara_nama?: string | null
     sekretaris_nama?: string | null
+    telepon_ketua?: string | null
     telepon_bendahara?: string | null
+    telepon_sekretaris?: string | null
     periode_masa_bakti?: string | null
+    status?: string | null
   } | null
 ): PengurusLingkungan {
   const cleanId = lingkunganId || 'default'
   const cleanNama = (namaLingkungan || '').replace(/^lingkungan\s+/i, '').trim()
 
-  // 1. Check manual localStorage overrides first
+  // 1. Check DB profil if present (authoritative cloud database)
+  if (profilDb && (profilDb.ketua_nama || profilDb.bendahara_nama || profilDb.sekretaris_nama)) {
+    return {
+      ketua_nama: profilDb.ketua_nama || 'Susunan pengurus belum ditentukan',
+      ketua_kontak: profilDb.telepon_ketua || '-',
+      bendahara_nama: profilDb.bendahara_nama || 'Susunan pengurus belum ditentukan',
+      bendahara_kontak: profilDb.telepon_bendahara || '-',
+      sekretaris_nama: profilDb.sekretaris_nama || 'Susunan pengurus belum ditentukan',
+      sekretaris_kontak: profilDb.telepon_sekretaris || '-',
+      periode: profilDb.periode_masa_bakti || '2024 - 2026',
+      status: profilDb.status || 'Aktif'
+    }
+  }
+
+  // 2. Check manual localStorage with all possible identifiers (UUID, slug, master id, clean name)
   if (typeof window !== 'undefined') {
     try {
-      const saved =
-        localStorage.getItem(`profil_manual_${cleanId}`) ||
-        (cleanNama ? localStorage.getItem(`profil_manual_${cleanNama}`) : null) ||
-        (cleanNama ? localStorage.getItem(`profil_manual_${cleanNama.toLowerCase().replace(/\s+/g, '')}`) : null) ||
-        (cleanNama ? localStorage.getItem(`profil_manual_${cleanNama.toLowerCase().replace(/[^a-z0-9]/g, '')}`) : null)
+      const dbUuid = getLingkunganDbUuid(cleanId)
+      const allM = getAllMasterLingkungan()
+      const matched = allM.find(m => m.id === cleanId || m.nama_lingkungan.toLowerCase() === cleanNama.toLowerCase())
+      const mId = matched?.id || ''
+      const mSlug = matched?.slug || ''
 
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed.ketuaNama || parsed.bendaharaNama || parsed.sekretarisNama) {
-          return {
-            ketua_nama: parsed.ketuaNama || 'Susunan pengurus belum ditentukan',
-            ketua_kontak: parsed.teleponKetua || '-',
-            bendahara_nama: parsed.bendaharaNama || 'Susunan pengurus belum ditentukan',
-            bendahara_kontak: parsed.teleponBendahara || '-',
-            sekretaris_nama: parsed.sekretarisNama || 'Susunan pengurus belum ditentukan',
-            sekretaris_kontak: parsed.teleponSekretaris || '-',
-            periode: parsed.periodeMasaBakti || 'Belum ditentukan',
-            status: parsed.status || 'Aktif'
+      const candidateKeys = [
+        `profil_manual_${cleanId}`,
+        `profil_manual_${dbUuid}`,
+        mId ? `profil_manual_${mId}` : null,
+        mSlug ? `profil_manual_${mSlug}` : null,
+        cleanNama ? `profil_manual_${cleanNama}` : null,
+        cleanNama ? `profil_manual_${cleanNama.toLowerCase().replace(/\s+/g, '')}` : null,
+        cleanNama ? `profil_manual_${cleanNama.toLowerCase().replace(/[^a-z0-9]/g, '')}` : null,
+      ].filter(Boolean) as string[]
+
+      for (const key of candidateKeys) {
+        const saved = localStorage.getItem(key)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (parsed.ketuaNama || parsed.bendaharaNama || parsed.sekretarisNama) {
+            return {
+              ketua_nama: parsed.ketuaNama || 'Susunan pengurus belum ditentukan',
+              ketua_kontak: parsed.teleponKetua || '-',
+              bendahara_nama: parsed.bendaharaNama || 'Susunan pengurus belum ditentukan',
+              bendahara_kontak: parsed.teleponBendahara || '-',
+              sekretaris_nama: parsed.sekretarisNama || 'Susunan pengurus belum ditentukan',
+              sekretaris_kontak: parsed.teleponSekretaris || '-',
+              periode: parsed.periodeMasaBakti || '2024 - 2026',
+              status: parsed.status || 'Aktif'
+            }
           }
         }
       }
     } catch (e) {}
   }
 
-  // 2. Check DB profil if present
-  if (profilDb && (profilDb.ketua_nama || profilDb.bendahara_nama || profilDb.sekretaris_nama)) {
-    return {
-      ketua_nama: profilDb.ketua_nama || 'Susunan pengurus belum ditentukan',
-      ketua_kontak: '-',
-      bendahara_nama: profilDb.bendahara_nama || 'Susunan pengurus belum ditentukan',
-      bendahara_kontak: profilDb.telepon_bendahara || '-',
-      sekretaris_nama: profilDb.sekretaris_nama || 'Susunan pengurus belum ditentukan',
-      sekretaris_kontak: '-',
-      periode: profilDb.periode_masa_bakti || 'Belum ditentukan',
-      status: 'Aktif'
-    }
-  }
-
-  // 3. Fallback when not yet configured:
+  // 3. Fallback when not yet configured
   return {
     ketua_nama: 'Susunan pengurus belum ditentukan',
     ketua_kontak: '-',

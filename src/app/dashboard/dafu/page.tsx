@@ -246,9 +246,10 @@ function DafuFormContent() {
     setSavingPengurus(true)
 
     const targetId = lingkunganId || 'default'
+    const dbUuid = getLingkunganDbUuid(targetId)
 
     try {
-      const existing = localStorage.getItem(`profil_manual_${targetId}`)
+      const existing = localStorage.getItem(`profil_manual_${targetId}`) || localStorage.getItem(`profil_manual_${dbUuid}`)
       const obj = existing ? JSON.parse(existing) : {}
       const updated = {
         ...obj,
@@ -262,6 +263,7 @@ function DafuFormContent() {
         status: pengurusForm.status || 'Aktif'
       }
       localStorage.setItem(`profil_manual_${targetId}`, JSON.stringify(updated))
+      localStorage.setItem(`profil_manual_${dbUuid}`, JSON.stringify(updated))
 
       if (lingkunganName) {
         const cleanN = lingkunganName.replace(/^lingkungan\s+/i, '').trim()
@@ -272,18 +274,25 @@ function DafuFormContent() {
         }
       }
 
-      window.dispatchEvent(new CustomEvent('pengurusUpdated', { detail: { targetId, updated } }))
+      window.dispatchEvent(new CustomEvent('pengurusUpdated', { detail: { targetId, dbUuid, updated } }))
       window.dispatchEvent(new Event('storage'))
       window.dispatchEvent(new Event('lingkunganChanged'))
       window.dispatchEvent(new Event('dafuDataUpdated'))
     } catch (err) {}
 
     try {
-      await supabase.from('profil_lingkungan').upsert({
-        lingkungan_id: targetId,
-        telepon_bendahara: pengurusForm.teleponBendahara.trim(),
-        periode_masa_bakti: pengurusForm.periodeMasaBakti.trim(),
+      const { error: upsertErr } = await supabase.from('profil_lingkungan').upsert({
+        lingkungan_id: dbUuid,
+        ketua_nama: pengurusForm.ketuaNama.trim() || 'Susunan pengurus belum ditentukan',
+        telepon_ketua: pengurusForm.teleponKetua.trim() || '-',
+        bendahara_nama: pengurusForm.bendaharaNama.trim() || 'Susunan pengurus belum ditentukan',
+        telepon_bendahara: pengurusForm.teleponBendahara.trim() || '-',
+        sekretaris_nama: pengurusForm.sekretarisNama.trim() || 'Susunan pengurus belum ditentukan',
+        telepon_sekretaris: pengurusForm.teleponSekretaris.trim() || '-',
+        periode_masa_bakti: pengurusForm.periodeMasaBakti.trim() || '2024 - 2026',
+        status: pengurusForm.status || 'Aktif'
       }, { onConflict: 'lingkungan_id' })
+      if (upsertErr) console.log('Notice: profil_lingkungan update pending schema sync', upsertErr)
     } catch (err) {}
 
     setSavingPengurus(false)

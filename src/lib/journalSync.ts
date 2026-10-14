@@ -19,7 +19,6 @@ export function purgeAllObsoleteLocalStorageCache() {
         k &&
         (k.startsWith('custom_journals_') ||
           k === 'custom_journals_all_store' ||
-          k.startsWith('profil_manual_') ||
           k.startsWith('custom_kks_') ||
           k === 'custom_kks_all_store' ||
           k.startsWith('tx_kk_'))

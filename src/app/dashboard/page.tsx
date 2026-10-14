@@ -174,6 +174,7 @@ export default function DashboardOverviewPage() {
     setSavingPengurus(true)
 
     const targetId = lingkunganId || 'default'
+    const dbUuid = getLingkunganDbUuid(targetId)
 
     const updated = {
       ketuaNama: pengurusForm.ketuaNama.trim() || 'Susunan pengurus belum ditentukan',
@@ -187,11 +188,12 @@ export default function DashboardOverviewPage() {
     }
 
     try {
-      const existing = localStorage.getItem(`profil_manual_${targetId}`)
+      const existing = localStorage.getItem(`profil_manual_${targetId}`) || localStorage.getItem(`profil_manual_${dbUuid}`)
       const obj = existing ? JSON.parse(existing) : {}
       const fullUpdated = { ...obj, ...updated }
 
       localStorage.setItem(`profil_manual_${targetId}`, JSON.stringify(fullUpdated))
+      localStorage.setItem(`profil_manual_${dbUuid}`, JSON.stringify(fullUpdated))
 
       if (lingkunganName) {
         const cleanN = lingkunganName.replace(/^lingkungan\s+/i, '').trim()
@@ -202,7 +204,7 @@ export default function DashboardOverviewPage() {
         }
       }
 
-      window.dispatchEvent(new CustomEvent('pengurusUpdated', { detail: { targetId, updated: fullUpdated } }))
+      window.dispatchEvent(new CustomEvent('pengurusUpdated', { detail: { targetId, dbUuid, updated: fullUpdated } }))
       window.dispatchEvent(new Event('storage'))
       window.dispatchEvent(new Event('lingkunganChanged'))
       window.dispatchEvent(new Event('dafuDataUpdated'))
@@ -210,11 +212,19 @@ export default function DashboardOverviewPage() {
 
     try {
       await supabase.from('profil_lingkungan').upsert({
-        lingkungan_id: targetId,
-        telepon_bendahara: pengurusForm.teleponBendahara.trim(),
-        periode_masa_bakti: pengurusForm.periodeMasaBakti.trim(),
+        lingkungan_id: dbUuid,
+        ketua_nama: updated.ketuaNama,
+        telepon_ketua: updated.teleponKetua,
+        bendahara_nama: updated.bendaharaNama,
+        telepon_bendahara: updated.teleponBendahara,
+        sekretaris_nama: updated.sekretarisNama,
+        telepon_sekretaris: updated.teleponSekretaris,
+        periode_masa_bakti: updated.periodeMasaBakti,
+        status: updated.status
       }, { onConflict: 'lingkungan_id' })
-    } catch (err) {}
+    } catch (err) {
+      console.log('Notice: DB column sync pending', err)
+    }
 
     setPengurus({
       ketua_nama: updated.ketuaNama,
