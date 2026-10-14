@@ -149,7 +149,7 @@ export default function CoaSaldoPage() {
           const { data: saTx } = await supabase
             .from('jurnal_transaksi')
             .select('*')
-            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
+            .eq('lingkungan_id', dbUuid)
             .or('no_bukti.eq.[SA/1100],keterangan.ilike.%[SALDO_AWAL]%,keterangan.ilike.%Saldo Awal%')
             .order('tanggal', { ascending: true })
             .limit(1)
@@ -177,7 +177,7 @@ export default function CoaSaldoPage() {
           const { data: postedJurnals } = await supabase
             .from('jurnal_transaksi')
             .select('is_posted')
-            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
+            .eq('lingkungan_id', dbUuid)
             .eq('is_posted', true)
             .limit(1)
 
@@ -228,7 +228,7 @@ export default function CoaSaldoPage() {
         const { data: existingTx } = await supabase
           .from('jurnal_transaksi')
           .select('id')
-          .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${lingkunganId}`)
+          .eq('lingkungan_id', dbUuid)
           .or('no_bukti.eq.[SA/1100],keterangan.ilike.%[SALDO_AWAL]%,keterangan.ilike.%Saldo Awal%')
           .limit(1)
           .maybeSingle()

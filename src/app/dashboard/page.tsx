@@ -366,7 +366,7 @@ export default function DashboardOverviewPage() {
           const { data: kks } = await supabase
             .from('kepala_keluarga')
             .select('*')
-            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
+            .eq('lingkungan_id', dbUuid)
             .order('nama_kk', { ascending: true })
 
             const dbKks = (kks || []).filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
@@ -380,7 +380,7 @@ export default function DashboardOverviewPage() {
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
+            .eq('lingkungan_id', dbUuid)
             .maybeSingle()
 
           const pInfo = getPengurusForLingkungan(targetLingkunganId, lName, profil)
@@ -396,7 +396,7 @@ export default function DashboardOverviewPage() {
               const { data: journals, error } = await supabase
                 .from('jurnal_transaksi')
                 .select('*, kepala_keluarga:kk_id(nama_kk)')
-                .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
+                .eq('lingkungan_id', dbUuid)
                 .order('tanggal', { ascending: false })
 
               if (!error && Array.isArray(journals)) {
@@ -427,7 +427,7 @@ export default function DashboardOverviewPage() {
             const { data: asetList } = await supabase
               .from('aset')
               .select('jumlah, harga_satuan')
-              .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
+              .eq('lingkungan_id', dbUuid)
 
             if (asetList) {
               const totalVal = asetList.reduce((acc, curr) => acc + (Number(curr.jumlah || 0) * Number(curr.harga_satuan || 0)), 0)

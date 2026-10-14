@@ -189,18 +189,18 @@ export default function JurnalPage() {
           const { data: kks } = await supabase
             .from('kepala_keluarga')
             .select('*')
-            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
+            .eq('lingkungan_id', dbUuid)
             .order('nama_kk', { ascending: true })
 
           const dbKks = kks || []
           const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, targetLingkunganNama || 'Lingkungan', dbKks)
           setKkList(finalKks)
 
-          // Load Profil for Saldo Awal directly from Supabase (sole source of truth)
+          // Load Profil for Pengurus directly from Supabase (sole source of truth)
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
+            .eq('lingkungan_id', dbUuid)
             .maybeSingle()
 
           const pengurusInfo = getPengurusForLingkungan(targetLingkunganId, targetLingkunganNama, profil)
@@ -248,7 +248,7 @@ export default function JurnalPage() {
       const { data: journals, error } = await supabase
         .from('jurnal_transaksi')
         .select('*, kepala_keluarga:kk_id(nama_kk)')
-        .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${lId}`)
+        .eq('lingkungan_id', dbUuid)
         .order('tanggal', { ascending: false })
 
       if (!error && Array.isArray(journals)) {
