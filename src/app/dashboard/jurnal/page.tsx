@@ -59,6 +59,7 @@ export default function JurnalPage() {
     .map((c) => ({ code: c.id, name: c.nama_akun }))
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
   const [saldoAwalBank, setSaldoAwalBank] = useState<number>(0)
+  const [saldoAwalTx, setSaldoAwalTx] = useState<JurnalTransaksi | null>(null)
 
   // Filter State: Month & Year (Otomatis mengikuti waktu bulan yang sekarang)
   const [selectedMonth, setSelectedMonth] = useState<number | 'ALL'>(() => {
@@ -211,6 +212,7 @@ export default function JurnalPage() {
           const saTx = fetchedJournals?.find(j => j.no_bukti === '[SA/1100]' || (j.keterangan || '').includes('[SALDO_AWAL]'))
           const sa = saTx ? Number(saTx.nominal || 0) : Number(profil?.saldo_awal || 0)
           setSaldoAwalBank(sa)
+          setSaldoAwalTx(saTx || null)
         }
       } catch (err) {
         console.error('Error loading journal:', err)
@@ -294,6 +296,11 @@ export default function JurnalPage() {
     } catch (e) {}
 
     setJurnalList(list)
+    const saTx = list.find(j => j.no_bukti === '[SA/1100]' || (j.keterangan || '').includes('[SALDO_AWAL]'))
+    if (saTx) {
+      setSaldoAwalBank(Number(saTx.nominal || 0))
+      setSaldoAwalTx(saTx)
+    }
     return list
   }
 
@@ -403,6 +410,10 @@ export default function JurnalPage() {
     else totalBulanKeluar += nom
   })
   const saldoBulanAkhir = saldoAwalBank + totalBulanMasuk - totalBulanKeluar
+
+  // Saldo Awal month helper for quick navigation
+  const saMonth = saldoAwalTx?.tanggal ? (new Date(saldoAwalTx.tanggal).getMonth() + 1) : null
+  const isDifferentMonth = saMonth !== null && selectedMonth !== 'ALL' && selectedMonth !== saMonth
 
   // Check if current month is posted
   const isMonthPosted = selectedMonth !== 'ALL' && filteredJournals.length > 0 && filteredJournals.every(j => j.is_posted)
@@ -1328,13 +1339,77 @@ export default function JurnalPage() {
           </div>
         </div>
 
+        {/* Banner Notifikasi jika Saldo Awal tersimpan di bulan lain */}
+        {saldoAwalTx && isDifferentMonth && (
+          <div className="mx-4 sm:mx-5 mt-4 p-3.5 bg-blue-50/80 border border-blue-200/90 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-blue-950">
+            <div className="flex items-center gap-2">
+              <span className="text-base shrink-0">📌</span>
+              <div>
+                <span>
+                  Saldo Awal aktif sebesar <strong>{formatRupiah(saldoAwalBank)}</strong> tercatat di pembukuan bulan <strong>{MONTH_NAMES[(saMonth || 1) - 1]} {selectedYear}</strong> (Dokumen {saldoAwalTx.no_bukti || '[SA/1100]'}).
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedMonth(saMonth || 1)}
+                className="h-8 px-3 text-xs font-bold text-blue-900 bg-white hover:bg-blue-100/70 rounded-lg border-blue-300 cursor-pointer shadow-2xs"
+              >
+                Lihat Bulan {MONTH_NAMES[(saMonth || 1) - 1]} →
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedMonth('ALL')}
+                className="h-8 px-3 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 rounded-lg border-slate-300 cursor-pointer shadow-2xs"
+              >
+                Lihat Seluruh Tahun
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Content Table or Empty State (Persis Gambar 4) */}
         <div className="p-0">
           {displayedTableJournals.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-2">
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-3">
               <div className="text-3xl font-extralight text-slate-400">&gt;</div>
-              <div className="text-sm font-medium text-slate-600">Belum ada transaksi {selectedMonth === 'ALL' ? `pada tahun ${selectedYear}` : `di bulan ini`}</div>
-              <div className="text-xs text-slate-400">Gunakan form di atas untuk mulai mencatat transaksi jurnal</div>
+              <div className="text-sm font-medium text-slate-600">
+                Belum ada transaksi operasional {selectedMonth === 'ALL' ? `pada tahun ${selectedYear}` : `di bulan ${MONTH_NAMES[Number(selectedMonth) - 1] || 'ini'}`}
+              </div>
+              {saldoAwalTx && isDifferentMonth ? (
+                <div className="flex flex-col items-center gap-2 text-center max-w-md pt-1">
+                  <p className="text-xs text-slate-500">
+                    Saldo Awal sebesar <strong className="text-slate-800 font-bold">{formatRupiah(saldoAwalBank)}</strong> tersimpan pada periode <strong className="text-slate-800 font-bold">{MONTH_NAMES[(saMonth || 1) - 1]} {selectedYear}</strong>.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedMonth(saMonth || 1)}
+                      className="text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 rounded-xl cursor-pointer shadow-2xs"
+                    >
+                      📅 Buka Transaksi Bulan {MONTH_NAMES[(saMonth || 1) - 1]}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedMonth('ALL')}
+                      className="text-xs font-bold text-emerald-800 bg-emerald-50/70 border-emerald-300 hover:bg-emerald-100 rounded-xl cursor-pointer shadow-2xs"
+                    >
+                      📅 Seluruh Transaksi Setahun
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400">Gunakan form di atas untuk mulai mencatat transaksi jurnal</div>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
