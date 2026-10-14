@@ -281,8 +281,7 @@ function DafuFormContent() {
     } catch (err) {}
 
     try {
-      const { error: upsertErr } = await supabase.from('profil_lingkungan').upsert({
-        lingkungan_id: dbUuid,
+      const payload = {
         ketua_nama: pengurusForm.ketuaNama.trim() || 'Susunan pengurus belum ditentukan',
         telepon_ketua: pengurusForm.teleponKetua.trim() || '-',
         bendahara_nama: pengurusForm.bendaharaNama.trim() || 'Susunan pengurus belum ditentukan',
@@ -291,9 +290,22 @@ function DafuFormContent() {
         telepon_sekretaris: pengurusForm.teleponSekretaris.trim() || '-',
         periode_masa_bakti: pengurusForm.periodeMasaBakti.trim() || '2024 - 2026',
         status: pengurusForm.status || 'Aktif'
-      }, { onConflict: 'lingkungan_id' })
-      if (upsertErr) console.log('Notice: profil_lingkungan update pending schema sync', upsertErr)
-    } catch (err) {}
+      }
+
+      const { data: existingProfil } = await supabase
+        .from('profil_lingkungan')
+        .select('id')
+        .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetId}`)
+        .maybeSingle()
+
+      if (existingProfil?.id) {
+        await supabase.from('profil_lingkungan').update(payload).eq('id', existingProfil.id)
+      } else {
+        await supabase.from('profil_lingkungan').insert({ ...payload, lingkungan_id: dbUuid })
+      }
+    } catch (err) {
+      console.log('Notice: profil_lingkungan update error', err)
+    }
 
     setSavingPengurus(false)
     setIsEditPengurusOpen(false)

@@ -211,8 +211,7 @@ export default function DashboardOverviewPage() {
     } catch (err) {}
 
     try {
-      await supabase.from('profil_lingkungan').upsert({
-        lingkungan_id: dbUuid,
+      const payload = {
         ketua_nama: updated.ketuaNama,
         telepon_ketua: updated.teleponKetua,
         bendahara_nama: updated.bendaharaNama,
@@ -221,9 +220,21 @@ export default function DashboardOverviewPage() {
         telepon_sekretaris: updated.teleponSekretaris,
         periode_masa_bakti: updated.periodeMasaBakti,
         status: updated.status
-      }, { onConflict: 'lingkungan_id' })
+      }
+
+      const { data: existingProfil } = await supabase
+        .from('profil_lingkungan')
+        .select('id')
+        .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetId}`)
+        .maybeSingle()
+
+      if (existingProfil?.id) {
+        await supabase.from('profil_lingkungan').update(payload).eq('id', existingProfil.id)
+      } else {
+        await supabase.from('profil_lingkungan').insert({ ...payload, lingkungan_id: dbUuid })
+      }
     } catch (err) {
-      console.log('Notice: DB column sync pending', err)
+      console.log('Notice: profil_lingkungan save error', err)
     }
 
     setPengurus({
