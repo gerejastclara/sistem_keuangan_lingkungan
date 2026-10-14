@@ -313,6 +313,20 @@ export default function FormSetoranPage() {
     const txs = jurnalList.filter(j => {
       if (!j.tanggal || !j.tanggal.startsWith(selectedYear)) return false
       
+      // Logika Form Setoran Paroki: Tercatat 'Sudah Bayar' ketika ada UANG KELUAR
+      // yaitu uang kas yang sudah disetorkan oleh Bendahara Lingkungan ke Paroki
+      const isUangKeluar = j.tipe_arus === 'KELUAR' || 
+        j.no_bukti?.startsWith('BBK') || 
+        j.no_bukti?.startsWith('BKK') || 
+        (j.coa_debit && j.coa_debit.startsWith('5'))
+
+      // Jika transaksi eksplisit Uang Masuk (iuran umat di lingkungan), abaikan dari form setoran ke paroki
+      if (j.tipe_arus === 'MASUK' && !j.no_bukti?.startsWith('BBK') && !j.no_bukti?.startsWith('BKK')) {
+        return false
+      }
+
+      if (!isUangKeluar) return false
+
       // Match by exact COA codes or keywords
       const matchCode = selectedForm.coaCodes.some(c => c === j.coa_debit || c === j.coa_kredit)
       const desc = (j.keterangan || '').toLowerCase()
@@ -376,7 +390,7 @@ export default function FormSetoranPage() {
       <div className="print:hidden space-y-6 mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Formulir Cetak PDF Bendahara</h1>
-          <p className="text-slate-500 mt-1 text-sm font-medium">Kop surat resmi Paroki Santa Clara untuk 7 formulir: Santo Yusuf, Dana Pastoran, Dana APP, Dana HPS, Dana ASAK, Dana PPG, dan Dana CYTM.</p>
+          <p className="text-slate-500 mt-1 text-sm font-medium">Kop surat resmi Paroki Santa Clara untuk tanda terima setoran dari bendahara lingkungan ke paroki (terintegrasi otomatis dari pencatatan Uang Keluar yang disetor ke Paroki pada Jurnal Transaksi).</p>
         </div>
 
         {/* SELEKSI 7 DANA RESMI */}
