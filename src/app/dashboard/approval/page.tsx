@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   ShieldCheck,
   CheckCircle2,
@@ -38,6 +39,9 @@ import {
 import { getAllMasterLingkungan, formatNamaLingkungan, getWilayahForLingkungan } from '@/lib/constants'
 
 export default function DafuApprovalPage() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [checkingRole, setCheckingRole] = useState(true)
   const [approvals, setApprovals] = useState<DafuApprovalItem[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL')
@@ -59,6 +63,37 @@ export default function DafuApprovalPage() {
   }
 
   useEffect(() => {
+    const cookies = typeof document !== 'undefined' ? document.cookie : ''
+    const getCookieVal = (name: string) => {
+      const v = `; ${cookies}`
+      const p = v.split(`; ${name}=`)
+      if (p.length === 2) return decodeURIComponent(p.pop()!.split(';').shift()!)
+      return null
+    }
+    const demoRole = getCookieVal('demo_user_role') || ''
+    const demoEmail = getCookieVal('demo_user_email') || getCookieVal('demo_user_username') || ''
+
+    let resolvedRole = 'BENDAHARA'
+    if (
+      demoRole === 'SEKRETARIS_PAROKI' ||
+      ((demoEmail.includes('sekretaris') || demoEmail.includes('sekertaris')) && demoEmail.includes('paroki'))
+    ) {
+      resolvedRole = 'SEKRETARIS_PAROKI'
+    } else if (demoRole === 'PAROKI' || demoEmail.includes('paroki')) {
+      resolvedRole = 'PAROKI'
+    } else if (demoRole === 'SEKRETARIS' || demoEmail.includes('sekretaris') || demoEmail.includes('sekertaris')) {
+      resolvedRole = 'SEKRETARIS'
+    }
+
+    setUserRole(resolvedRole)
+    setCheckingRole(false)
+
+    // Strict access control: Only SEKRETARIS_PAROKI can access Approval DAFU module
+    if (resolvedRole !== 'SEKRETARIS_PAROKI') {
+      router.replace('/dashboard')
+      return
+    }
+
     loadData()
     markAllApprovalsAsRead()
 
@@ -70,7 +105,7 @@ export default function DafuApprovalPage() {
       window.removeEventListener('dafuApprovalUpdated', handleUpdate)
       window.removeEventListener('storage', handleUpdate)
     }
-  }, [])
+  }, [router])
 
   const pendingList = useMemo(() => approvals.filter(a => a.status === 'PENDING'), [approvals])
   const approvedList = useMemo(() => approvals.filter(a => a.status === 'APPROVED'), [approvals])
@@ -133,6 +168,18 @@ export default function DafuApprovalPage() {
       loadData()
       setTimeout(() => setActionSuccessMsg(null), 4000)
     }
+  }
+
+  if (checkingRole || userRole !== 'SEKRETARIS_PAROKI') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 space-y-3">
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
+          <Clock className="w-6 h-6 animate-spin" />
+        </div>
+        <p className="text-sm font-semibold text-slate-700">Memverifikasi hak akses...</p>
+        <p className="text-xs text-slate-400">Modul ini khusus untuk Sekretaris Paroki. Mengalihkan ke Dashboard...</p>
+      </div>
+    )
   }
 
   return (

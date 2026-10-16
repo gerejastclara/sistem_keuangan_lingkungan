@@ -176,9 +176,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     if (userRole === 'PAROKI') {
       return (
+        item.roles.includes('PAROKI') &&
         item.href !== '/dashboard/form-standar' &&
         item.href !== '/dashboard/coa-saldo' &&
-        item.href !== '/dashboard/dafu'
+        item.href !== '/dashboard/dafu' &&
+        item.href !== '/dashboard/approval'
       )
     }
     return true

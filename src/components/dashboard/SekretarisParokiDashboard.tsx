@@ -146,18 +146,18 @@ export function SekretarisParokiDashboard() {
         </div>
       </div>
 
-      {/* Pending Approval Callout Banner if any */}
+      {/* Pending Approval Callout Banner if any - Soft Grey Aesthetic */}
       {pendingCount > 0 && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="p-4 sm:p-5 rounded-2xl bg-[#F8F9FA] border border-slate-200 text-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 font-bold shadow-xs">
-              <Clock className="w-5 h-5 animate-spin" />
+            <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 font-bold shadow-2xs">
+              <Clock className="w-5 h-5 text-slate-600" />
             </div>
             <div>
-              <h4 className="font-bold text-sm text-amber-950">
+              <h4 className="font-bold text-sm text-slate-900">
                 Ada {pendingCount} Permohonan Approval DAFU Menunggu Persetujuan
               </h4>
-              <p className="text-xs text-amber-800">
+              <p className="text-xs text-slate-600">
                 Sekretaris Lingkungan telah mengajukan penambahan atau perubahan data umat. Segera tinjau untuk memperbarui basis data paroki.
               </p>
             </div>
@@ -166,7 +166,7 @@ export function SekretarisParokiDashboard() {
           <Link href="/dashboard/approval" className="shrink-0">
             <Button
               size="sm"
-              className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              className="w-full sm:w-auto bg-[#A9834F] hover:bg-[#8e6d3e] text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <span>Tinjau Sekarang</span>
               <ArrowRight className="w-4 h-4" />
