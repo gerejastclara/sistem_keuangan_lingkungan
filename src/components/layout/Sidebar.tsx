@@ -64,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'Approval DAFU Lingkungan',
       href: '/dashboard/approval',
       icon: ShieldCheck,
-      roles: ['SEKRETARIS_PAROKI', 'PAROKI'],
+      roles: ['SEKRETARIS_PAROKI'],
     },
     // Modul Monitoring Khusus Paroki
     {

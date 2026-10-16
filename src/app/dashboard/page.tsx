@@ -24,6 +24,7 @@ import { reconcileJournals } from '@/lib/journalSync'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import { SekretarisParokiDashboard } from '@/components/dashboard/SekretarisParokiDashboard'
+import { ParokiOverviewDashboard } from '@/components/dashboard/ParokiOverviewDashboard'
 import {
   TrendingUp,
   TrendingDown,
@@ -358,19 +359,20 @@ export default function DashboardOverviewPage() {
         } else {
           targetLingkunganId = localStorage.getItem('selected_lingkungan_id')
           if (!targetLingkunganId) {
-            const allM = getAllMasterLingkungan()
-            targetLingkunganId = allM[0].id
+            targetLingkunganId = isGlobalScope ? 'all' : getAllMasterLingkungan()[0].id
           }
         }
 
         // Fetch Lingkungan Name
         const allM = getAllMasterLingkungan()
         const matchedM = allM.find(m => m.id === targetLingkunganId)
-        const lName = matchedM?.nama_lingkungan || currentLNama || 'Lingkungan'
+        const lName = targetLingkunganId === 'all'
+          ? 'Seluruh Lingkungan'
+          : (matchedM?.nama_lingkungan || currentLNama || 'Lingkungan')
         setLingkunganName(lName)
         setLingkunganId(targetLingkunganId)
 
-        if (targetLingkunganId) {
+        if (targetLingkunganId && targetLingkunganId !== 'all') {
           // 3. Fetch DAFU & Anggota Data (Essential for Sekretaris & useful for all)
           const dbUuid = getLingkunganDbUuid(targetLingkunganId)
           const { data: kks } = await supabase
@@ -972,6 +974,22 @@ export default function DashboardOverviewPage() {
   }
 
   // ==========================================
+  // VIEW KHUSUS PAROKI KETIKA MODE 'SELURUH LINGKUNGAN' (AWAL LOGIN)
+  // ==========================================
+  if (userRole === 'PAROKI' && (!lingkunganId || lingkunganId === 'all')) {
+    return (
+      <ParokiOverviewDashboard
+        onSelectLingkungan={(selectedId) => {
+          setLingkunganId(selectedId)
+          const allM = getAllMasterLingkungan()
+          const matchedM = allM.find(m => m.id === selectedId)
+          if (matchedM) setLingkunganName(matchedM.nama_lingkungan)
+        }}
+      />
+    )
+  }
+
+  // ==========================================
   // VIEW KHUSUS SEKRETARIS LINGKUNGAN: DASHBOARD DATA UMAT (GAMBAR 1)
   // ==========================================
   if (userRole === 'SEKRETARIS') {
@@ -1424,6 +1442,22 @@ export default function DashboardOverviewPage() {
         <div className="flex flex-wrap gap-2.5 shrink-0">
           {userRole === 'PAROKI' ? (
             <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('selected_lingkungan_id', 'all')
+                    window.dispatchEvent(new Event('lingkunganChanged'))
+                    window.dispatchEvent(new Event('storage'))
+                  }
+                  setLingkunganId('all')
+                  setLingkunganName('Seluruh Lingkungan')
+                }}
+                className="bg-white hover:bg-slate-100 text-slate-700 border-slate-300 font-bold px-3 py-2 rounded-xl shadow-2xs cursor-pointer transition-all text-xs"
+              >
+                ← Seluruh Lingkungan
+              </Button>
               <Link href="/dashboard/paroki/sekretaris">
                 <Button className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold px-3.5 py-2.5 rounded-xl shadow-2xs cursor-pointer transition-all text-xs">
                   <Users className="w-4 h-4 mr-1.5 text-slate-600" />

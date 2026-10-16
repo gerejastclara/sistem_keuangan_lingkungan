@@ -168,8 +168,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* Notification Bell (Khusus Sekretaris Paroki & Paroki) */}
-          {(userProfile?.role === 'SEKRETARIS_PAROKI' || userProfile?.role === 'PAROKI') && (
+          {/* Notification Bell (Khusus Sekretaris Paroki) */}
+          {userProfile?.role === 'SEKRETARIS_PAROKI' && (
             <div className="relative">
               <button
                 type="button"

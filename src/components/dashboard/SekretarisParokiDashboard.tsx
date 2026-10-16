@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getAllMasterLingkungan, formatNamaLingkungan, getWilayahForLingkungan } from '@/lib/constants'
 import { getDafuApprovals, DafuApprovalItem } from '@/lib/dafuApproval'
+import { ensureDummyKksForLingkungan, getDummyAnggotaForKk, santaClaraStats } from '@/lib/dummyData'
 
 export function SekretarisParokiDashboard() {
   const [approvals, setApprovals] = useState<DafuApprovalItem[]>([])
@@ -32,6 +33,21 @@ export function SekretarisParokiDashboard() {
   const [selectedLingkunganId, setSelectedLingkunganId] = useState<string>('all')
 
   const masterList = getAllMasterLingkungan()
+
+  // Real aggregate KK and Jiwa counts per Lingkungan from Santa Clara dataset
+  const lingkunganUmatStats = useMemo(() => {
+    const map: Record<string, { kkCount: number; jiwaCount: number }> = {}
+    masterList.forEach(ling => {
+      const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [])
+      let jiwa = 0
+      kks.forEach(k => {
+        const anggota = getDummyAnggotaForKk(k)
+        jiwa += (anggota && anggota.length > 0) ? anggota.length : (k.jumlah_anggota || 1)
+      })
+      map[ling.id] = { kkCount: kks.length, jiwaCount: jiwa }
+    })
+    return map
+  }, [masterList])
 
   const loadApprovals = () => {
     setApprovals(getDafuApprovals())
@@ -168,7 +184,7 @@ export function SekretarisParokiDashboard() {
             <Building2 className="w-4 h-4 text-indigo-500" />
           </div>
           <div className="text-2xl font-black text-slate-900">69 Lingkungan</div>
-          <p className="text-[11px] text-slate-400">14 Wilayah terintegrasi aktif</p>
+          <p className="text-[11px] text-slate-400">13 Wilayah terintegrasi aktif</p>
         </div>
 
         {/* Card 2: Total KK Terdata */}
@@ -177,8 +193,8 @@ export function SekretarisParokiDashboard() {
             <span>Total Kepala Keluarga (KK)</span>
             <Home className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">1.840 KK</div>
-          <p className="text-[11px] text-emerald-700 font-medium">Rata-rata 26 KK / lingkungan</p>
+          <div className="text-2xl font-black text-slate-900">2.884 KK</div>
+          <p className="text-[11px] text-emerald-700 font-medium">Rata-rata 42 KK / lingkungan</p>
         </div>
 
         {/* Card 3: Total Jiwa / Umat */}
@@ -187,8 +203,8 @@ export function SekretarisParokiDashboard() {
             <span>Total Jiwa / Umat</span>
             <Users className="w-4 h-4 text-sky-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">6.120 Jiwa</div>
-          <p className="text-[11px] text-sky-700 font-medium">92% Terdaftar BIDUK KAJ</p>
+          <div className="text-2xl font-black text-slate-900">9.802 Jiwa</div>
+          <p className="text-[11px] text-sky-700 font-medium">94% Terdaftar BIDUK KAJ</p>
         </div>
 
         {/* Card 4: Status Approval */}
@@ -231,7 +247,7 @@ export function SekretarisParokiDashboard() {
               <span>Keluarga Sejahtera</span>
               <span className="text-sm">🟢</span>
             </div>
-            <div className="text-xl font-extrabold text-emerald-950">1.485 KK (80.7%)</div>
+            <div className="text-xl font-extrabold text-emerald-950">2.328 KK (80.7%)</div>
             <p className="text-[11px] text-emerald-700">Mandiri, mampu berswacita & bergotong royong</p>
           </div>
 
@@ -240,7 +256,7 @@ export function SekretarisParokiDashboard() {
               <span>Terduga Prasejahtera</span>
               <span className="text-sm">🟡</span>
             </div>
-            <div className="text-xl font-extrabold text-amber-950">280 KK (15.2%)</div>
+            <div className="text-xl font-extrabold text-amber-950">438 KK (15.2%)</div>
             <p className="text-[11px] text-amber-700">Perlu pendampingan & pemantauan berkala</p>
           </div>
 
@@ -249,7 +265,7 @@ export function SekretarisParokiDashboard() {
               <span>Rentan Tidak Mampu</span>
               <span className="text-sm">🔴</span>
             </div>
-            <div className="text-xl font-extrabold text-rose-950">75 KK (4.1%)</div>
+            <div className="text-xl font-extrabold text-rose-950">118 KK (4.1%)</div>
             <p className="text-[11px] text-rose-700">Prioritas bantuan talangan & subsidi paroki</p>
           </div>
         </div>
@@ -313,6 +329,7 @@ export function SekretarisParokiDashboard() {
             <tbody className="divide-y divide-slate-100">
               {filteredLingkungan.map((l, idx) => {
                 const pendingForThis = pendingPerLingkungan[l.nama_lingkungan.toLowerCase().trim()] || 0
+                const stat = lingkunganUmatStats[l.id] || { kkCount: 0, jiwaCount: 0 }
 
                 return (
                   <tr key={l.id} className="hover:bg-slate-50/80 transition">
@@ -331,10 +348,10 @@ export function SekretarisParokiDashboard() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center font-mono font-bold text-slate-800">
-                      25 - 30 KK
+                      {stat.kkCount} KK
                     </td>
                     <td className="py-3 px-4 text-center font-mono text-slate-600">
-                      80 - 100 Jiwa
+                      {stat.jiwaCount} Jiwa
                     </td>
                     <td className="py-3 px-4 text-center">
                       {pendingForThis > 0 ? (
