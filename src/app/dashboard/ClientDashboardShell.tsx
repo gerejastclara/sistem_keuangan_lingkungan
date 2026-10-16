@@ -25,9 +25,40 @@ export function ClientDashboardShell({
   const isParoki = userProfile?.role === 'PAROKI' || userProfile?.role === 'SEKRETARIS_PAROKI'
 
   const [selectedLingkunganId, setSelectedLingkunganId] = useState<string | null>(() => {
-    // If not PAROKI/SEKRETARIS_PAROKI and user has an assigned lingkungan, strictly lock to it!
-    if (initialProfile?.role && initialProfile.role !== 'PAROKI' && initialProfile.role !== 'SEKRETARIS_PAROKI' && initialProfile.lingkungan_id) {
+    // If SEKRETARIS_PAROKI, default strictly to 'all' (Seluruh Lingkungan)
+    if (initialProfile?.role === 'SEKRETARIS_PAROKI') {
       if (typeof window !== 'undefined') {
+        const lastRole = localStorage.getItem('last_user_role')
+        if (lastRole !== 'SEKRETARIS_PAROKI') {
+          localStorage.setItem('last_user_role', 'SEKRETARIS_PAROKI')
+          localStorage.setItem('selected_lingkungan_id', 'all')
+          return 'all'
+        }
+        const saved = localStorage.getItem('selected_lingkungan_id')
+        if (saved && saved !== 'undefined' && saved !== 'null') return saved
+      }
+      return 'all'
+    }
+
+    // If PAROKI:
+    if (initialProfile?.role === 'PAROKI') {
+      if (typeof window !== 'undefined') {
+        const lastRole = localStorage.getItem('last_user_role')
+        if (lastRole !== 'PAROKI') {
+          localStorage.setItem('last_user_role', 'PAROKI')
+          localStorage.setItem('selected_lingkungan_id', 'all')
+          return 'all'
+        }
+        const saved = localStorage.getItem('selected_lingkungan_id')
+        if (saved && saved !== 'undefined' && saved !== 'null') return saved
+      }
+      return 'all'
+    }
+
+    // If not PAROKI/SEKRETARIS_PAROKI and user has an assigned lingkungan, strictly lock to it!
+    if (initialProfile?.role && initialProfile.lingkungan_id) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('last_user_role', initialProfile.role)
         localStorage.setItem('selected_lingkungan_id', initialProfile.lingkungan_id)
       }
       return initialProfile.lingkungan_id

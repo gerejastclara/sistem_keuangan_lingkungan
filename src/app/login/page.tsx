@@ -46,10 +46,18 @@ export default function LoginPage() {
       setUsername('sekretaris_paroki')
       setPassword('Paroki321')
       setSelectedLingkunganId('')
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('selected_lingkungan_id', 'all')
+        localStorage.setItem('last_user_role', 'SEKRETARIS_PAROKI')
+      }
     } else if (role === 'PAROKI') {
       setUsername('paroki')
       setPassword('Paroki321')
       setSelectedLingkunganId('')
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('selected_lingkungan_id', 'all')
+        localStorage.setItem('last_user_role', 'PAROKI')
+      }
     } else {
       setSelectedLingkunganId(lId)
       setPassword('Paroki321')

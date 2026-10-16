@@ -29,6 +29,7 @@ import { getDafuApprovals, DafuApprovalItem } from '@/lib/dafuApproval'
 export function SekretarisParokiDashboard() {
   const [approvals, setApprovals] = useState<DafuApprovalItem[]>([])
   const [searchLingkungan, setSearchLingkungan] = useState('')
+  const [selectedLingkunganId, setSelectedLingkunganId] = useState<string>('all')
 
   const masterList = getAllMasterLingkungan()
 
@@ -38,26 +39,39 @@ export function SekretarisParokiDashboard() {
 
   useEffect(() => {
     loadApprovals()
+    const readStoredLingkungan = () => {
+      const val = localStorage.getItem('selected_lingkungan_id') || 'all'
+      setSelectedLingkunganId(val)
+    }
+    readStoredLingkungan()
+
     window.addEventListener('dafuApprovalUpdated', loadApprovals)
-    window.addEventListener('storage', loadApprovals)
+    window.addEventListener('lingkunganChanged', readStoredLingkungan)
+    window.addEventListener('storage', readStoredLingkungan)
     return () => {
       window.removeEventListener('dafuApprovalUpdated', loadApprovals)
-      window.removeEventListener('storage', loadApprovals)
+      window.removeEventListener('lingkunganChanged', readStoredLingkungan)
+      window.removeEventListener('storage', readStoredLingkungan)
     }
   }, [])
 
   const pendingApprovals = useMemo(() => approvals.filter(a => a.status === 'PENDING'), [approvals])
   const pendingCount = pendingApprovals.length
 
-  // Filter master lingkungan by search
+  // Filter master lingkungan by search & selectedLingkunganId from Navbar
   const filteredLingkungan = useMemo(() => {
+    let list = masterList
+    if (selectedLingkunganId && selectedLingkunganId !== 'all') {
+      const matched = list.filter(l => l.id === selectedLingkunganId)
+      if (matched.length > 0) list = matched
+    }
     const q = searchLingkungan.toLowerCase().trim()
-    if (!q) return masterList
-    return masterList.filter(l =>
+    if (!q) return list
+    return list.filter(l =>
       l.nama_lingkungan.toLowerCase().includes(q) ||
       getWilayahForLingkungan(l.nama_lingkungan).toLowerCase().includes(q)
     )
-  }, [masterList, searchLingkungan])
+  }, [masterList, selectedLingkunganId, searchLingkungan])
 
   // Map pending approvals per lingkungan
   const pendingPerLingkungan = useMemo(() => {
@@ -72,17 +86,17 @@ export function SekretarisParokiDashboard() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* Top Header Banner */}
-      <div className="bg-gradient-to-r from-[#16233F] via-[#22335A] to-[#16233F] text-white p-6 rounded-2xl border border-[#2C3E66] shadow-xl relative overflow-hidden">
+      <div className="bg-[#F8F9FA] text-slate-900 p-6 rounded-2xl border border-slate-200 shadow-xs relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-xs font-bold uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white border border-slate-300 text-slate-700 text-xs font-semibold uppercase tracking-wider shadow-2xs">
               <ShieldCheck className="w-3.5 h-3.5 text-[#A9834F]" />
               Sekretariat Paroki St. Clara
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-serif">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-serif text-slate-900">
               Dashboard Seluruh Lingkungan
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
               Pemantauan terpusat data umat, persebaran Kepala Keluarga, klasifikasi golongan, dan verifikasi approval DAFU untuk seluruh 69 Lingkungan Paroki St. Clara.
             </p>
           </div>
@@ -91,12 +105,12 @@ export function SekretarisParokiDashboard() {
             <Link href="/dashboard/approval">
               <Button
                 size="sm"
-                className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white text-xs rounded-xl font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
+                className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <ShieldCheck className="w-4 h-4" />
                 <span>Modul Approval</span>
                 {pendingCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500 text-white font-black animate-pulse">
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500 text-white font-bold animate-pulse">
                     {pendingCount}
                   </span>
                 )}
@@ -106,7 +120,7 @@ export function SekretarisParokiDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs rounded-xl font-bold flex items-center gap-1.5 cursor-pointer"
+                className="bg-white hover:bg-slate-50 text-slate-700 border-slate-300 text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 <span>Kriteria Golongan</span>
@@ -251,6 +265,24 @@ export function SekretarisParokiDashboard() {
             <p className="text-xs text-slate-400">
               Menampilkan {filteredLingkungan.length} dari 69 lingkungan aktif
             </p>
+            {selectedLingkunganId && selectedLingkunganId !== 'all' && (
+              <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-semibold">
+                <span>Filter Aktif: {formatNamaLingkungan(filteredLingkungan[0]?.nama_lingkungan || '')}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem('selected_lingkungan_id', 'all')
+                    setSelectedLingkunganId('all')
+                    window.dispatchEvent(new Event('lingkunganChanged'))
+                    window.dispatchEvent(new Event('storage'))
+                  }}
+                  className="hover:text-indigo-950 font-bold ml-1 cursor-pointer underline"
+                  title="Kembali ke Seluruh Lingkungan"
+                >
+                  ✕ Tampilkan Semua 69
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="relative w-full sm:w-64">

@@ -50,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const pendingCount = pendingApprovals.length
 
   const resolveLingkunganLabel = (id: string | null): string => {
-    if (!id) return 'Pilih Lingkungan'
+    if (!id || id === 'all' || id === '') return 'Seluruh Lingkungan (69)'
     const foundDirect = lingkunganList.find((l) => l.id === id)
     if (foundDirect) return formatNamaLingkungan(foundDirect.nama_lingkungan)
 
@@ -131,11 +131,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center space-x-2 bg-[#22335A] border border-[#2C3E66] rounded-[7px] px-3 py-1.5 text-xs text-slate-200 shadow-xs">
             <Building2 className="w-4 h-4 text-[#A9834F] shrink-0" />
             {(userProfile?.role === 'PAROKI' || userProfile?.role === 'SEKRETARIS_PAROKI') ? (
-              <Select value={selectedLingkunganId || ''} onValueChange={(val) => val && onLingkunganChange(val)}>
+              <Select value={selectedLingkunganId || 'all'} onValueChange={(val) => val && onLingkunganChange(val)}>
                 <SelectTrigger className="h-6 border-none bg-transparent shadow-none focus:ring-0 text-xs font-semibold p-0 text-white gap-1.5 cursor-pointer max-w-[210px]">
                   <span className="truncate">{resolveLingkunganLabel(selectedLingkunganId)}</span>
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto bg-[#16233F] border-[#2C3E66] text-slate-100">
+                  <SelectItem value="all" className="hover:bg-[#22335A] focus:bg-[#22335A] focus:text-white font-bold text-[#A9834F]">
+                    <div className="flex items-center justify-between w-full gap-3">
+                      <span>Seluruh Lingkungan (69)</span>
+                      <span className="text-[10px] bg-[#22335A] text-[#A9834F] px-1.5 py-0.5 rounded border border-[#2C3E66]">
+                        Semua
+                      </span>
+                    </div>
+                  </SelectItem>
                   {lingkunganList.map((l) => (
                     <SelectItem key={l.id} value={l.id} className="hover:bg-[#22335A] focus:bg-[#22335A] focus:text-white">
                       <div className="flex items-center justify-between w-full gap-3">

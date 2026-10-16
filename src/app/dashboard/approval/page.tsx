@@ -138,17 +138,17 @@ export default function DafuApprovalPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#16233F] via-[#22335A] to-[#16233F] text-white p-6 rounded-2xl border border-[#2C3E66] shadow-xl relative overflow-hidden">
+      <div className="bg-[#F8F9FA] text-slate-900 p-6 rounded-2xl border border-slate-200 shadow-xs relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#A9834F]/20 border border-[#A9834F]/40 text-[#A9834F] text-xs font-bold uppercase tracking-wider">
-              <ShieldCheck className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white border border-slate-300 text-slate-700 text-xs font-semibold uppercase tracking-wider shadow-2xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#A9834F]" />
               Sekretariat Paroki St. Clara
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-serif">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-serif text-slate-900">
               Modul Approval DAFU (Perubahan Data Umat)
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
               Pusat kendali verifikasi & persetujuan perubahan atau penambahan data Kartu Keluarga (KK) yang diajukan oleh Sekretaris Lingkungan dari seluruh 69 Lingkungan.
             </p>
           </div>
@@ -158,7 +158,7 @@ export default function DafuApprovalPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs rounded-xl font-bold cursor-pointer"
+                className="bg-white hover:bg-slate-100 text-slate-700 border-slate-300 text-xs rounded-xl font-semibold cursor-pointer shadow-2xs"
               >
                 Dashboard Lingkungan
               </Button>
@@ -166,7 +166,7 @@ export default function DafuApprovalPage() {
             <Link href="/dashboard/kriteria-golongan">
               <Button
                 size="sm"
-                className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white text-xs rounded-xl font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
+                className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 Kriteria Golongan

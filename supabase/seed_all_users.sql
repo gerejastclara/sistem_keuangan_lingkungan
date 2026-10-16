@@ -19,7 +19,6 @@ ALTER TABLE public.users DROP COLUMN IF EXISTS email CASCADE;
 ALTER TABLE public.users ALTER COLUMN id SET DEFAULT gen_random_uuid();
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS username VARCHAR(100);
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS password VARCHAR(100);
-ALTER TABLE public.users ALTER COLUMN role TYPE VARCHAR(50);
 
 -- Pastikan batasan role mencakup SEKRETARIS_PAROKI
 ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;

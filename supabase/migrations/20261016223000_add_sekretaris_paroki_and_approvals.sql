@@ -4,7 +4,7 @@
 -- ==============================================================================
 
 -- 1. Perbarui batasan role pada tabel public.users agar menerima role SEKRETARIS_PAROKI
-ALTER TABLE public.users ALTER COLUMN role TYPE VARCHAR(50);
+-- Catatan: Jangan ubah tipe kolom role agar tidak bentrok dengan RLS policy kepala_keluarga
 ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE public.users ADD CONSTRAINT users_role_check 
   CHECK (role IN ('BENDAHARA', 'SEKRETARIS', 'PAROKI', 'SEKRETARIS_PAROKI'));
