@@ -1,11 +1,13 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { UserProfile, Lingkungan } from '@/lib/types'
 import { getWilayahForLingkungan, formatNamaLingkungan, getAllMasterLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
-import { LogOut, Building2, User, ChevronDown, Menu } from 'lucide-react'
+import { LogOut, Building2, User, ChevronDown, Menu, Bell, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { getDafuApprovals, DafuApprovalItem } from '@/lib/dafuApproval'
 
 interface NavbarProps {
   userProfile: UserProfile | null
@@ -26,7 +28,26 @@ export const Navbar: React.FC<NavbarProps> = ({
   isSidebarOpen = true,
   onToggleSidebar,
 }) => {
+  const router = useRouter()
   const [showProfileMenu, setShowProfileMenu] = React.useState(false)
+  const [showNotifMenu, setShowNotifMenu] = React.useState(false)
+  const [approvals, setApprovals] = React.useState<DafuApprovalItem[]>([])
+
+  useEffect(() => {
+    const loadNotifs = () => {
+      setApprovals(getDafuApprovals())
+    }
+    loadNotifs()
+    window.addEventListener('dafuApprovalUpdated', loadNotifs)
+    window.addEventListener('storage', loadNotifs)
+    return () => {
+      window.removeEventListener('dafuApprovalUpdated', loadNotifs)
+      window.removeEventListener('storage', loadNotifs)
+    }
+  }, [])
+
+  const pendingApprovals = approvals.filter(a => a.status === 'PENDING')
+  const pendingCount = pendingApprovals.length
 
   const resolveLingkunganLabel = (id: string | null): string => {
     if (!id) return 'Pilih Lingkungan'
@@ -38,6 +59,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const getRoleBadge = (role?: string) => {
     switch (role) {
+      case 'SEKRETARIS_PAROKI':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+            Sekretaris Paroki (Approval DAFU)
+          </span>
+        )
       case 'BENDAHARA':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
@@ -103,7 +130,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Lingkungan Scope Indicator / Selector */}
           <div className="flex items-center space-x-2 bg-[#22335A] border border-[#2C3E66] rounded-[7px] px-3 py-1.5 text-xs text-slate-200 shadow-xs">
             <Building2 className="w-4 h-4 text-[#A9834F] shrink-0" />
-            {userProfile?.role === 'PAROKI' ? (
+            {(userProfile?.role === 'PAROKI' || userProfile?.role === 'SEKRETARIS_PAROKI') ? (
               <Select value={selectedLingkunganId || ''} onValueChange={(val) => val && onLingkunganChange(val)}>
                 <SelectTrigger className="h-6 border-none bg-transparent shadow-none focus:ring-0 text-xs font-semibold p-0 text-white gap-1.5 cursor-pointer max-w-[210px]">
                   <span className="truncate">{resolveLingkunganLabel(selectedLingkunganId)}</span>
@@ -132,6 +159,98 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
           </div>
+
+          {/* Notification Bell (Khusus Sekretaris Paroki & Paroki) */}
+          {(userProfile?.role === 'SEKRETARIS_PAROKI' || userProfile?.role === 'PAROKI') && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNotifMenu(!showNotifMenu)
+                  setShowProfileMenu(false)
+                }}
+                className="relative p-2 rounded-[7px] bg-[#22335A] hover:bg-[#2C3E66] text-[#A9834F] hover:text-white border border-[#2C3E66] transition cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
+                title="Notifikasi Pengajuan DAFU"
+              >
+                <Bell className="w-4 h-4" />
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-bold text-[10px] w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-sm">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+
+              {showNotifMenu && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#16233F] border border-[#2C3E66] rounded-xl shadow-2xl p-3 z-50 text-xs text-slate-200">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#2C3E66] mb-2">
+                    <div className="flex items-center gap-1.5 font-bold text-white text-xs">
+                      <ShieldCheck className="w-4 h-4 text-[#A9834F]" />
+                      <span>Notifikasi Approval DAFU</span>
+                    </div>
+                    {pendingCount > 0 ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {pendingCount} Menunggu
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Semua selesai
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {pendingApprovals.length === 0 ? (
+                      <div className="text-center py-6 text-slate-400">
+                        <p className="text-xs">Tidak ada permohonan DAFU yang menunggu persetujuan.</p>
+                      </div>
+                    ) : (
+                      pendingApprovals.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setShowNotifMenu(false)
+                            router.push('/dashboard/approval')
+                          }}
+                          className="p-2.5 rounded-lg bg-[#22335A]/60 hover:bg-[#22335A] border border-[#2C3E66] transition cursor-pointer space-y-1"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-white text-xs truncate">
+                              {item.nama_lingkungan}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              {item.action_type === 'TAMBAH_KK' ? '+ KK Baru' : 'Ubah KK'}
+                            </span>
+                          </div>
+                          <p className="text-slate-300 text-[11px] truncate font-medium">
+                            {item.nama_kk}
+                          </p>
+                          <div className="flex items-center justify-between text-[10px] text-[#8A90A3] pt-0.5">
+                            <span>Golongan: {item.golongan}</span>
+                            <span className="text-[#A9834F] font-semibold hover:underline">Tinjau →</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="pt-2.5 mt-2 border-t border-[#2C3E66]">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setShowNotifMenu(false)
+                        router.push('/dashboard/approval')
+                      }}
+                      className="w-full bg-[#A9834F] hover:bg-[#8e6d3e] text-white font-bold h-8 text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <span>Buka Modul Approval Lengkap</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* User Profile Menu Dropdown */}
           <div className="relative">

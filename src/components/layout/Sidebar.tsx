@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -19,9 +19,11 @@ import {
   SlidersHorizontal,
   FileText,
   HandCoins,
-  Printer
+  Printer,
+  CheckCircle2
 } from 'lucide-react'
 import { UserRole } from '@/lib/types'
+import { getDafuApprovals } from '@/lib/dafuApproval'
 
 interface SidebarProps {
   userRole?: UserRole
@@ -35,13 +37,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggle,
 }) => {
   const pathname = usePathname()
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    const updateCount = () => {
+      const list = getDafuApprovals()
+      setPendingCount(list.filter(i => i.status === 'PENDING').length)
+    }
+    updateCount()
+    window.addEventListener('dafuApprovalUpdated', updateCount)
+    window.addEventListener('storage', updateCount)
+    return () => {
+      window.removeEventListener('dafuApprovalUpdated', updateCount)
+      window.removeEventListener('storage', updateCount)
+    }
+  }, [])
 
   const allNavItems = [
     {
       title: 'Dashboard Overview',
       href: '/dashboard',
       icon: LayoutDashboard,
-      roles: ['BENDAHARA', 'SEKRETARIS', 'PAROKI'],
+      roles: ['BENDAHARA', 'SEKRETARIS', 'PAROKI', 'SEKRETARIS_PAROKI'],
+    },
+    {
+      title: 'Approval DAFU Lingkungan',
+      href: '/dashboard/approval',
+      icon: ShieldCheck,
+      roles: ['SEKRETARIS_PAROKI', 'PAROKI'],
     },
     // Modul Monitoring Khusus Paroki
     {
@@ -124,6 +147,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Bendahara: Dashboard Overview, COA & Saldo Awal, Jurnal Transaksi, Laporan, Aset, Kartu Setoran
   // Paroki: All modules including Paroki Monitoring modules
   const visibleNavItems = allNavItems.filter((item) => {
+    if (userRole === 'SEKRETARIS_PAROKI') {
+      return (
+        item.href === '/dashboard' ||
+        item.href === '/dashboard/approval' ||
+        item.href === '/dashboard/kriteria-golongan'
+      )
+    }
     if (userRole === 'SEKRETARIS') {
       return (
         item.href === '/dashboard' ||
@@ -196,8 +226,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="truncate font-serif">
               {userRole === 'BENDAHARA' && 'Bendahara Lingkungan'}
               {userRole === 'SEKRETARIS' && 'Sekretaris Lingkungan'}
+              {userRole === 'SEKRETARIS_PAROKI' && 'Sekretaris Paroki'}
               {userRole === 'PAROKI' && 'Pengawas Paroki'}
             </span>
+            {userRole === 'SEKRETARIS_PAROKI' && (
+              <span className="text-[9px] bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5 shrink-0">
+                <ShieldCheck className="w-2.5 h-2.5" /> Approval
+              </span>
+            )}
             {userRole === 'PAROKI' && (
               <span className="text-[9px] bg-[#F6EFE2] text-[#5A4423] border border-[#A9834F]/30 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5 shrink-0">
                 <Lock className="w-2.5 h-2.5" /> View-Only
@@ -221,6 +257,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {visibleNavItems.map((item) => {
               const isActive = pathname === item.href
               const Icon = item.icon
+              const displayTitle = (userRole === 'SEKRETARIS_PAROKI' && item.href === '/dashboard')
+                ? 'Dashboard Seluruh Lingkungan'
+                : item.title
 
               return (
                 <Link
@@ -234,8 +273,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <div className="flex items-center gap-2.5 truncate">
                     <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#A9834F]' : 'text-[#8A90A3]'}`} />
-                    <span className="truncate font-serif">{item.title}</span>
+                    <span className="truncate font-serif">{displayTitle}</span>
                   </div>
+
+                  {item.href === '/dashboard/approval' && pendingCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-slate-950 font-mono shadow-xs shrink-0">
+                      {pendingCount}
+                    </span>
+                  )}
                 </Link>
               )
             })}

@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState<string | null>(null)
 
   // Quick Selector State
-  const [selectedRole, setSelectedRole] = useState<'SEKRETARIS' | 'BENDAHARA' | 'PAROKI'>('SEKRETARIS')
+  const [selectedRole, setSelectedRole] = useState<'SEKRETARIS' | 'BENDAHARA' | 'PAROKI' | 'SEKRETARIS_PAROKI'>('SEKRETARIS')
   const [selectedLingkunganId, setSelectedLingkunganId] = useState<string>('')
   const [isQuickMode, setIsQuickMode] = useState(false)
 
@@ -40,13 +40,19 @@ export default function LoginPage() {
     }
   }, [])
 
-  const handleApplyQuickAccount = (role: 'SEKRETARIS' | 'BENDAHARA' | 'PAROKI', lId: string) => {
+  const handleApplyQuickAccount = (role: 'SEKRETARIS' | 'BENDAHARA' | 'PAROKI' | 'SEKRETARIS_PAROKI', lId: string) => {
     setSelectedRole(role)
-    if (role === 'PAROKI') {
+    if (role === 'SEKRETARIS_PAROKI') {
+      setUsername('sekretaris_paroki')
+      setPassword('Paroki321')
+      setSelectedLingkunganId('')
+    } else if (role === 'PAROKI') {
       setUsername('paroki')
+      setPassword('Paroki321')
       setSelectedLingkunganId('')
     } else {
       setSelectedLingkunganId(lId)
+      setPassword('Paroki321')
       const found = masterLingkunganList.find(l => l.id === lId)
       const slug = found ? found.slug.replace(/-/g, '') : 'lingkungan'
       setUsername(`${role.toLowerCase()}_${slug}`)
@@ -106,7 +112,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleApplyQuickAccount('SEKRETARIS', selectedLingkunganId || masterLingkunganList[0]?.id || '')}
@@ -116,7 +122,7 @@ export default function LoginPage() {
                           : 'bg-white text-slate-600 border-slate-200'
                       }`}
                     >
-                      Sekretaris
+                      Sekretaris Lingkungan
                     </button>
                     <button
                       type="button"
@@ -127,7 +133,18 @@ export default function LoginPage() {
                           : 'bg-white text-slate-600 border-slate-200'
                       }`}
                     >
-                      Bendahara
+                      Bendahara Lingkungan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyQuickAccount('SEKRETARIS_PAROKI', '')}
+                      className={`p-2 rounded-lg text-center font-bold text-[11px] border transition cursor-pointer ${
+                        selectedRole === 'SEKRETARIS_PAROKI'
+                          ? 'bg-indigo-50 text-indigo-800 border-indigo-400 shadow-2xs font-extrabold'
+                          : 'bg-white text-slate-600 border-slate-200'
+                      }`}
+                    >
+                      🛡️ Sekretaris Paroki
                     </button>
                     <button
                       type="button"
@@ -138,11 +155,11 @@ export default function LoginPage() {
                           : 'bg-white text-slate-600 border-slate-200'
                       }`}
                     >
-                      Paroki
+                      Pengawas Paroki
                     </button>
                   </div>
 
-                  {selectedRole !== 'PAROKI' && (
+                  {selectedRole !== 'PAROKI' && selectedRole !== 'SEKRETARIS_PAROKI' && (
                     <div className="space-y-1">
                       <Label className="text-[11px] text-slate-600 font-semibold">Pilih Lingkungan Anda:</Label>
                       <Select

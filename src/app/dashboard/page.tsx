@@ -23,6 +23,7 @@ import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, ge
 import { reconcileJournals } from '@/lib/journalSync'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
+import { SekretarisParokiDashboard } from '@/components/dashboard/SekretarisParokiDashboard'
 import {
   TrendingUp,
   TrendingDown,
@@ -297,6 +298,11 @@ export default function DashboardOverviewPage() {
           const demoRole = getCookieVal('demo_user_role') || ''
 
           if (
+            demoRole === 'SEKRETARIS_PAROKI' ||
+            ((demoEmail.includes('sekretaris') || demoEmail.includes('sekertaris')) && demoEmail.includes('paroki'))
+          ) {
+            role = 'SEKRETARIS_PAROKI'
+          } else if (
             demoRole === 'SEKRETARIS' || 
             demoEmail.includes('sekretaris') || 
             demoEmail.includes('sekertaris')
@@ -311,13 +317,15 @@ export default function DashboardOverviewPage() {
           currentLId = getCookieVal('demo_user_lingkungan_id')
           currentLNama = getCookieVal('demo_user_lingkungan_nama')
 
+          const isGlobalScope = role === 'PAROKI' || role === 'SEKRETARIS_PAROKI'
+
           setUserProfile({
             id: 'demo-user',
             username: demoEmail || role.toLowerCase(),
             email: demoEmail || `${role.toLowerCase()}@example.com`,
             role: role,
-            lingkungan_id: role === 'PAROKI' ? null : currentLId,
-            lingkungan_nama: role === 'PAROKI' ? undefined : (currentLNama || undefined),
+            lingkungan_id: isGlobalScope ? null : currentLId,
+            lingkungan_nama: isGlobalScope ? undefined : (currentLNama || undefined),
           })
         }
 
@@ -327,8 +335,10 @@ export default function DashboardOverviewPage() {
         } catch (e) {}
         const effectiveEmail = user?.email || rawDemoEmail || ''
         
-        // Strictly match Lingkungan from user email if non-PAROKI
-        if (role !== 'PAROKI' && effectiveEmail) {
+        const isGlobalScope = role === 'PAROKI' || role === 'SEKRETARIS_PAROKI'
+
+        // Strictly match Lingkungan from user email if non-PAROKI / non-SEKRETARIS_PAROKI
+        if (!isGlobalScope && effectiveEmail) {
           const matchedByEmail = findLingkunganByQuery(effectiveEmail)
           if (matchedByEmail) {
             currentLId = matchedByEmail.id
@@ -340,7 +350,7 @@ export default function DashboardOverviewPage() {
 
         // 2. Resolve Target Lingkungan
         let targetLingkunganId: string | null = null
-        if (role !== 'PAROKI' && currentLId) {
+        if (!isGlobalScope && currentLId) {
           targetLingkunganId = currentLId
           if (typeof window !== 'undefined') {
             localStorage.setItem('selected_lingkungan_id', currentLId)
@@ -955,7 +965,14 @@ export default function DashboardOverviewPage() {
   }
 
   // ==========================================
-  // VIEW KHUSUS SEKRETARIS: DASHBOARD DATA UMAT (GAMBAR 1)
+  // VIEW KHUSUS SEKRETARIS PAROKI: DASHBOARD SELURUH LINGKUNGAN
+  // ==========================================
+  if (userRole === 'SEKRETARIS_PAROKI') {
+    return <SekretarisParokiDashboard />
+  }
+
+  // ==========================================
+  // VIEW KHUSUS SEKRETARIS LINGKUNGAN: DASHBOARD DATA UMAT (GAMBAR 1)
   // ==========================================
   if (userRole === 'SEKRETARIS') {
     return (

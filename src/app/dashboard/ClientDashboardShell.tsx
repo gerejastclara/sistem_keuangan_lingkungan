@@ -22,11 +22,11 @@ export function ClientDashboardShell({
   const router = useRouter()
   const supabase = createClient()
   const [userProfile] = useState<UserProfile | null>(initialProfile)
-  const isParoki = userProfile?.role === 'PAROKI'
+  const isParoki = userProfile?.role === 'PAROKI' || userProfile?.role === 'SEKRETARIS_PAROKI'
 
   const [selectedLingkunganId, setSelectedLingkunganId] = useState<string | null>(() => {
-    // If not PAROKI and user has an assigned lingkungan, strictly lock to it!
-    if (initialProfile?.role && initialProfile.role !== 'PAROKI' && initialProfile.lingkungan_id) {
+    // If not PAROKI/SEKRETARIS_PAROKI and user has an assigned lingkungan, strictly lock to it!
+    if (initialProfile?.role && initialProfile.role !== 'PAROKI' && initialProfile.role !== 'SEKRETARIS_PAROKI' && initialProfile.lingkungan_id) {
       if (typeof window !== 'undefined') {
         localStorage.setItem('selected_lingkungan_id', initialProfile.lingkungan_id)
       }

@@ -90,7 +90,7 @@ function renderFormattedText(rawText: string) {
 export default function KriteriaGolonganPage() {
   const [items, setItems] = useState<KriteriaGolonganItem[]>([])
   const [userRole, setUserRole] = useState<UserRole>('SEKRETARIS')
-  const isParoki = userRole === 'PAROKI'
+  const isParoki = userRole === 'PAROKI' || userRole === 'SEKRETARIS_PAROKI'
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDetailPedomanOpen, setIsDetailPedomanOpen] = useState(false)
@@ -142,7 +142,13 @@ export default function KriteriaGolonganPage() {
       }
       const demoRole = getCookieVal('demo_user_role') || ''
       const demoEmail = getCookieVal('demo_user_email') || getCookieVal('demo_user_username') || ''
-      if (demoRole === 'PAROKI' || demoEmail.includes('paroki')) {
+
+      if (
+        demoRole === 'SEKRETARIS_PAROKI' ||
+        ((demoEmail.includes('sekretaris') || demoEmail.includes('sekertaris')) && demoEmail.includes('paroki'))
+      ) {
+        setUserRole('SEKRETARIS_PAROKI')
+      } else if (demoRole === 'PAROKI' || demoEmail.includes('paroki')) {
         setUserRole('PAROKI')
       } else if (demoRole === 'BENDAHARA' || demoEmail.includes('bendahara')) {
         setUserRole('BENDAHARA')

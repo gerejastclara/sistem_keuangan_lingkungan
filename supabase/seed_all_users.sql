@@ -26,9 +26,12 @@ DELETE FROM public.users;
 -- 4. Pasang index unik pada username agar tidak ada duplikasi
 CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON public.users(username);
 
--- 5. Masukkan akun Pengurus Paroki
+-- 5. Masukkan akun Pengurus Paroki & Sekretaris Paroki
 INSERT INTO public.users (id, username, password, role, lingkungan_id)
-VALUES (gen_random_uuid(), 'paroki', 'Paroki321', 'PAROKI', NULL)
+VALUES 
+  (gen_random_uuid(), 'paroki', 'Paroki321', 'PAROKI', NULL),
+  (gen_random_uuid(), 'sekretaris_paroki', 'Paroki321', 'SEKRETARIS_PAROKI', NULL),
+  (gen_random_uuid(), 'sekertaris_paroki', 'Paroki321', 'SEKRETARIS_PAROKI', NULL)
 ON CONFLICT (username) DO NOTHING;
 
 -- 6. Masukkan akun Sekretaris dan Bendahara untuk seluruh 69 Lingkungan

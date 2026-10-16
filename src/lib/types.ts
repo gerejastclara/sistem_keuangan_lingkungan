@@ -1,4 +1,4 @@
-export type UserRole = 'BENDAHARA' | 'SEKRETARIS' | 'PAROKI';
+export type UserRole = 'BENDAHARA' | 'SEKRETARIS' | 'PAROKI' | 'SEKRETARIS_PAROKI';
 
 export interface UserProfile {
   id: string;

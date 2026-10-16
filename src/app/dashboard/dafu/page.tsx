@@ -22,6 +22,7 @@ import {
 } from '@/lib/dummyData'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { getKriteriaGolonganList, KriteriaGolonganItem } from '@/lib/kriteriaGolonganData'
+import { createDafuApproval } from '@/lib/dafuApproval'
 import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -787,10 +788,36 @@ function DafuFormContent() {
         window.dispatchEvent(new Event('dafuDataUpdated'))
         window.dispatchEvent(new Event('storage'))
       }
+
+      // Kirim permohonan approval DAFU ke Sekretaris Paroki
+      try {
+        const approvalAction = editingKk ? 'UBAH_KK' : 'TAMBAH_KK'
+        createDafuApproval({
+          lingkungan_id: lingkunganId,
+          nama_lingkungan: lingkunganName || 'Lingkungan',
+          kk_id: savedKkId,
+          action_type: approvalAction,
+          nama_kk: formNama.trim(),
+          alamat: formAlamat.trim() || null,
+          is_biduk: formIsBiduk,
+          golongan: formGolongan,
+          kriteria_catatan: formKriteriaCatatan.trim() || null,
+          anggota_keluarga: validMembers.map(m => ({
+            id: m.id,
+            nama: m.nama,
+            peran: m.peran,
+            is_kaj: m.is_kaj,
+            keterangan: m.keterangan || undefined
+          })),
+          submitted_by: userProfile?.username || `sekretaris_${(lingkunganName || 'lingkungan').toLowerCase().replace(/[^a-z0-9]/g, '')}`
+        })
+      } catch (err) {
+        console.warn('Failed to record dafu approval:', err)
+      }
     }
 
     setSubmitting(false)
-    setSuccessMessage(`Data keluarga "${formNama.trim()}" berhasil disimpan ke sistem!`)
+    setSuccessMessage(`Data keluarga "${formNama.trim()}" berhasil disimpan & notifikasi pengajuan telah dikirim ke Sekretaris Paroki untuk approval!`)
     setEditingKk(null)
     setFormNama('')
     setFormAlamat('')

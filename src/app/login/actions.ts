@@ -20,8 +20,13 @@ export async function login(formData: FormData) {
   const normalizedUsername = cleanUsername.replace(/^seke?retaris/i, 'sekretaris')
   const altUsername = cleanUsername.replace(/^seke?retaris/i, 'sekertaris')
 
-  let role: 'BENDAHARA' | 'SEKRETARIS' | 'PAROKI' = 'BENDAHARA'
+  let role: 'BENDAHARA' | 'SEKRETARIS' | 'PAROKI' | 'SEKRETARIS_PAROKI' = 'BENDAHARA'
   if (
+    (cleanUsername.includes('sekretaris') || cleanUsername.includes('sekertaris')) &&
+    cleanUsername.includes('paroki')
+  ) {
+    role = 'SEKRETARIS_PAROKI'
+  } else if (
     cleanUsername.includes('sekretaris') || 
     cleanUsername.includes('sekertaris') || 
     cleanUsername.startsWith('sek')
@@ -74,7 +79,7 @@ export async function login(formData: FormData) {
     let fallbackLingkunganId: string | null = null
     let fallbackLingkunganNama: string | null = null
 
-    if (role !== 'PAROKI') {
+    if (role !== 'PAROKI' && role !== 'SEKRETARIS_PAROKI') {
       const matched = findLingkunganByQuery(normalizedUsername) || findLingkunganByQuery(cleanUsername)
       if (matched) {
         fallbackLingkunganId = matched.id

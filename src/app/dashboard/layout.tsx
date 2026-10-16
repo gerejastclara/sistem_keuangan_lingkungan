@@ -36,7 +36,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const sessionRoleCookie = cookieStore.get('demo_user_role')?.value as any
   let sessionRole: any = sessionRoleCookie
 
-  if (sessionUsername?.includes('sekretaris') || sessionUsername?.includes('sekertaris')) {
+  if (
+    (sessionUsername?.includes('sekretaris') || sessionUsername?.includes('sekertaris')) &&
+    sessionUsername?.includes('paroki')
+  ) {
+    sessionRole = 'SEKRETARIS_PAROKI'
+  } else if (sessionUsername?.includes('sekretaris') || sessionUsername?.includes('sekertaris')) {
     sessionRole = 'SEKRETARIS'
   } else if (sessionUsername?.includes('paroki')) {
     sessionRole = 'PAROKI'
@@ -52,16 +57,18 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     redirect('/login')
   }
 
+  const isGlobalScope = sessionRole === 'PAROKI' || sessionRole === 'SEKRETARIS_PAROKI'
+
   profile = {
     id: sessionUserId,
     username: sessionUsername,
     role: sessionRole,
-    lingkungan_id: sessionRole === 'PAROKI' ? null : sessionLingkunganId,
-    lingkungan_nama: sessionRole === 'PAROKI' ? undefined : (sessionLingkunganNama || undefined),
+    lingkungan_id: isGlobalScope ? null : sessionLingkunganId,
+    lingkungan_nama: isGlobalScope ? undefined : (sessionLingkunganNama || undefined),
   }
 
   // Pastikan nama lingkungan dan id lingkungan sinkron dengan database
-  if (profile && profile.role !== 'PAROKI') {
+  if (profile && !isGlobalScope) {
     const isDbUuid = profile.lingkungan_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profile.lingkungan_id)
     if (!isDbUuid || !profile.lingkungan_nama) {
       const { findLingkunganByQuery } = await import('@/lib/constants')
