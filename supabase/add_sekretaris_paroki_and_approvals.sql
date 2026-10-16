@@ -3,14 +3,29 @@
 -- Paroki Santa Clara - Bekasi Utara
 -- ==============================================================================
 
--- 1. Tambah Akun Sekretaris Paroki ke tabel public.users
+-- 1. Perbarui batasan role pada tabel public.users agar menerima role SEKRETARIS_PAROKI
+ALTER TABLE public.users ALTER COLUMN role TYPE VARCHAR(50);
+ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE public.users ADD CONSTRAINT users_role_check 
+  CHECK (role IN ('BENDAHARA', 'SEKRETARIS', 'PAROKI', 'SEKRETARIS_PAROKI'));
+
+-- Pastikan indeks unik pada username tersedia
+CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON public.users(username);
+
+-- 2. Tambah / Perbarui Akun Sekretaris Paroki ke tabel public.users
 INSERT INTO public.users (id, username, password, role, lingkungan_id)
 VALUES 
-  (gen_random_uuid(), 'sekretaris_paroki', 'Paroki321', 'SEKRETARIS_PAROKI', NULL),
-  (gen_random_uuid(), 'sekertaris_paroki', 'Paroki321', 'SEKRETARIS_PAROKI', NULL)
-ON CONFLICT (username) DO NOTHING;
+  (gen_random_uuid(), 'sekretaris_paroki', 'Paroki321', 'SEKRETARIS_PAROKI', NULL)
+ON CONFLICT (username) DO UPDATE 
+  SET role = 'SEKRETARIS_PAROKI', password = 'Paroki321';
 
--- 2. Buat Tabel DAFU Approvals untuk mencatat riwayat dan status persetujuan
+INSERT INTO public.users (id, username, password, role, lingkungan_id)
+VALUES 
+  (gen_random_uuid(), 'sekertaris_paroki', 'Paroki321', 'SEKRETARIS_PAROKI', NULL)
+ON CONFLICT (username) DO UPDATE 
+  SET role = 'SEKRETARIS_PAROKI', password = 'Paroki321';
+
+-- 3. Buat Tabel DAFU Approvals untuk mencatat riwayat dan status persetujuan
 CREATE TABLE IF NOT EXISTS public.dafu_approvals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lingkungan_id TEXT,
@@ -32,7 +47,7 @@ CREATE TABLE IF NOT EXISTS public.dafu_approvals (
   is_read BOOLEAN DEFAULT false
 );
 
--- 3. Buka izin akses RLS agar dapat dibaca & diupdate oleh Sekretaris Paroki & Sekretaris Lingkungan
+-- 4. Buka izin akses RLS agar dapat dibaca & diupdate oleh Sekretaris Paroki & Sekretaris Lingkungan
 ALTER TABLE public.dafu_approvals ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Enable all access for DAFU_APPROVALS" ON public.dafu_approvals;
@@ -41,7 +56,7 @@ CREATE POLICY "Enable all access for DAFU_APPROVALS" ON public.dafu_approvals
   USING (true)
   WITH CHECK (true);
 
--- 4. Masukkan Seed Data Awal untuk simulasi approval langsung
+-- 5. Masukkan Seed Data Awal untuk simulasi approval langsung
 INSERT INTO public.dafu_approvals (
   lingkungan_id, nama_lingkungan, action_type, nama_kk, alamat, is_biduk, golongan, kriteria_catatan, anggota_keluarga, status, submitted_by
 )
