@@ -140,10 +140,13 @@ export default function DafuApprovalPage() {
     })
   }
 
+  const [selectedGolonganMap, setSelectedGolonganMap] = useState<Record<string, any>>({})
+
   const handleApprove = (item: DafuApprovalItem) => {
-    const ok = approveDafuItem(item.id, 'Sekretaris Paroki')
+    const verifiedGolongan = selectedGolonganMap[item.id] || item.golongan
+    const ok = approveDafuItem(item.id, 'Sekretaris Paroki', verifiedGolongan)
     if (ok) {
-      setActionSuccessMsg(`Permohonan "${item.nama_kk}" dari ${item.nama_lingkungan} telah BERHASIL DISETUJUI! Data kini aktif di sistem.`)
+      setActionSuccessMsg(`Permohonan "${item.nama_kk}" dari ${item.nama_lingkungan} telah BERHASIL DISETUJUI dengan Status Golongan "${verifiedGolongan}"! Data kini aktif di sistem.`)
       loadData()
       setTimeout(() => setActionSuccessMsg(null), 4000)
     }
@@ -450,17 +453,41 @@ export default function DafuApprovalPage() {
                       </div>
                     </div>
 
-                    {/* Col 2: Golongan & Kriteria Catatan */}
-                    <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-1 text-xs">
-                      <div className="flex items-center justify-between">
+                    {/* Col 2: Golongan & Kriteria Catatan (Bisa Disesuaikan Oleh Sekretaris Paroki) */}
+                    <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-1.5 text-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                         <span className="text-[11px] text-slate-500 font-semibold uppercase">Golongan Keluarga:</span>
-                        <span className="px-2 py-0.5 rounded font-medium text-[11px] bg-slate-200/80 text-slate-800 border border-slate-300/60">
-                          {item.golongan}
-                        </span>
+                        {isPending ? (
+                          <Select
+                            value={selectedGolonganMap[item.id] || item.golongan}
+                            onValueChange={(val) => {
+                              setSelectedGolonganMap(prev => ({ ...prev, [item.id]: val }))
+                            }}
+                          >
+                            <SelectTrigger className="h-7 text-[11px] font-semibold bg-white border-slate-300 rounded-lg w-full sm:w-44 text-slate-900 shadow-2xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-slate-200 text-xs">
+                              <SelectItem value="Sejahtera">🟢 Sejahtera</SelectItem>
+                              <SelectItem value="Terduga Prasejahtera">🟡 Terduga Prasejahtera</SelectItem>
+                              <SelectItem value="Rentan Tidak Mampu">🔴 Rentan Tidak Mampu</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded font-medium text-[11px] bg-slate-200/80 text-slate-800 border border-slate-300/60">
+                            {item.golongan}
+                          </span>
+                        )}
                       </div>
+                      {isPending && (
+                        <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-[#A9834F]" />
+                          <span>Status golongan dapat disesuaikan langsung oleh Sekretaris Paroki</span>
+                        </div>
+                      )}
                       {item.kriteria_catatan && (
                         <p className="text-[11px] text-slate-600 italic leading-relaxed pt-1 border-t border-slate-200/60 mt-1">
-                          &ldquo;{item.kriteria_catatan}&rdquo;
+                          Usulan Catatan: &ldquo;{item.kriteria_catatan}&rdquo;
                         </p>
                       )}
                     </div>

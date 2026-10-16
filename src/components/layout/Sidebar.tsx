@@ -66,6 +66,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: ShieldCheck,
       roles: ['SEKRETARIS_PAROKI'],
     },
+    {
+      title: 'Matching Data Excel',
+      href: '/dashboard/matching-excel',
+      icon: FileSpreadsheet,
+      roles: ['SEKRETARIS_PAROKI'],
+    },
     // Modul Monitoring Khusus Paroki
     {
       title: 'Sekretariat Paroki (Pengurus & DAFU)',
@@ -151,6 +157,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return (
         item.href === '/dashboard' ||
         item.href === '/dashboard/approval' ||
+        item.href === '/dashboard/matching-excel' ||
         item.href === '/dashboard/kriteria-golongan'
       )
     }
@@ -180,7 +187,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         item.href !== '/dashboard/form-standar' &&
         item.href !== '/dashboard/coa-saldo' &&
         item.href !== '/dashboard/dafu' &&
-        item.href !== '/dashboard/approval'
+        item.href !== '/dashboard/approval' &&
+        item.href !== '/dashboard/matching-excel'
       )
     }
     return true

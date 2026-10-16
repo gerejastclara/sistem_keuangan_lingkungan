@@ -148,7 +148,12 @@ export function createDafuApproval(payload: {
   return newItem
 }
 
-export function approveDafuItem(id: string, reviewedBy: string = 'Sekretaris Paroki'): boolean {
+export function approveDafuItem(
+  id: string,
+  reviewedBy: string = 'Sekretaris Paroki',
+  adjustedGolongan?: KategoriGolongan,
+  adjustedCatatan?: string
+): boolean {
   const current = getDafuApprovals()
   let found = false
 
@@ -158,6 +163,8 @@ export function approveDafuItem(id: string, reviewedBy: string = 'Sekretaris Par
       return {
         ...item,
         status: 'APPROVED' as const,
+        golongan: adjustedGolongan || item.golongan,
+        kriteria_catatan: adjustedCatatan !== undefined ? adjustedCatatan : item.kriteria_catatan,
         reviewed_by: reviewedBy,
         reviewed_at: new Date().toISOString(),
         is_read: true

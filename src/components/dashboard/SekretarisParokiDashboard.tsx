@@ -18,14 +18,30 @@ import {
   Sparkles,
   ChevronRight,
   Layers,
-  HeartHandshake
+  HeartHandshake,
+  FileSpreadsheet
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { getAllMasterLingkungan, formatNamaLingkungan, getWilayahForLingkungan } from '@/lib/constants'
 import { getDafuApprovals, DafuApprovalItem } from '@/lib/dafuApproval'
-import { ensureDummyKksForLingkungan, getDummyAnggotaForKk, santaClaraStats } from '@/lib/dummyData'
+import { ensureDummyKksForLingkungan, getDummyAnggotaForKk, getDummyGolonganForKk, santaClaraStats } from '@/lib/dummyData'
 
 export function SekretarisParokiDashboard() {
   const [approvals, setApprovals] = useState<DafuApprovalItem[]>([])
@@ -51,6 +67,89 @@ export function SekretarisParokiDashboard() {
 
   const loadApprovals = () => {
     setApprovals(getDafuApprovals())
+  }
+
+  // Update Status Golongan Modal State (Khusus Sekretaris Paroki)
+  const [isUpdateGolonganOpen, setIsUpdateGolonganOpen] = useState(false)
+  const [golonganKkSearch, setGolonganKkSearch] = useState('')
+  const [selectedKkForGolongan, setSelectedKkForGolongan] = useState<any | null>(null)
+  const [targetGolongan, setTargetGolongan] = useState<string>('Sejahtera')
+  const [golonganCatatan, setGolonganCatatan] = useState<string>('')
+  const [golonganUpdateSuccess, setGolonganUpdateSuccess] = useState<string | null>(null)
+
+  // Pre-load all 2.884 KKs for quick search & update
+  const allParishKks = useMemo(() => {
+    const list: Array<{
+      id: string
+      nama_kk: string
+      alamat?: string
+      lingkunganId: string
+      lingkunganNama: string
+      golongan: string
+    }> = []
+
+    masterList.forEach((ling) => {
+      const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [])
+      kks.forEach((k) => {
+        let currentGol = 'Sejahtera'
+        try {
+          const rawStore = localStorage.getItem('custom_golongan_all_store')
+          if (rawStore) {
+            const s = JSON.parse(rawStore)
+            if (s[k.id]?.golongan) currentGol = s[k.id].golongan
+          }
+        } catch (e) {}
+        if (currentGol === 'Sejahtera') {
+          const defaultG = getDummyGolonganForKk(k)
+          currentGol = defaultG.golongan
+        }
+
+        list.push({
+          id: k.id,
+          nama_kk: k.nama_kk,
+          alamat: k.alamat || undefined,
+          lingkunganId: ling.id,
+          lingkunganNama: ling.nama_lingkungan,
+          golongan: currentGol,
+        })
+      })
+    })
+
+    return list
+  }, [masterList])
+
+  const filteredKksForGolongan = useMemo(() => {
+    const q = golonganKkSearch.toLowerCase().trim()
+    if (!q) return allParishKks.slice(0, 8)
+    return allParishKks
+      .filter((k) => k.nama_kk.toLowerCase().includes(q) || k.lingkunganNama.toLowerCase().includes(q))
+      .slice(0, 15)
+  }, [allParishKks, golonganKkSearch])
+
+  const handleSaveGolonganUpdate = () => {
+    if (!selectedKkForGolongan) return
+    try {
+      const rawG = localStorage.getItem('custom_golongan_all_store')
+      const store = rawG ? JSON.parse(rawG) : {}
+      store[selectedKkForGolongan.id] = {
+        id: `gol-${Date.now()}`,
+        kk_id: selectedKkForGolongan.id,
+        lingkungan_id: selectedKkForGolongan.lingkunganId,
+        golongan: targetGolongan,
+        kriteria_catatan: golonganCatatan.trim() || 'Ditetapkan & Diperbarui oleh Sekretaris Paroki',
+        updated_by_role: 'SEKRETARIS_PAROKI',
+        updated_at: new Date().toISOString(),
+      }
+      localStorage.setItem('custom_golongan_all_store', JSON.stringify(store))
+      window.dispatchEvent(new Event('storage'))
+      window.dispatchEvent(new Event('dafuApprovalUpdated'))
+      setGolonganUpdateSuccess(`Status Golongan "${selectedKkForGolongan.nama_kk}" (${selectedKkForGolongan.lingkunganNama}) berhasil diperbarui menjadi "${targetGolongan}" oleh Sekretaris Paroki!`)
+      setTimeout(() => setGolonganUpdateSuccess(null), 4000)
+      setIsUpdateGolonganOpen(false)
+      setSelectedKkForGolongan(null)
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   useEffect(() => {
@@ -117,7 +216,17 @@ export function SekretarisParokiDashboard() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Link href="/dashboard/matching-excel">
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white hover:bg-slate-50 text-slate-700 border-slate-300 text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-[#A9834F]" />
+                <span>Matching Data Excel</span>
+              </Button>
+            </Link>
             <Link href="/dashboard/approval">
               <Button
                 size="sm"
@@ -224,21 +333,35 @@ export function SekretarisParokiDashboard() {
 
       {/* Golongan Summary Overview Cards */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2 font-serif">
               <SlidersHorizontal className="w-4 h-4 text-[#A9834F]" />
               Distribusi Kategori Golongan Umat (Seluruh Paroki)
             </h3>
             <p className="text-xs text-slate-500">
-              Klasifikasi kondisi sosial ekonomi keluarga berbasis pedoman DUPRAS KAJ.
+              Klasifikasi kondisi sosial ekonomi keluarga berbasis pedoman DUPRAS KAJ (Kewenangan penetapan & update: Sekretaris Paroki).
             </p>
           </div>
-          <Link href="/dashboard/kriteria-golongan">
-            <span className="text-xs text-[#A9834F] font-bold hover:underline flex items-center gap-1 cursor-pointer">
-              Atur Kriteria →
-            </span>
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              onClick={() => setIsUpdateGolonganOpen(true)}
+              className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Update Status Golongan KK</span>
+            </Button>
+            <Link href="/dashboard/kriteria-golongan">
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white hover:bg-slate-50 text-slate-700 border-slate-300 text-xs rounded-xl font-semibold flex items-center gap-1 cursor-pointer shadow-2xs"
+              >
+                <span>Atur Kriteria →</span>
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -386,6 +509,131 @@ export function SekretarisParokiDashboard() {
           </table>
         </div>
       </div>
+
+      {/* Dialog Modal Pembaruan Status Golongan Umat (Khusus Sekretaris Paroki) */}
+      <Dialog open={isUpdateGolonganOpen} onOpenChange={(open) => !open && setIsUpdateGolonganOpen(false)}>
+        <DialogContent className="sm:max-w-xl bg-white text-slate-900 border-slate-200 rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2 font-serif">
+              <ShieldCheck className="w-5 h-5 text-[#A9834F]" />
+              Pembaruan Status Golongan Umat (DUPRAS)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Sebagai Sekretaris Paroki, Anda berwenang menetapkan dan memperbarui status golongan keluarga dari seluruh 69 Lingkungan Paroki St. Clara.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            {/* Step 1: Search & Pick KK */}
+            <div className="space-y-1.5">
+              <label className="font-semibold text-slate-700">1. Cari Nama Kepala Keluarga atau Lingkungan:</label>
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input
+                  type="text"
+                  placeholder="Ketik nama keluarga (misal: FX Sudirman, Antonius...)"
+                  value={golonganKkSearch}
+                  onChange={(e) => setGolonganKkSearch(e.target.value)}
+                  className="pl-8 pr-3 h-9 text-xs rounded-xl bg-slate-50 border-slate-300 text-slate-900"
+                />
+              </div>
+
+              {/* Suggestions List */}
+              <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-slate-50/50">
+                {filteredKksForGolongan.map((kk) => {
+                  const isSelected = selectedKkForGolongan?.id === kk.id
+                  return (
+                    <div
+                      key={kk.id}
+                      onClick={() => {
+                        setSelectedKkForGolongan(kk)
+                        setTargetGolongan(kk.golongan)
+                      }}
+                      className={`p-2.5 flex items-center justify-between cursor-pointer transition ${
+                        isSelected ? 'bg-[#16233F] text-white' : 'hover:bg-slate-100/80 text-slate-800'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-bold text-xs">{kk.nama_kk}</div>
+                        <div className={`text-[10px] ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                          {kk.lingkunganNama} • {kk.alamat || 'Alamat terdaftar'}
+                        </div>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-semibold border ${
+                        isSelected ? 'bg-white/10 text-white border-white/20' : 'bg-slate-100 text-slate-700 border-slate-200'
+                      }`}>
+                        {kk.golongan}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Step 2: Selected Family & Target Golongan */}
+            {selectedKkForGolongan ? (
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-[#F8F9FA] space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 text-slate-700">
+                  <span className="font-semibold">Keluarga Terpilih:</span>
+                  <span className="font-bold text-slate-900">{selectedKkForGolongan.nama_kk}</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-slate-700">Status Golongan Baru *</label>
+                    <Select value={targetGolongan} onValueChange={(val: any) => setTargetGolongan(val || 'Sejahtera')}>
+                      <SelectTrigger className="h-9 bg-white border-slate-300 text-xs rounded-xl font-semibold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border-slate-200 text-xs">
+                        <SelectItem value="Sejahtera">🟢 Keluarga Sejahtera</SelectItem>
+                        <SelectItem value="Terduga Prasejahtera">🟡 Terduga Prasejahtera</SelectItem>
+                        <SelectItem value="Rentan Tidak Mampu">🔴 Rentan Tidak Mampu</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-semibold text-slate-700">Catatan Verifikasi Paroki</label>
+                    <Input
+                      type="text"
+                      placeholder="Alasan penyesuaian (misal: hasil verifikasi DUPRAS)"
+                      value={golonganCatatan}
+                      onChange={(e) => setGolonganCatatan(e.target.value)}
+                      className="h-9 bg-white border-slate-300 text-xs rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-center italic text-xs">
+                Pilih salah satu keluarga dari daftar di atas untuk memperbarui status golongannya.
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsUpdateGolonganOpen(false)}
+              className="text-xs font-medium text-slate-700 border-slate-300 rounded-xl"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!selectedKkForGolongan}
+              onClick={handleSaveGolonganUpdate}
+              className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white font-semibold text-xs rounded-xl shadow-2xs"
+            >
+              Simpan Pembaruan Status Golongan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

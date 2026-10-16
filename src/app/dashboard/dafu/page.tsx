@@ -117,6 +117,7 @@ function DafuFormContent() {
   const editParamId = searchParams.get('edit')
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [userRole, setUserRole] = useState<string>('SEKRETARIS')
   const [loading, setLoading] = useState(true)
   const [lingkunganId, setLingkunganId] = useState<string | null>(null)
   const [lingkunganName, setLingkunganName] = useState<string>('')
@@ -164,8 +165,25 @@ function DafuFormContent() {
   const [kriteriaList, setKriteriaList] = useState<KriteriaGolonganItem[]>(() => getKriteriaGolonganList())
   const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null)
 
-  // Sinkronisasi data kriteria golongan secara real-time dari modul kriteria
+  // Sinkronisasi data kriteria golongan secara real-time dari modul kriteria & deteksi user role
   useEffect(() => {
+    const cookies = typeof document !== 'undefined' ? document.cookie : ''
+    const getCookieVal = (name: string) => {
+      const v = `; ${cookies}`
+      const p = v.split(`; ${name}=`)
+      if (p.length === 2) return decodeURIComponent(p.pop()!.split(';').shift()!)
+      return null
+    }
+    const demoRole = getCookieVal('demo_user_role') || ''
+    const demoEmail = getCookieVal('demo_user_email') || getCookieVal('demo_user_username') || ''
+    if (demoRole === 'SEKRETARIS_PAROKI' || (demoEmail.includes('sekretaris') && demoEmail.includes('paroki'))) {
+      setUserRole('SEKRETARIS_PAROKI')
+    } else if (demoRole === 'PAROKI' || demoEmail.includes('paroki')) {
+      setUserRole('PAROKI')
+    } else {
+      setUserRole('SEKRETARIS')
+    }
+
     const handleUpdate = () => {
       setKriteriaList(getKriteriaGolonganList())
     }
@@ -874,8 +892,7 @@ function DafuFormContent() {
     })
   }
 
-  const userRole = userProfile?.role || 'SEKRETARIS'
-  const canEdit = userRole === 'SEKRETARIS'
+  const canEdit = userRole === 'SEKRETARIS' || userRole === 'SEKRETARIS_PAROKI'
 
   if (loading) {
     return (
@@ -1057,22 +1074,45 @@ function DafuFormContent() {
             <div className="bg-slate-50/70 p-5 rounded-xl border border-slate-200 space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2 font-serif">
-                  <Sparkles className="w-4 h-4 text-emerald-600" />
-                  2. KLASIFIKASI GOLONGAN (DITENTUKAN SEKRETARIS)
+                  <Sparkles className="w-4 h-4 text-[#A9834F]" />
+                  2. STATUS GOLONGAN KELUARGA (DIUPDATE OLEH SEKRETARIS PAROKI)
                 </div>
                 <Link
                   href="/dashboard/kriteria-golongan"
-                  className="text-[11px] text-emerald-700 hover:text-emerald-800 font-semibold underline underline-offset-2 flex items-center gap-1"
+                  className="text-[11px] text-[#A9834F] hover:underline font-semibold flex items-center gap-1"
                 >
-                  {userProfile?.role === 'PAROKI' ? 'Kelola Parameter Kriteria Golongan →' : 'Lihat Parameter Kriteria Golongan →'}
+                  Lihat Parameter Kriteria Golongan →
                 </Link>
               </div>
 
+              {userRole !== 'SEKRETARIS_PAROKI' && (
+                <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs flex items-center gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-[#A9834F] shrink-0" />
+                  <span>
+                    <strong>Wewenang Paroki:</strong> Penetapan dan pembaruan Status Golongan (DUPRAS) merupakan kewenangan <strong>Sekretaris Paroki</strong>. Sekretaris Lingkungan mencantumkan usulan catatan kondisi keluarga untuk ditinjau oleh Paroki.
+                  </span>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="golongan" className="text-xs font-semibold text-slate-700">Pilih Golongan Keluarga *</Label>
-                  <Select value={formGolongan} onValueChange={(val) => setFormGolongan(val as KategoriGolongan)}>
-                    <SelectTrigger id="golongan" className="bg-white border-slate-300 text-slate-900 rounded-xl focus:ring-emerald-500 h-11 font-bold text-sm">
+                  <Label htmlFor="golongan" className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span>Status Golongan Keluarga *</span>
+                    {userRole !== 'SEKRETARIS_PAROKI' && (
+                      <span className="text-[10px] font-normal text-slate-500">(Terkunci untuk verifikasi Paroki)</span>
+                    )}
+                  </Label>
+                  <Select
+                    value={formGolongan}
+                    onValueChange={(val) => setFormGolongan(val as KategoriGolongan)}
+                    disabled={userRole !== 'SEKRETARIS_PAROKI'}
+                  >
+                    <SelectTrigger
+                      id="golongan"
+                      className={`bg-white border-slate-300 text-slate-900 rounded-xl h-11 font-bold text-sm ${
+                        userRole !== 'SEKRETARIS_PAROKI' ? 'opacity-85 cursor-not-allowed bg-slate-100 text-slate-600' : 'focus:ring-slate-400'
+                      }`}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 text-slate-900 min-w-[340px] sm:min-w-[440px] shadow-lg rounded-xl p-1.5 z-50">
@@ -1093,7 +1133,7 @@ function DafuFormContent() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="kriteria" className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                    <span>Catatan Kriteria / Alasan Golongan <span className="text-rose-500 font-bold">* (Wajib Diisi)</span></span>
+                    <span>Catatan Kriteria / Kondisi Keluarga <span className="text-rose-500 font-bold">* (Wajib Diisi)</span></span>
                   </Label>
                   <Input
                     id="kriteria"
@@ -1104,7 +1144,7 @@ function DafuFormContent() {
                     }}
                     placeholder="Contoh: Pekerja harian, lansia / Karyawan swasta tetap"
                     required
-                    className={`bg-white text-slate-900 rounded-xl focus:ring-emerald-500 h-11 text-sm ${
+                    className={`bg-white text-slate-900 rounded-xl focus:ring-slate-400 h-11 text-sm ${
                       !formKriteriaCatatan.trim() ? 'border-amber-300 focus:border-rose-500' : 'border-slate-300'
                     }`}
                   />
