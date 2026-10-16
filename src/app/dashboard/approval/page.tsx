@@ -223,111 +223,111 @@ export default function DafuApprovalPage() {
         </div>
       </div>
 
-      {/* Action Success Alert */}
+      {/* Action Success Alert - Soft Neutral */}
       {actionSuccessMsg && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center justify-between gap-3 animate-fadeIn shadow-xs">
+        <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 text-slate-800 text-xs font-semibold flex items-center justify-between gap-3 animate-fadeIn shadow-2xs">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-[#A9834F] shrink-0" />
             <span>{actionSuccessMsg}</span>
           </div>
           <button
             onClick={() => setActionSuccessMsg(null)}
-            className="text-emerald-700 hover:text-emerald-900 font-bold cursor-pointer"
+            className="text-slate-500 hover:text-slate-800 font-bold cursor-pointer"
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* Top Metric Cards */}
+      {/* Top Metric Cards - Soft Grey & Uniform Neutral Styling */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Total Pengajuan */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-2">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-1.5">
           <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
             <span>Total Pengajuan</span>
             <Users className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="text-2xl font-black text-slate-900">{approvals.length}</div>
-          <p className="text-[11px] text-slate-400">Seluruh permohonan DAFU yang tercatat</p>
+          <div className="text-2xl font-bold text-slate-900">{approvals.length}</div>
+          <p className="text-[11px] text-slate-500">Seluruh permohonan DAFU tercatat</p>
         </div>
 
         {/* Metric 2: Menunggu Persetujuan */}
-        <div className="bg-amber-50/70 rounded-2xl border border-amber-200 p-4 sm:p-5 shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-amber-800 text-xs font-bold">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-1.5">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
             <span>Menunggu Approval</span>
-            <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+            <Clock className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="text-2xl font-black text-amber-900">{pendingList.length}</div>
-          <p className="text-[11px] text-amber-700 font-medium">Butuh review & konfirmasi Paroki</p>
+          <div className="text-2xl font-bold text-slate-900">{pendingList.length}</div>
+          <p className="text-[11px] text-slate-500">Butuh review & konfirmasi Paroki</p>
         </div>
 
         {/* Metric 3: Disetujui */}
-        <div className="bg-emerald-50/70 rounded-2xl border border-emerald-200 p-4 sm:p-5 shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-emerald-800 text-xs font-bold">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-1.5">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
             <span>Telah Disetujui</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <CheckCircle2 className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="text-2xl font-black text-emerald-900">{approvedList.length}</div>
-          <p className="text-[11px] text-emerald-700 font-medium">Data aktif tersimpan di database</p>
+          <div className="text-2xl font-bold text-slate-900">{approvedList.length}</div>
+          <p className="text-[11px] text-slate-500">Data aktif tersimpan di database</p>
         </div>
 
         {/* Metric 4: Ditolak */}
-        <div className="bg-rose-50/70 rounded-2xl border border-rose-200 p-4 sm:p-5 shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-rose-800 text-xs font-bold">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-1.5">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
             <span>Ditolak / Koreksi</span>
-            <XCircle className="w-4 h-4 text-rose-600" />
+            <XCircle className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="text-2xl font-black text-rose-900">{rejectedList.length}</div>
-          <p className="text-[11px] text-rose-700 font-medium">Membutuhkan perbaikan data</p>
+          <div className="text-2xl font-bold text-slate-900">{rejectedList.length}</div>
+          <p className="text-[11px] text-slate-500">Membutuhkan perbaikan data</p>
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
+      {/* Filter & Search Bar - Soft Segmented Palette */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Status Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
             <button
               onClick={() => setStatusFilter('ALL')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer shrink-0 ${
                 statusFilter === 'ALL'
-                  ? 'bg-[#16233F] text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-[#16233F] text-white shadow-2xs font-semibold'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
               }`}
             >
               Semua ({approvals.length})
             </button>
             <button
               onClick={() => setStatusFilter('PENDING')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
                 statusFilter === 'PENDING'
-                  ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
-                  : 'bg-amber-100/70 text-amber-800 hover:bg-amber-200/80'
+                  ? 'bg-[#16233F] text-white shadow-2xs font-semibold'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
               }`}
             >
-              <Clock className="w-3.5 h-3.5" />
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
               Menunggu Approval ({pendingList.length})
             </button>
             <button
               onClick={() => setStatusFilter('APPROVED')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
                 statusFilter === 'APPROVED'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-emerald-100/70 text-emerald-800 hover:bg-emerald-200/80'
+                  ? 'bg-[#16233F] text-white shadow-2xs font-semibold'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
               }`}
             >
-              <CheckCircle2 className="w-3.5 h-3.5" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
               Disetujui ({approvedList.length})
             </button>
             <button
               onClick={() => setStatusFilter('REJECTED')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
                 statusFilter === 'REJECTED'
-                  ? 'bg-rose-600 text-white shadow-xs'
-                  : 'bg-rose-100/70 text-rose-800 hover:bg-rose-200/80'
+                  ? 'bg-[#16233F] text-white shadow-2xs font-semibold'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
               }`}
             >
-              <XCircle className="w-3.5 h-3.5" />
+              <XCircle className="w-3.5 h-3.5 text-slate-400" />
               Ditolak ({rejectedList.length})
             </button>
           </div>
@@ -386,50 +386,32 @@ export default function DafuApprovalPage() {
             return (
               <div
                 key={item.id}
-                className={`bg-white rounded-2xl border transition-all duration-200 shadow-xs overflow-hidden ${
-                  isPending
-                    ? 'border-amber-300 ring-1 ring-amber-200/50'
-                    : isApproved
-                    ? 'border-slate-200/90 hover:border-emerald-300'
-                    : 'border-slate-200/90 hover:border-rose-300'
-                }`}
+                className="bg-white rounded-2xl border border-slate-200 transition-all duration-200 shadow-xs overflow-hidden hover:border-slate-300"
               >
-                {/* Top Card Bar */}
-                <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50/50 border-b border-slate-100">
+                {/* Top Card Bar - Soft Grey */}
+                <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#F8F9FA] border-b border-slate-200/80">
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Lingkungan Badge */}
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#16233F] text-white font-bold text-xs shadow-2xs">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#16233F] text-white font-semibold text-xs shadow-2xs">
                       <Building2 className="w-3.5 h-3.5 text-[#A9834F]" />
                       <span>{item.nama_lingkungan}</span>
                     </div>
 
                     {/* Wilayah Badge */}
-                    <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold bg-slate-200/70 text-slate-700">
+                    <span className="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-200/70 text-slate-700 border border-slate-300/50">
                       {getWilayahForLingkungan(item.nama_lingkungan)}
                     </span>
 
                     {/* Action Type Badge */}
-                    <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
-                      item.action_type === 'TAMBAH_KK'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : item.action_type === 'UBAH_KK'
-                        ? 'bg-blue-50 text-blue-700 border-blue-200'
-                        : 'bg-rose-50 text-rose-700 border-rose-200'
-                    }`}>
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-md font-medium border border-slate-200 bg-white text-slate-700 shadow-2xs">
                       {item.action_type === 'TAMBAH_KK' ? '+ Penambahan KK Baru' : item.action_type === 'UBAH_KK' ? '✎ Perubahan Data KK' : '✕ Hapus KK'}
                     </span>
 
-                    {/* Status Badge */}
-                    <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 border ${
-                      isPending
-                        ? 'bg-amber-500 text-slate-950 border-amber-600 font-extrabold shadow-2xs'
-                        : isApproved
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                        : 'bg-rose-100 text-rose-800 border-rose-300'
-                    }`}>
-                      {isPending && <Clock className="w-3 h-3 animate-spin" />}
-                      {isApproved && <CheckCircle2 className="w-3 h-3" />}
-                      {isRejected && <XCircle className="w-3 h-3" />}
+                    {/* Status Badge - Soft Neutral */}
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-md font-medium flex items-center gap-1.5 border border-slate-200 bg-white text-slate-700 shadow-2xs">
+                      {isPending && <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />}
+                      {isApproved && <span className="w-1.5 h-1.5 rounded-full bg-slate-700" />}
+                      {isRejected && <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />}
                       {isPending ? 'Menunggu Approval' : isApproved ? 'Disetujui' : 'Ditolak'}
                     </span>
                   </div>
@@ -448,15 +430,15 @@ export default function DafuApprovalPage() {
                     {/* Col 1: Detail KK */}
                     <div className="space-y-1.5 md:col-span-2">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-extrabold text-slate-900 font-serif">
+                        <h3 className="text-base font-bold text-slate-900 font-serif">
                           {item.nama_kk}
                         </h3>
                         {item.is_biduk ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                          <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-slate-100 text-slate-700 border border-slate-200">
                             BIDUK KAJ
                           </span>
                         ) : (
-                          <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-slate-100 text-slate-500 border border-slate-200">
                             Non-BIDUK
                           </span>
                         )}
@@ -469,16 +451,10 @@ export default function DafuApprovalPage() {
                     </div>
 
                     {/* Col 2: Golongan & Kriteria Catatan */}
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1 text-xs">
+                    <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-1 text-xs">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] text-slate-500 font-semibold uppercase">Golongan Keluarga:</span>
-                        <span className={`px-2 py-0.5 rounded font-bold text-[11px] ${
-                          item.golongan === 'Sejahtera'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : item.golongan.includes('Prasejahtera')
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}>
+                        <span className="px-2 py-0.5 rounded font-medium text-[11px] bg-slate-200/80 text-slate-800 border border-slate-300/60">
                           {item.golongan}
                         </span>
                       </div>
@@ -491,14 +467,14 @@ export default function DafuApprovalPage() {
                   </div>
 
                   {/* Anggota Keluarga Section (Collapsible) */}
-                  <div className="border border-slate-100 rounded-xl overflow-hidden">
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
                     <button
                       type="button"
                       onClick={() => toggleExpand(item.id)}
-                      className="w-full p-2.5 bg-slate-50 hover:bg-slate-100/80 flex items-center justify-between text-xs font-bold text-slate-700 transition cursor-pointer"
+                      className="w-full p-2.5 bg-slate-50 hover:bg-slate-100/80 flex items-center justify-between text-xs font-semibold text-slate-700 transition cursor-pointer"
                     >
                       <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-[#A9834F]" />
+                        <Users className="w-4 h-4 text-slate-500" />
                         <span>Daftar Anggota Keluarga ({item.anggota_keluarga?.length || 0} Jiwa)</span>
                       </div>
                       <div className="flex items-center gap-1 text-[11px] text-slate-500">
@@ -516,9 +492,7 @@ export default function DafuApprovalPage() {
                                 <div className="font-bold text-slate-900 truncate">{member.nama}</div>
                                 <div className="flex items-center justify-between text-[11px] text-slate-500">
                                   <span>{member.peran}</span>
-                                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
-                                    member.is_kaj ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                                  }`}>
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded font-medium bg-slate-100 text-slate-600 border border-slate-200">
                                     {member.is_kaj ? 'KAJ' : 'Non-KAJ'}
                                   </span>
                                 </div>
@@ -539,9 +513,9 @@ export default function DafuApprovalPage() {
 
                   {/* Reject Note if Rejected */}
                   {isRejected && item.catatan_paroki && (
-                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 space-y-0.5">
-                      <div className="font-bold flex items-center gap-1.5 text-rose-800">
-                        <AlertTriangle className="w-3.5 h-3.5" />
+                    <div className="p-3 bg-slate-100 border border-slate-300 rounded-xl text-xs text-slate-800 space-y-0.5">
+                      <div className="font-semibold flex items-center gap-1.5 text-slate-800">
+                        <AlertTriangle className="w-3.5 h-3.5 text-slate-500" />
                         <span>Catatan Penolakan oleh Sekretaris Paroki:</span>
                       </div>
                       <p className="italic pl-5">{item.catatan_paroki}</p>
@@ -557,28 +531,28 @@ export default function DafuApprovalPage() {
                   )}
                 </div>
 
-                {/* Footer Actions (Only for Pending) */}
+                {/* Footer Actions (Only for Pending) - Soft & Elegant Palette */}
                 {isPending && (
-                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-2.5">
+                  <div className="p-4 bg-[#F8F9FA] border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-end gap-2.5">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenReject(item)}
-                      className="w-full sm:w-auto h-9 px-4 text-xs font-bold text-rose-700 bg-white hover:bg-rose-50 border-rose-300 rounded-xl cursor-pointer"
+                      className="w-full sm:w-auto h-9 px-4 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border-slate-300 rounded-xl cursor-pointer shadow-2xs flex items-center justify-center gap-1.5"
                     >
-                      <XCircle className="w-4 h-4 mr-1.5 text-rose-500" />
-                      Tolak Pengajuan
+                      <XCircle className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Tolak Pengajuan</span>
                     </Button>
 
                     <Button
                       type="button"
                       size="sm"
                       onClick={() => handleApprove(item)}
-                      className="w-full sm:w-auto h-9 px-5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                      className="w-full sm:w-auto h-9 px-5 text-xs font-semibold text-white bg-[#A9834F] hover:bg-[#8e6d3e] rounded-xl cursor-pointer shadow-2xs flex items-center justify-center gap-1.5 transition"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      Setujui Data Umat (Approve)
+                      <span>Setujui Data Umat (Approve)</span>
                     </Button>
                   </div>
                 )}
@@ -593,7 +567,7 @@ export default function DafuApprovalPage() {
         <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-rose-600" />
+              <AlertTriangle className="w-5 h-5 text-slate-600" />
               Tolak Pengajuan DAFU
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
@@ -611,7 +585,7 @@ export default function DafuApprovalPage() {
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder="Contoh: Mohon lengkapi alamat lengkap dengan RT/RW dan perbaiki data status KAJ anak..."
-                className="w-full p-2.5 rounded-xl border border-slate-300 text-slate-900 text-xs focus:ring-rose-500 focus:border-rose-500"
+                className="w-full p-2.5 rounded-xl border border-slate-300 text-slate-900 text-xs focus:ring-slate-400 focus:border-slate-400"
               />
             </div>
           </div>
@@ -622,7 +596,7 @@ export default function DafuApprovalPage() {
               variant="outline"
               size="sm"
               onClick={() => setRejectModalItem(null)}
-              className="text-xs font-bold rounded-xl"
+              className="text-xs font-medium text-slate-700 border-slate-300 rounded-xl"
             >
               Batal
             </Button>
@@ -630,7 +604,7 @@ export default function DafuApprovalPage() {
               type="button"
               size="sm"
               onClick={handleConfirmReject}
-              className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl"
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl"
             >
               Konfirmasi Tolak Pengajuan
             </Button>
