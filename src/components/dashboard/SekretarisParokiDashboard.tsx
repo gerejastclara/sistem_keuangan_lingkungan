@@ -40,7 +40,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { getAllMasterLingkungan, formatNamaLingkungan, getWilayahForLingkungan } from '@/lib/constants'
-import { getDafuApprovals, DafuApprovalItem } from '@/lib/dafuApproval'
+import { getDafuApprovals, fetchDafuApprovals, DafuApprovalItem } from '@/lib/dafuApproval'
 import { ensureDummyKksForLingkungan, getDummyAnggotaForKk, getDummyGolonganForKk, santaClaraStats } from '@/lib/dummyData'
 
 export function SekretarisParokiDashboard() {
@@ -65,8 +65,15 @@ export function SekretarisParokiDashboard() {
     return map
   }, [masterList])
 
-  const loadApprovals = () => {
-    setApprovals(getDafuApprovals())
+  const loadApprovals = async () => {
+    const cached = getDafuApprovals()
+    if (cached && cached.length > 0) {
+      setApprovals(cached)
+    }
+    try {
+      const list = await fetchDafuApprovals()
+      setApprovals(list)
+    } catch (e) {}
   }
 
   // Update Status Golongan Modal State (Khusus Sekretaris Paroki)

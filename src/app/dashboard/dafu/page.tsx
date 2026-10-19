@@ -807,10 +807,10 @@ function DafuFormContent() {
         window.dispatchEvent(new Event('storage'))
       }
 
-      // Kirim permohonan approval DAFU ke Sekretaris Paroki
+      // Kirim permohonan approval DAFU ke Sekretaris Paroki (tersimpan langsung di tabel dafu_approvals Supabase)
       try {
         const approvalAction = editingKk ? 'UBAH_KK' : 'TAMBAH_KK'
-        createDafuApproval({
+        await createDafuApproval({
           lingkungan_id: lingkunganId,
           nama_lingkungan: lingkunganName || 'Lingkungan',
           kk_id: savedKkId,

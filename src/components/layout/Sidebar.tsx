@@ -23,7 +23,7 @@ import {
   CheckCircle2
 } from 'lucide-react'
 import { UserRole } from '@/lib/types'
-import { getDafuApprovals } from '@/lib/dafuApproval'
+import { getDafuApprovals, fetchDafuApprovals } from '@/lib/dafuApproval'
 
 interface SidebarProps {
   userRole?: UserRole
@@ -40,9 +40,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
-    const updateCount = () => {
-      const list = getDafuApprovals()
-      setPendingCount(list.filter(i => i.status === 'PENDING').length)
+    const updateCount = async () => {
+      const cached = getDafuApprovals()
+      if (cached && cached.length > 0) {
+        setPendingCount(cached.filter(i => i.status === 'PENDING').length)
+      }
+      try {
+        const list = await fetchDafuApprovals()
+        setPendingCount(list.filter(i => i.status === 'PENDING').length)
+      } catch (e) {}
     }
     updateCount()
     window.addEventListener('dafuApprovalUpdated', updateCount)

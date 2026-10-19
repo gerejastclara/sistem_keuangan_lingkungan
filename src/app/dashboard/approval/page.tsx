@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import {
   getDafuApprovals,
+  fetchDafuApprovals,
   approveDafuItem,
   rejectDafuItem,
   markAllApprovalsAsRead,
@@ -69,10 +70,20 @@ export default function DafuApprovalPage() {
     return resolveMasterLingkungan(selectedLingkunganId)
   }, [selectedLingkunganId, masterLingkunganList])
 
-  const loadData = () => {
-    const list = getDafuApprovals()
-    setApprovals(list)
-    setLoading(false)
+  const loadData = async () => {
+    // Show cached immediately to prevent UI flicker
+    const cached = getDafuApprovals()
+    if (cached && cached.length > 0) {
+      setApprovals(cached)
+    }
+    try {
+      const list = await fetchDafuApprovals()
+      setApprovals(list)
+    } catch (e) {
+      console.warn('Failed loading approvals from DB:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleFilterLingkunganChange = (val: string | null) => {
@@ -178,12 +189,12 @@ export default function DafuApprovalPage() {
 
   const [selectedGolonganMap, setSelectedGolonganMap] = useState<Record<string, any>>({})
 
-  const handleApprove = (item: DafuApprovalItem) => {
+  const handleApprove = async (item: DafuApprovalItem) => {
     const verifiedGolongan = selectedGolonganMap[item.id] || item.golongan
-    const ok = approveDafuItem(item.id, 'Sekretaris Paroki', verifiedGolongan)
+    const ok = await approveDafuItem(item.id, 'Sekretaris Paroki', verifiedGolongan)
     if (ok) {
-      setActionSuccessMsg(`Permohonan "${item.nama_kk}" dari ${item.nama_lingkungan} telah BERHASIL DISETUJUI dengan Status Golongan "${verifiedGolongan}"! Data kini aktif di sistem.`)
-      loadData()
+      setActionSuccessMsg(`Permohonan "${item.nama_kk}" dari ${item.nama_lingkungan} telah BERHASIL DISETUJUI dengan Status Golongan "${verifiedGolongan}"! Data tersimpan di database.`)
+      await loadData()
       setTimeout(() => setActionSuccessMsg(null), 4000)
     }
   }
@@ -193,18 +204,18 @@ export default function DafuApprovalPage() {
     setRejectReason('')
   }
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!rejectModalItem) return
     if (!rejectReason.trim()) {
       alert('Harap tuliskan catatan alasan penolakan untuk sekretaris lingkungan.')
       return
     }
 
-    const ok = rejectDafuItem(rejectModalItem.id, rejectReason.trim(), 'Sekretaris Paroki')
+    const ok = await rejectDafuItem(rejectModalItem.id, rejectReason.trim(), 'Sekretaris Paroki')
     if (ok) {
-      setActionSuccessMsg(`Permohonan "${rejectModalItem.nama_kk}" dari ${rejectModalItem.nama_lingkungan} telah DITOLAK dengan catatan yang tersimpan.`)
+      setActionSuccessMsg(`Permohonan "${rejectModalItem.nama_kk}" dari ${rejectModalItem.nama_lingkungan} telah DITOLAK dengan catatan yang tersimpan di database.`)
       setRejectModalItem(null)
-      loadData()
+      await loadData()
       setTimeout(() => setActionSuccessMsg(null), 4000)
     }
   }

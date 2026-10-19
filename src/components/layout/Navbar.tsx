@@ -7,7 +7,7 @@ import { getWilayahForLingkungan, formatNamaLingkungan, getAllMasterLingkungan, 
 import { LogOut, Building2, User, ChevronDown, Menu, Bell, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { getDafuApprovals, DafuApprovalItem } from '@/lib/dafuApproval'
+import { getDafuApprovals, fetchDafuApprovals, DafuApprovalItem } from '@/lib/dafuApproval'
 
 interface NavbarProps {
   userProfile: UserProfile | null
@@ -34,8 +34,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [approvals, setApprovals] = React.useState<DafuApprovalItem[]>([])
 
   useEffect(() => {
-    const loadNotifs = () => {
-      setApprovals(getDafuApprovals())
+    const loadNotifs = async () => {
+      const cached = getDafuApprovals()
+      if (cached && cached.length > 0) {
+        setApprovals(cached)
+      }
+      try {
+        const list = await fetchDafuApprovals()
+        setApprovals(list)
+      } catch (e) {}
     }
     loadNotifs()
     window.addEventListener('dafuApprovalUpdated', loadNotifs)
