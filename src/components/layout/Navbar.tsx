@@ -234,7 +234,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           </p>
                           <div className="flex items-center justify-between text-[10px] text-[#8A90A3] pt-0.5">
                             <span>Golongan: {item.golongan}</span>
-                            <span className="text-[#A9834F] font-semibold hover:underline">Tinjau →</span>
+                            <span className="text-slate-300 font-semibold hover:underline">Tinjau →</span>
                           </div>
                         </div>
                       ))
@@ -249,7 +249,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setShowNotifMenu(false)
                         router.push('/dashboard/approval')
                       }}
-                      className="w-full bg-[#A9834F] hover:bg-[#8e6d3e] text-white font-bold h-8 text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      className="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold h-8 text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       <span>Buka Modul Approval Lengkap</span>
                       <ArrowRight className="w-3.5 h-3.5" />

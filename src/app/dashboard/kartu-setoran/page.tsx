@@ -592,10 +592,6 @@ export default function KartuSetoranPage() {
               <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
               Bayar Sendiri
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-sky-50 text-sky-800 border border-sky-200/80 font-medium text-[10px]">
-              <span className="w-2 h-2 rounded-full bg-sky-600"></span>
-              Ditalangi Paroki
-            </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-50/80 text-purple-800 border border-purple-200/80 font-medium text-[10px]">
               <span className="w-2 h-2 rounded-full bg-purple-600"></span>
               Dana Lingkungan

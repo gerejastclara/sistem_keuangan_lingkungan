@@ -162,7 +162,7 @@ export function ParokiOverviewDashboard({ onSelectLingkungan }: ParokiOverviewDa
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white border border-slate-300 text-slate-700 text-xs font-semibold uppercase tracking-wider shadow-2xs">
-              <Building2 className="w-3.5 h-3.5 text-[#A9834F]" />
+              <Building2 className="w-3.5 h-3.5 text-slate-500" />
               Gereja St. Clara • Paroki Bekasi Utara
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-serif text-slate-900">
@@ -187,7 +187,7 @@ export function ParokiOverviewDashboard({ onSelectLingkungan }: ParokiOverviewDa
             <Link href="/dashboard/paroki/bendahara">
               <Button
                 size="sm"
-                className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="bg-slate-600 hover:bg-slate-700 text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <CreditCard className="w-3.5 h-3.5" />
                 <span>Monitoring Kas & Setoran</span>
@@ -344,7 +344,7 @@ export function ParokiOverviewDashboard({ onSelectLingkungan }: ParokiOverviewDa
                       <Button
                         size="sm"
                         onClick={() => handleSelect(l.id)}
-                        className="h-7 px-2.5 text-[11px] font-semibold bg-slate-100 hover:bg-[#A9834F] text-slate-700 hover:text-white border border-slate-200 rounded-lg cursor-pointer transition shadow-2xs"
+                        className="h-7 px-2.5 text-[11px] font-semibold bg-slate-100 hover:bg-slate-600 text-slate-700 hover:text-white border border-slate-200 rounded-lg cursor-pointer transition shadow-2xs"
                       >
                         Buka Dashboard →
                       </Button>

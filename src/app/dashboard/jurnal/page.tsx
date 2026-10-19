@@ -1031,7 +1031,7 @@ export default function JurnalPage() {
                     <span>Sumber Pembayaran Setoran:</span>
                     <span className="text-[11px] text-slate-500 font-normal">Pilih status/sumber dana setoran</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {/* 1. Mandiri */}
                     <button
                       type="button"
@@ -1050,25 +1050,7 @@ export default function JurnalPage() {
                       </span>
                     </button>
 
-                    {/* 2. Ditalangi Paroki */}
-                    <button
-                      type="button"
-                      onClick={() => setSumberSetoran('PAROKI')}
-                      className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
-                        sumberSetoran === 'PAROKI'
-                          ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
-                          : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                      }`}
-                    >
-                      <span>Ditalangi Paroki</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'PAROKI' ? 'bg-sky-50 text-sky-600 font-medium' : 'bg-slate-100/70 text-slate-400'
-                      }`}>
-                        Talangan Paroki
-                      </span>
-                    </button>
-
-                    {/* 3. Dari Dana Lingkungan */}
+                    {/* 2. Dari Dana Lingkungan */}
                     <button
                       type="button"
                       onClick={() => setSumberSetoran('DANA_LINGKUNGAN')}
@@ -1086,7 +1068,7 @@ export default function JurnalPage() {
                       </span>
                     </button>
 
-                    {/* 4. Ditalangi Orang Lain */}
+                    {/* 3. Ditalangi Orang Lain */}
                     <button
                       type="button"
                       onClick={() => setSumberSetoran('ORANG_LAIN')}

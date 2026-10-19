@@ -610,7 +610,7 @@ export default function MatchingDataExcelPage() {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white border border-slate-300 text-slate-700 text-xs font-semibold uppercase tracking-wider shadow-2xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#A9834F]" />
+              <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
               Sekretariat Paroki St. Clara
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-serif text-slate-900">
@@ -635,7 +635,7 @@ export default function MatchingDataExcelPage() {
             <Button
               size="sm"
               onClick={handleLoadDemoSimulation}
-              className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              className="bg-slate-600 hover:bg-slate-700 text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Muat Contoh Data Pembaruan</span>
@@ -648,7 +648,7 @@ export default function MatchingDataExcelPage() {
       {alertSuccess && (
         <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 text-slate-800 text-xs font-semibold flex items-center justify-between gap-3 animate-fadeIn shadow-2xs">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#A9834F] shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-slate-500 shrink-0" />
             <span>{alertSuccess}</span>
           </div>
           <button
@@ -665,7 +665,7 @@ export default function MatchingDataExcelPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div>
             <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2 font-serif">
-              <FileSpreadsheet className="w-4 h-4 text-[#A9834F]" />
+              <FileSpreadsheet className="w-4 h-4 text-slate-600" />
               Unggah File Excel Baru (Sensus / DAFU / Pembaruan Umat)
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -675,7 +675,7 @@ export default function MatchingDataExcelPage() {
 
           {fileName && (
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-mono font-semibold">
-              <FileCheck className="w-3.5 h-3.5 text-[#A9834F]" />
+              <FileCheck className="w-3.5 h-3.5 text-slate-600" />
               <span>{fileName}</span>
             </div>
           )}
@@ -684,7 +684,7 @@ export default function MatchingDataExcelPage() {
         {/* Drag & Drop Upload Container */}
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-slate-300 hover:border-[#A9834F] bg-slate-50/70 hover:bg-slate-50/90 rounded-2xl p-6 sm:p-8 text-center cursor-pointer transition flex flex-col items-center justify-center gap-3"
+          className="border-2 border-dashed border-slate-300 hover:border-slate-400 bg-slate-50/70 hover:bg-slate-50/90 rounded-2xl p-6 sm:p-8 text-center cursor-pointer transition flex flex-col items-center justify-center gap-3"
         >
           <input
             type="file"
@@ -694,7 +694,7 @@ export default function MatchingDataExcelPage() {
             className="hidden"
           />
           <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center text-slate-500">
-            <Upload className="w-6 h-6 text-[#A9834F]" />
+            <Upload className="w-6 h-6 text-slate-500" />
           </div>
           <div className="space-y-1">
             <p className="text-xs sm:text-sm font-bold text-slate-800">
@@ -828,7 +828,7 @@ export default function MatchingDataExcelPage() {
                 <Button
                   size="sm"
                   onClick={handleExportMatchingReport}
-                  className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white text-xs rounded-xl font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+                  className="bg-slate-600 hover:bg-slate-700 text-white text-xs rounded-xl font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Ekspor Laporan (.xlsx)</span>
@@ -865,7 +865,7 @@ export default function MatchingDataExcelPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         {/* Lingkungan Badge */}
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-[#16233F] text-white font-semibold text-xs shadow-2xs">
-                          <Building2 className="w-3 h-3 text-[#A9834F]" />
+                          <Building2 className="w-3 h-3 text-slate-400" />
                           <span>{item.nama_lingkungan}</span>
                         </div>
 
@@ -873,7 +873,7 @@ export default function MatchingDataExcelPage() {
                         <span className="text-[11px] px-2.5 py-0.5 rounded-md font-medium flex items-center gap-1.5 border border-slate-200 bg-white text-slate-700 shadow-2xs">
                           {isIdentik && <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />}
                           {isModified && <span className="w-1.5 h-1.5 rounded-full bg-slate-700" />}
-                          {isNew && <span className="w-1.5 h-1.5 rounded-full bg-[#A9834F]" />}
+                          {isNew && <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />}
                           {isDbOnly && <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />}
                           {isIdentik
                             ? 'Cocok Identik'
@@ -956,10 +956,10 @@ export default function MatchingDataExcelPage() {
                           <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs">
                             <div className="flex items-center justify-between text-slate-700 font-semibold border-b border-slate-200 pb-1.5">
                               <span className="flex items-center gap-1.5">
-                                <FileSpreadsheet className="w-3.5 h-3.5 text-[#A9834F]" />
+                                <FileSpreadsheet className="w-3.5 h-3.5 text-slate-600" />
                                 Data Baru (File Excel Diunggah)
                               </span>
-                              <span className="text-[10px] bg-[#A9834F]/10 text-[#A9834F] border border-[#A9834F]/30 px-1.5 py-0.2 rounded font-mono">
+                              <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-300 px-1.5 py-0.2 rounded font-mono">
                                 Input Excel Baru
                               </span>
                             </div>

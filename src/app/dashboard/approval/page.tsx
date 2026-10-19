@@ -192,7 +192,7 @@ export default function DafuApprovalPage() {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white border border-slate-300 text-slate-700 text-xs font-semibold uppercase tracking-wider shadow-2xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#A9834F]" />
+              <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
               Sekretariat Paroki St. Clara
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-serif text-slate-900">
@@ -216,7 +216,7 @@ export default function DafuApprovalPage() {
             <Link href="/dashboard/kriteria-golongan">
               <Button
                 size="sm"
-                className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="bg-slate-600 hover:bg-slate-700 text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 Kriteria Golongan
@@ -230,7 +230,7 @@ export default function DafuApprovalPage() {
       {actionSuccessMsg && (
         <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 text-slate-800 text-xs font-semibold flex items-center justify-between gap-3 animate-fadeIn shadow-2xs">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#A9834F] shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-slate-500 shrink-0" />
             <span>{actionSuccessMsg}</span>
           </div>
           <button
@@ -576,7 +576,7 @@ export default function DafuApprovalPage() {
                       type="button"
                       size="sm"
                       onClick={() => handleApprove(item)}
-                      className="w-full sm:w-auto h-9 px-5 text-xs font-semibold text-white bg-[#A9834F] hover:bg-[#8e6d3e] rounded-xl cursor-pointer shadow-2xs flex items-center justify-center gap-1.5 transition"
+                      className="w-full sm:w-auto h-9 px-5 text-xs font-semibold text-white bg-slate-600 hover:bg-slate-700 rounded-xl cursor-pointer shadow-2xs flex items-center justify-center gap-1.5 transition"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>Setujui Data Umat (Approve)</span>

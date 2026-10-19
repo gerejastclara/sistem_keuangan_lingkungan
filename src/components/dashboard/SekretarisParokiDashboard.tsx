@@ -205,7 +205,7 @@ export function SekretarisParokiDashboard() {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white border border-slate-300 text-slate-700 text-xs font-semibold uppercase tracking-wider shadow-2xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#A9834F]" />
+              <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
               Sekretariat Paroki St. Clara
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-serif text-slate-900">
@@ -223,14 +223,14 @@ export function SekretarisParokiDashboard() {
                 size="sm"
                 className="bg-white hover:bg-slate-50 text-slate-700 border-slate-300 text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-[#A9834F]" />
+                <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
                 <span>Matching Data Excel</span>
               </Button>
             </Link>
             <Link href="/dashboard/approval">
               <Button
                 size="sm"
-                className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="bg-slate-600 hover:bg-slate-700 text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <ShieldCheck className="w-4 h-4" />
                 <span>Modul Approval</span>
@@ -275,7 +275,7 @@ export function SekretarisParokiDashboard() {
           <Link href="/dashboard/approval" className="shrink-0">
             <Button
               size="sm"
-              className="w-full sm:w-auto bg-[#A9834F] hover:bg-[#8e6d3e] text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+              className="w-full sm:w-auto bg-slate-600 hover:bg-slate-700 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <span>Tinjau Sekarang</span>
               <ArrowRight className="w-4 h-4" />
@@ -323,7 +323,7 @@ export function SekretarisParokiDashboard() {
             <ShieldCheck className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-2xl font-black text-slate-900">
-            {pendingCount} <span className="text-xs font-bold text-amber-700">Pending</span>
+            {pendingCount} <span className="text-xs font-bold text-slate-600">Pending</span>
           </div>
           <p className="text-[11px] text-slate-400">
             {approvals.filter(a => a.status === 'APPROVED').length} Permohonan disetujui
@@ -336,7 +336,7 @@ export function SekretarisParokiDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2 font-serif">
-              <SlidersHorizontal className="w-4 h-4 text-[#A9834F]" />
+              <SlidersHorizontal className="w-4 h-4 text-slate-600" />
               Distribusi Kategori Golongan Umat (Seluruh Paroki)
             </h3>
             <p className="text-xs text-slate-500">
@@ -347,7 +347,7 @@ export function SekretarisParokiDashboard() {
             <Button
               size="sm"
               onClick={() => setIsUpdateGolonganOpen(true)}
-              className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              className="bg-slate-600 hover:bg-slate-700 text-white text-xs rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Update Status Golongan KK</span>
@@ -496,7 +496,7 @@ export function SekretarisParokiDashboard() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2.5 text-[11px] font-bold text-[#A9834F] hover:text-[#8e6d3e] hover:bg-[#A9834F]/10 rounded-lg cursor-pointer"
+                          className="h-7 px-2.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer"
                         >
                           Tinjau →
                         </Button>
@@ -515,7 +515,7 @@ export function SekretarisParokiDashboard() {
         <DialogContent className="sm:max-w-xl bg-white text-slate-900 border-slate-200 rounded-2xl p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2 font-serif">
-              <ShieldCheck className="w-5 h-5 text-[#A9834F]" />
+              <ShieldCheck className="w-5 h-5 text-slate-600" />
               Pembaruan Status Golongan Umat (DUPRAS)
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
@@ -627,7 +627,7 @@ export function SekretarisParokiDashboard() {
               size="sm"
               disabled={!selectedKkForGolongan}
               onClick={handleSaveGolonganUpdate}
-              className="bg-[#A9834F] hover:bg-[#8e6d3e] text-white font-semibold text-xs rounded-xl shadow-2xs"
+              className="bg-slate-600 hover:bg-slate-700 text-white font-semibold text-xs rounded-xl shadow-2xs"
             >
               Simpan Pembaruan Status Golongan
             </Button>
