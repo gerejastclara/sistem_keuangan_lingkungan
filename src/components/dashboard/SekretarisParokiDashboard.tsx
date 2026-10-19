@@ -284,19 +284,7 @@ export function SekretarisParokiDashboard() {
             </p>
             {currentSelectedLingkungan && (
               <div className="mt-2.5 inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-semibold shadow-2xs">
-                <span>Filter Aktif: <strong>{formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)}</strong> ({getWilayahForLingkungan(currentSelectedLingkungan.nama_lingkungan)})</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    localStorage.setItem('selected_lingkungan_id', 'all')
-                    setSelectedLingkunganId('all')
-                    window.dispatchEvent(new Event('lingkunganChanged'))
-                    window.dispatchEvent(new Event('storage'))
-                  }}
-                  className="text-slate-600 hover:text-slate-950 underline font-bold cursor-pointer ml-1 text-xs"
-                >
-                  ✕ Beralih ke Seluruh 69 Lingkungan
-                </button>
+                <span>Lingkungan Terpilih: <strong>{formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)}</strong> ({getWilayahForLingkungan(currentSelectedLingkungan.nama_lingkungan)})</span>
               </div>
             )}
           </div>
@@ -515,24 +503,6 @@ export function SekretarisParokiDashboard() {
             <p className="text-xs text-slate-400">
               Menampilkan {filteredLingkungan.length} dari 69 lingkungan aktif
             </p>
-            {selectedLingkunganId && selectedLingkunganId !== 'all' && (
-              <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-semibold">
-                <span>Filter Aktif: {formatNamaLingkungan(filteredLingkungan[0]?.nama_lingkungan || '')}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    localStorage.setItem('selected_lingkungan_id', 'all')
-                    setSelectedLingkunganId('all')
-                    window.dispatchEvent(new Event('lingkunganChanged'))
-                    window.dispatchEvent(new Event('storage'))
-                  }}
-                  className="hover:text-indigo-950 font-bold ml-1 cursor-pointer underline"
-                  title="Kembali ke Seluruh Lingkungan"
-                >
-                  ✕ Tampilkan Semua 69
-                </button>
-              </div>
-            )}
           </div>
 
           <div className="relative w-full sm:w-64">

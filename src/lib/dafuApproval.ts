@@ -142,7 +142,6 @@ export async function fetchDafuApprovals(): Promise<DafuApprovalItem[]> {
       if (typeof window !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped))
         window.dispatchEvent(new Event('dafuApprovalUpdated'))
-        window.dispatchEvent(new Event('storage'))
       }
       return mapped
     }
@@ -188,7 +187,6 @@ export function saveDafuApprovals(list: DafuApprovalItem[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
     window.dispatchEvent(new Event('dafuApprovalUpdated'))
-    window.dispatchEvent(new Event('storage'))
   } catch (e) {
     console.warn('Failed to save dafu approvals to localStorage:', e)
   }

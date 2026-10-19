@@ -70,6 +70,13 @@ export default function DafuApprovalPage() {
     return resolveMasterLingkungan(selectedLingkunganId)
   }, [selectedLingkunganId, masterLingkunganList])
 
+  const resolveLingkunganLabel = (id: string | null): string => {
+    if (!id || id === 'all' || id === 'ALL' || id === '') return '🌐 Seluruh Lingkungan (69)'
+    const resolved = resolveMasterLingkungan(id)
+    if (resolved) return formatNamaLingkungan(resolved.nama_lingkungan)
+    return 'Pilih Lingkungan'
+  }
+
   const loadData = async () => {
     // Show cached immediately to prevent UI flicker
     const cached = getDafuApprovals()
@@ -334,25 +341,6 @@ export default function DafuApprovalPage() {
         </div>
       </div>
 
-      {/* Active Lingkungan Filter Banner */}
-      {currentMasterLingkungan && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl bg-slate-100 border border-slate-300 text-slate-800 text-xs gap-2 shadow-2xs">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-slate-600 shrink-0" />
-            <span>
-              Filter Lingkungan Aktif: <strong>{formatNamaLingkungan(currentMasterLingkungan.nama_lingkungan)}</strong> ({getWilayahForLingkungan(currentMasterLingkungan.nama_lingkungan)})
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleFilterLingkunganChange('all')}
-            className="text-slate-700 hover:text-slate-950 underline font-bold cursor-pointer shrink-0 text-xs"
-          >
-            ✕ Tampilkan Seluruh 69 Lingkungan
-          </button>
-        </div>
-      )}
-
       {/* Filter & Search Bar - Soft Segmented Palette */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -419,7 +407,7 @@ export default function DafuApprovalPage() {
             <div className="w-full sm:w-56">
               <Select value={selectedLingkunganId || 'all'} onValueChange={handleFilterLingkunganChange}>
                 <SelectTrigger className="h-9 bg-slate-50 border-slate-200 text-xs text-slate-900 rounded-xl font-medium">
-                  <SelectValue placeholder="Pilih Lingkungan" />
+                  <span className="truncate">{resolveLingkunganLabel(selectedLingkunganId)}</span>
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto bg-white border-slate-200 text-xs">
                   <SelectItem value="all">🌐 Seluruh Lingkungan (69)</SelectItem>

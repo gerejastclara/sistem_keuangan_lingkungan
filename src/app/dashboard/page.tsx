@@ -265,8 +265,10 @@ export default function DashboardOverviewPage() {
   const [viewingKk, setViewingKk] = useState<KepalaKeluarga | null>(null)
 
   useEffect(() => {
-    async function loadDashboardData() {
-      setLoading(true)
+    async function loadDashboardData(showSpinner: boolean = true) {
+      if (showSpinner) {
+        setLoading(true)
+      }
 
       try {
         // 1. Get user profile & role
@@ -348,6 +350,12 @@ export default function DashboardOverviewPage() {
         }
 
         setUserRole(role)
+
+        // For SEKRETARIS_PAROKI, hand off immediately to SekretarisParokiDashboard
+        if (role === 'SEKRETARIS_PAROKI') {
+          setLoading(false)
+          return
+        }
 
         // 2. Resolve Target Lingkungan
         let targetLingkunganId: string | null = null
@@ -454,22 +462,20 @@ export default function DashboardOverviewPage() {
       }
     }
 
-    loadDashboardData()
+    loadDashboardData(true)
 
     const handleSync = () => {
-      loadDashboardData()
+      loadDashboardData(false)
     }
     window.addEventListener('dafuDataUpdated', handleSync)
     window.addEventListener('pengurusUpdated', handleSync)
     window.addEventListener('customJournalsUpdated', handleSync)
-    window.addEventListener('storage', handleSync)
     window.addEventListener('lingkunganChanged', handleSync)
 
     return () => {
       window.removeEventListener('dafuDataUpdated', handleSync)
       window.removeEventListener('pengurusUpdated', handleSync)
       window.removeEventListener('customJournalsUpdated', handleSync)
-      window.removeEventListener('storage', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
     }
   }, [supabase])
