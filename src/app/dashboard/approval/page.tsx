@@ -45,7 +45,7 @@ export default function DafuApprovalPage() {
   const [approvals, setApprovals] = useState<DafuApprovalItem[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL')
-  const [selectedLingkunganFilter, setSelectedLingkunganFilter] = useState<string>('ALL')
+  const [selectedLingkunganId, setSelectedLingkunganId] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
@@ -56,10 +56,31 @@ export default function DafuApprovalPage() {
 
   const masterLingkunganList = getAllMasterLingkungan()
 
+  const resolveMasterLingkungan = (idOrName: string | null) => {
+    if (!idOrName || idOrName === 'all' || idOrName === 'ALL') return null
+    return masterLingkunganList.find(l =>
+      l.id === idOrName ||
+      l.nama_lingkungan.toLowerCase().trim() === idOrName.toLowerCase().trim() ||
+      l.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '') === idOrName.toLowerCase().replace(/[^a-z0-9]/g, '')
+    ) || null
+  }
+
+  const currentMasterLingkungan = useMemo(() => {
+    return resolveMasterLingkungan(selectedLingkunganId)
+  }, [selectedLingkunganId, masterLingkunganList])
+
   const loadData = () => {
     const list = getDafuApprovals()
     setApprovals(list)
     setLoading(false)
+  }
+
+  const handleFilterLingkunganChange = (val: string | null) => {
+    const nextVal = val || 'all'
+    setSelectedLingkunganId(nextVal)
+    localStorage.setItem('selected_lingkungan_id', nextVal)
+    window.dispatchEvent(new Event('lingkunganChanged'))
+    window.dispatchEvent(new Event('storage'))
   }
 
   useEffect(() => {
@@ -97,28 +118,43 @@ export default function DafuApprovalPage() {
     loadData()
     markAllApprovalsAsRead()
 
+    const readStoredLingkungan = () => {
+      const stored = localStorage.getItem('selected_lingkungan_id') || 'all'
+      setSelectedLingkunganId(stored)
+    }
+    readStoredLingkungan()
+
     const handleUpdate = () => loadData()
     window.addEventListener('dafuApprovalUpdated', handleUpdate)
+    window.addEventListener('lingkunganChanged', readStoredLingkungan)
+    window.addEventListener('storage', readStoredLingkungan)
     window.addEventListener('storage', handleUpdate)
 
     return () => {
       window.removeEventListener('dafuApprovalUpdated', handleUpdate)
+      window.removeEventListener('lingkunganChanged', readStoredLingkungan)
+      window.removeEventListener('storage', readStoredLingkungan)
       window.removeEventListener('storage', handleUpdate)
     }
   }, [router])
 
-  const pendingList = useMemo(() => approvals.filter(a => a.status === 'PENDING'), [approvals])
-  const approvedList = useMemo(() => approvals.filter(a => a.status === 'APPROVED'), [approvals])
-  const rejectedList = useMemo(() => approvals.filter(a => a.status === 'REJECTED'), [approvals])
+  // Scope approvals based on selected lingkungan (all vs specific lingkungan)
+  const scopedApprovals = useMemo(() => {
+    if (!currentMasterLingkungan) return approvals
+    const targetNorm = currentMasterLingkungan.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '')
+    return approvals.filter(item => {
+      const itemNorm = item.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '')
+      return item.lingkungan_id === currentMasterLingkungan.id || itemNorm === targetNorm
+    })
+  }, [approvals, currentMasterLingkungan])
+
+  const pendingList = useMemo(() => scopedApprovals.filter(a => a.status === 'PENDING'), [scopedApprovals])
+  const approvedList = useMemo(() => scopedApprovals.filter(a => a.status === 'APPROVED'), [scopedApprovals])
+  const rejectedList = useMemo(() => scopedApprovals.filter(a => a.status === 'REJECTED'), [scopedApprovals])
 
   const filteredApprovals = useMemo(() => {
-    return approvals.filter(item => {
+    return scopedApprovals.filter(item => {
       const matchStatus = statusFilter === 'ALL' || item.status === statusFilter
-      const matchLingkungan =
-        selectedLingkunganFilter === 'ALL' ||
-        item.nama_lingkungan.toLowerCase().includes(selectedLingkunganFilter.toLowerCase()) ||
-        item.lingkungan_id === selectedLingkunganFilter
-
       const q = searchQuery.toLowerCase().trim()
       const matchSearch =
         !q ||
@@ -127,9 +163,9 @@ export default function DafuApprovalPage() {
         item.nama_lingkungan.toLowerCase().includes(q) ||
         item.submitted_by.toLowerCase().includes(q)
 
-      return matchStatus && matchLingkungan && matchSearch
+      return matchStatus && matchSearch
     })
-  }, [approvals, statusFilter, selectedLingkunganFilter, searchQuery])
+  }, [scopedApprovals, statusFilter, searchQuery])
 
   const toggleExpand = (id: string) => {
     setExpandedIds(prev => {
@@ -250,8 +286,10 @@ export default function DafuApprovalPage() {
             <span>Total Pengajuan</span>
             <Users className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="text-2xl font-bold text-slate-900">{approvals.length}</div>
-          <p className="text-[11px] text-slate-500">Seluruh permohonan DAFU tercatat</p>
+          <div className="text-2xl font-bold text-slate-900">{scopedApprovals.length}</div>
+          <p className="text-[11px] text-slate-500">
+            {currentMasterLingkungan ? `Permohonan ${formatNamaLingkungan(currentMasterLingkungan.nama_lingkungan)}` : 'Seluruh permohonan DAFU tercatat'}
+          </p>
         </div>
 
         {/* Metric 2: Menunggu Persetujuan */}
@@ -285,6 +323,25 @@ export default function DafuApprovalPage() {
         </div>
       </div>
 
+      {/* Active Lingkungan Filter Banner */}
+      {currentMasterLingkungan && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl bg-slate-100 border border-slate-300 text-slate-800 text-xs gap-2 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-slate-600 shrink-0" />
+            <span>
+              Filter Lingkungan Aktif: <strong>{formatNamaLingkungan(currentMasterLingkungan.nama_lingkungan)}</strong> ({getWilayahForLingkungan(currentMasterLingkungan.nama_lingkungan)})
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleFilterLingkunganChange('all')}
+            className="text-slate-700 hover:text-slate-950 underline font-bold cursor-pointer shrink-0 text-xs"
+          >
+            ✕ Tampilkan Seluruh 69 Lingkungan
+          </button>
+        </div>
+      )}
+
       {/* Filter & Search Bar - Soft Segmented Palette */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -298,7 +355,7 @@ export default function DafuApprovalPage() {
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
               }`}
             >
-              Semua ({approvals.length})
+              Semua ({scopedApprovals.length})
             </button>
             <button
               onClick={() => setStatusFilter('PENDING')}
@@ -348,15 +405,15 @@ export default function DafuApprovalPage() {
               />
             </div>
 
-            <div className="w-full sm:w-52">
-              <Select value={selectedLingkunganFilter} onValueChange={(val) => setSelectedLingkunganFilter(val || 'ALL')}>
+            <div className="w-full sm:w-56">
+              <Select value={selectedLingkunganId || 'all'} onValueChange={handleFilterLingkunganChange}>
                 <SelectTrigger className="h-9 bg-slate-50 border-slate-200 text-xs text-slate-900 rounded-xl font-medium">
                   <SelectValue placeholder="Pilih Lingkungan" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto bg-white border-slate-200 text-xs">
-                  <SelectItem value="ALL">🌐 Semua Lingkungan</SelectItem>
+                  <SelectItem value="all">🌐 Seluruh Lingkungan (69)</SelectItem>
                   {masterLingkunganList.map((l) => (
-                    <SelectItem key={l.id} value={l.nama_lingkungan}>
+                    <SelectItem key={l.id} value={l.id}>
                       {formatNamaLingkungan(l.nama_lingkungan)}
                     </SelectItem>
                   ))}

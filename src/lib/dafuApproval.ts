@@ -76,6 +76,28 @@ const INITIAL_APPROVAL_SEED: DafuApprovalItem[] = [
     submitted_by: 'sekretaris_stcatarina1',
     created_at: new Date(Date.now() - 1000 * 60 * 180).toISOString(), // 3 hours ago
     is_read: false
+  },
+  {
+    id: 'appr-padrepio2-03',
+    lingkungan_id: '835a6f75-e179-4bf4-b91a-6f130e10f815',
+    nama_lingkungan: 'Padre Pio 2',
+    kk_id: null,
+    action_type: 'TAMBAH_KK',
+    nama_kk: 'Keluarga Yohanes Kristianto & Agnes Wijaya',
+    alamat: 'Taman Harapan Baru Blok F2 No. 15',
+    is_biduk: true,
+    golongan: 'Sejahtera',
+    kriteria_catatan: 'Keluarga baru pindahan dari Paroki Kramat, berkas baptis dan perkawinan lengkap.',
+    anggota_keluarga: [
+      { nama: 'Yohanes Kristianto', peran: 'Kepala Keluarga', is_kaj: true, keterangan: 'Kepala Keluarga' },
+      { nama: 'Agnes Wijaya', peran: 'Istri', is_kaj: true, keterangan: 'Istri' },
+      { nama: 'Gabriella Clarissa', peran: 'Anak', is_kaj: true, keterangan: 'Anak Pertama' }
+    ],
+    status: 'PENDING',
+    catatan_paroki: null,
+    submitted_by: 'sekretaris_padrepio2',
+    created_at: new Date(Date.now() - 1000 * 60 * 20).toISOString(), // 20 mins ago
+    is_read: false
   }
 ]
 
@@ -90,6 +112,11 @@ export function getDafuApprovals(): DafuApprovalItem[] {
     }
     const parsed = JSON.parse(raw)
     if (Array.isArray(parsed)) {
+      if (!parsed.some(item => item.id === 'appr-padrepio2-03')) {
+        const merged = [...parsed, INITIAL_APPROVAL_SEED[2]]
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
+        return merged
+      }
       return parsed
     }
   } catch (e) {

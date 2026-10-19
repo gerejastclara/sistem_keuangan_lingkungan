@@ -173,12 +173,22 @@ export function SekretarisParokiDashboard() {
   const pendingApprovals = useMemo(() => approvals.filter(a => a.status === 'PENDING'), [approvals])
   const pendingCount = pendingApprovals.length
 
+  const isAllLingkungan = !selectedLingkunganId || selectedLingkunganId === 'all' || selectedLingkunganId === 'ALL'
+
+  const currentSelectedLingkungan = useMemo(() => {
+    if (isAllLingkungan) return null
+    return masterList.find(l =>
+      l.id === selectedLingkunganId ||
+      l.nama_lingkungan.toLowerCase().trim() === selectedLingkunganId.toLowerCase().trim() ||
+      l.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '') === selectedLingkunganId.toLowerCase().replace(/[^a-z0-9]/g, '')
+    ) || null
+  }, [masterList, selectedLingkunganId, isAllLingkungan])
+
   // Filter master lingkungan by search & selectedLingkunganId from Navbar
   const filteredLingkungan = useMemo(() => {
     let list = masterList
-    if (selectedLingkunganId && selectedLingkunganId !== 'all') {
-      const matched = list.filter(l => l.id === selectedLingkunganId)
-      if (matched.length > 0) list = matched
+    if (currentSelectedLingkungan) {
+      list = [currentSelectedLingkungan]
     }
     const q = searchLingkungan.toLowerCase().trim()
     if (!q) return list
@@ -186,7 +196,54 @@ export function SekretarisParokiDashboard() {
       l.nama_lingkungan.toLowerCase().includes(q) ||
       getWilayahForLingkungan(l.nama_lingkungan).toLowerCase().includes(q)
     )
-  }, [masterList, selectedLingkunganId, searchLingkungan])
+  }, [masterList, currentSelectedLingkungan, searchLingkungan])
+
+  // Scope approvals based on selected lingkungan
+  const scopedApprovals = useMemo(() => {
+    if (!currentSelectedLingkungan) return approvals
+    const targetNorm = currentSelectedLingkungan.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '')
+    return approvals.filter(item => {
+      const itemNorm = item.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '')
+      return item.lingkungan_id === currentSelectedLingkungan.id || itemNorm === targetNorm
+    })
+  }, [approvals, currentSelectedLingkungan])
+
+  const pendingApprovalsForScope = useMemo(() => scopedApprovals.filter(a => a.status === 'PENDING'), [scopedApprovals])
+  const approvedApprovalsForScope = useMemo(() => scopedApprovals.filter(a => a.status === 'APPROVED'), [scopedApprovals])
+
+  // Scoped KKs and Jiwa
+  const scopedKks = useMemo(() => {
+    if (!currentSelectedLingkungan) return allParishKks
+    return allParishKks.filter(k => k.lingkunganId === currentSelectedLingkungan.id)
+  }, [allParishKks, currentSelectedLingkungan])
+
+  const scopedTotalJiwa = useMemo(() => {
+    if (!currentSelectedLingkungan) return 9802
+    const stat = lingkunganUmatStats[currentSelectedLingkungan.id]
+    return stat ? stat.jiwaCount : scopedKks.length * 3
+  }, [currentSelectedLingkungan, lingkunganUmatStats, scopedKks])
+
+  const scopedGolonganCounts = useMemo(() => {
+    const total = scopedKks.length
+    let sejahtera = 0
+    let prasejahtera = 0
+    let rentan = 0
+    scopedKks.forEach(k => {
+      if (k.golongan === 'Terduga Prasejahtera') prasejahtera++
+      else if (k.golongan === 'Rentan Tidak Mampu') rentan++
+      else sejahtera++
+    })
+    const pct = (c: number) => total > 0 ? ((c / total) * 100).toFixed(1) : '0.0'
+    return {
+      total,
+      sejahtera,
+      sejahteraPct: pct(sejahtera),
+      prasejahtera,
+      prasejahteraPct: pct(prasejahtera),
+      rentan,
+      rentanPct: pct(rentan),
+    }
+  }, [scopedKks])
 
   // Map pending approvals per lingkungan
   const pendingPerLingkungan = useMemo(() => {
@@ -209,11 +266,32 @@ export function SekretarisParokiDashboard() {
               Sekretariat Paroki St. Clara
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-serif text-slate-900">
-              Dashboard Seluruh Lingkungan
+              {currentSelectedLingkungan
+                ? `Dashboard ${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)}`
+                : 'Dashboard Seluruh Lingkungan'}
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
-              Pemantauan terpusat data umat, persebaran Kepala Keluarga, klasifikasi golongan, dan verifikasi approval DAFU untuk seluruh 69 Lingkungan Paroki St. Clara.
+              {currentSelectedLingkungan
+                ? `Pemantauan data umat, persebaran ${scopedKks.length} Kepala Keluarga, klasifikasi golongan DUPRAS, dan verifikasi approval DAFU khusus untuk ${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)} (Wilayah ${getWilayahForLingkungan(currentSelectedLingkungan.nama_lingkungan)}).`
+                : 'Pemantauan terpusat data umat, persebaran Kepala Keluarga, klasifikasi golongan, dan verifikasi approval DAFU untuk seluruh 69 Lingkungan Paroki St. Clara.'}
             </p>
+            {currentSelectedLingkungan && (
+              <div className="mt-2.5 inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-semibold shadow-2xs">
+                <span>Filter Aktif: <strong>{formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)}</strong> ({getWilayahForLingkungan(currentSelectedLingkungan.nama_lingkungan)})</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem('selected_lingkungan_id', 'all')
+                    setSelectedLingkunganId('all')
+                    window.dispatchEvent(new Event('lingkunganChanged'))
+                    window.dispatchEvent(new Event('storage'))
+                  }}
+                  className="text-slate-600 hover:text-slate-950 underline font-bold cursor-pointer ml-1 text-xs"
+                >
+                  ✕ Beralih ke Seluruh 69 Lingkungan
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -234,9 +312,9 @@ export function SekretarisParokiDashboard() {
               >
                 <ShieldCheck className="w-4 h-4" />
                 <span>Modul Approval</span>
-                {pendingCount > 0 && (
+                {pendingApprovalsForScope.length > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500 text-white font-bold animate-pulse">
-                    {pendingCount}
+                    {pendingApprovalsForScope.length}
                   </span>
                 )}
               </Button>
@@ -255,8 +333,8 @@ export function SekretarisParokiDashboard() {
         </div>
       </div>
 
-      {/* Pending Approval Callout Banner if any - Soft Grey Aesthetic */}
-      {pendingCount > 0 && (
+      {/* Pending Approval Callout Banner if any */}
+      {pendingApprovalsForScope.length > 0 && (
         <div className="p-4 sm:p-5 rounded-2xl bg-[#F8F9FA] border border-slate-200 text-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-start sm:items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 font-bold shadow-2xs">
@@ -264,10 +342,14 @@ export function SekretarisParokiDashboard() {
             </div>
             <div>
               <h4 className="font-bold text-sm text-slate-900">
-                Ada {pendingCount} Permohonan Approval DAFU Menunggu Persetujuan
+                {currentSelectedLingkungan
+                  ? `Ada ${pendingApprovalsForScope.length} Permohonan Approval DAFU Menunggu Persetujuan (${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)})`
+                  : `Ada ${pendingApprovalsForScope.length} Permohonan Approval DAFU Menunggu Persetujuan`}
               </h4>
               <p className="text-xs text-slate-600">
-                Sekretaris Lingkungan telah mengajukan penambahan atau perubahan data umat. Segera tinjau untuk memperbarui basis data paroki.
+                {currentSelectedLingkungan
+                  ? `Sekretaris ${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)} telah mengajukan penambahan atau perubahan data umat. Segera tinjau untuk memperbarui basis data.`
+                  : 'Sekretaris Lingkungan telah mengajukan penambahan atau perubahan data umat. Segera tinjau untuk memperbarui basis data paroki.'}
               </p>
             </div>
           </div>
@@ -286,24 +368,32 @@ export function SekretarisParokiDashboard() {
 
       {/* 4 Global Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Total Lingkungan */}
+        {/* Card 1: Total Lingkungan / Lingkungan Terpilih */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-2">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Total Lingkungan</span>
+            <span>{currentSelectedLingkungan ? 'Lingkungan Terpilih' : 'Total Lingkungan'}</span>
             <Building2 className="w-4 h-4 text-indigo-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">69 Lingkungan</div>
-          <p className="text-[11px] text-slate-400">13 Wilayah terintegrasi aktif</p>
+          <div className="text-2xl font-black text-slate-900 truncate">
+            {currentSelectedLingkungan ? formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan) : '69 Lingkungan'}
+          </div>
+          <p className="text-[11px] text-slate-400">
+            {currentSelectedLingkungan ? `Wilayah ${getWilayahForLingkungan(currentSelectedLingkungan.nama_lingkungan)}` : '13 Wilayah terintegrasi aktif'}
+          </p>
         </div>
 
         {/* Card 2: Total KK Terdata */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-2">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Total Kepala Keluarga (KK)</span>
+            <span>{currentSelectedLingkungan ? 'Kepala Keluarga (KK)' : 'Total Kepala Keluarga (KK)'}</span>
             <Home className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">2.884 KK</div>
-          <p className="text-[11px] text-emerald-700 font-medium">Rata-rata 42 KK / lingkungan</p>
+          <div className="text-2xl font-black text-slate-900">
+            {currentSelectedLingkungan ? `${scopedKks.length} KK` : '2.884 KK'}
+          </div>
+          <p className="text-[11px] text-emerald-700 font-medium">
+            {currentSelectedLingkungan ? `Terdata aktif di ${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)}` : 'Rata-rata 42 KK / lingkungan'}
+          </p>
         </div>
 
         {/* Card 3: Total Jiwa / Umat */}
@@ -312,8 +402,12 @@ export function SekretarisParokiDashboard() {
             <span>Total Jiwa / Umat</span>
             <Users className="w-4 h-4 text-sky-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">9.802 Jiwa</div>
-          <p className="text-[11px] text-sky-700 font-medium">94% Terdaftar BIDUK KAJ</p>
+          <div className="text-2xl font-black text-slate-900">
+            {currentSelectedLingkungan ? `${scopedTotalJiwa} Jiwa` : '9.802 Jiwa'}
+          </div>
+          <p className="text-[11px] text-sky-700 font-medium">
+            {currentSelectedLingkungan ? 'Terdaftar BIDUK & sensus lingkungan' : '94% Terdaftar BIDUK KAJ'}
+          </p>
         </div>
 
         {/* Card 4: Status Approval */}
@@ -323,10 +417,10 @@ export function SekretarisParokiDashboard() {
             <ShieldCheck className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-2xl font-black text-slate-900">
-            {pendingCount} <span className="text-xs font-bold text-slate-600">Pending</span>
+            {pendingApprovalsForScope.length} <span className="text-xs font-bold text-slate-600">Pending</span>
           </div>
           <p className="text-[11px] text-slate-400">
-            {approvals.filter(a => a.status === 'APPROVED').length} Permohonan disetujui
+            {approvedApprovalsForScope.length} Permohonan disetujui {currentSelectedLingkungan ? '' : '(Seluruh Paroki)'}
           </p>
         </div>
       </div>
@@ -337,10 +431,14 @@ export function SekretarisParokiDashboard() {
           <div>
             <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2 font-serif">
               <SlidersHorizontal className="w-4 h-4 text-slate-600" />
-              Distribusi Kategori Golongan Umat (Seluruh Paroki)
+              {currentSelectedLingkungan
+                ? `Distribusi Kategori Golongan Umat — ${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)}`
+                : 'Distribusi Kategori Golongan Umat (Seluruh Paroki)'}
             </h3>
             <p className="text-xs text-slate-500">
-              Klasifikasi kondisi sosial ekonomi keluarga berbasis pedoman DUPRAS KAJ (Kewenangan penetapan & update: Sekretaris Paroki).
+              {currentSelectedLingkungan
+                ? `Klasifikasi kondisi sosial ekonomi ${scopedKks.length} keluarga di ${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)} berbasis pedoman DUPRAS KAJ.`
+                : 'Klasifikasi kondisi sosial ekonomi keluarga berbasis pedoman DUPRAS KAJ (Kewenangan penetapan & update: Sekretaris Paroki).'}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -370,7 +468,9 @@ export function SekretarisParokiDashboard() {
               <span>Keluarga Sejahtera</span>
               <span className="text-sm">🟢</span>
             </div>
-            <div className="text-xl font-extrabold text-emerald-950">2.328 KK (80.7%)</div>
+            <div className="text-xl font-extrabold text-emerald-950">
+              {scopedGolonganCounts.sejahtera} KK ({scopedGolonganCounts.sejahteraPct}%)
+            </div>
             <p className="text-[11px] text-emerald-700">Mandiri, mampu berswacita & bergotong royong</p>
           </div>
 
@@ -379,7 +479,9 @@ export function SekretarisParokiDashboard() {
               <span>Terduga Prasejahtera</span>
               <span className="text-sm">🟡</span>
             </div>
-            <div className="text-xl font-extrabold text-amber-950">438 KK (15.2%)</div>
+            <div className="text-xl font-extrabold text-amber-950">
+              {scopedGolonganCounts.prasejahtera} KK ({scopedGolonganCounts.prasejahteraPct}%)
+            </div>
             <p className="text-[11px] text-amber-700">Perlu pendampingan & pemantauan berkala</p>
           </div>
 
@@ -388,7 +490,9 @@ export function SekretarisParokiDashboard() {
               <span>Rentan Tidak Mampu</span>
               <span className="text-sm">🔴</span>
             </div>
-            <div className="text-xl font-extrabold text-rose-950">118 KK (4.1%)</div>
+            <div className="text-xl font-extrabold text-rose-950">
+              {scopedGolonganCounts.rentan} KK ({scopedGolonganCounts.rentanPct}%)
+            </div>
             <p className="text-[11px] text-rose-700">Prioritas bantuan talangan & subsidi paroki</p>
           </div>
         </div>
