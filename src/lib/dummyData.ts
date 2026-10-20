@@ -7,6 +7,7 @@ interface SantaClaraDataset {
   totalFamilies: number
   totalMembers: number
   wilayahLingkunganMap: Record<string, string[]>
+  lingkunganStats?: Record<string, { kkCount: number; jiwaCount: number }>
   kksByLingkungan: Record<string, KepalaKeluarga[]>
   anggotaMap: Record<string, AnggotaKeluarga[]>
   golonganMap: Record<string, GolonganKeluarga>
@@ -68,38 +69,65 @@ if (typeof window !== 'undefined') {
 export function getRealKkListForLingkungan(lingkunganId: string, namaLingkungan?: string): KepalaKeluarga[] {
   if (!lingkunganId && !namaLingkungan) return []
 
-  // 1. Direct ID lookup
-  if (lingkunganId && data.kksByLingkungan[lingkunganId]) {
-    return data.kksByLingkungan[lingkunganId]
+  const normId = normalizeLookupKey(lingkunganId)
+  if (normId && data.kksByLingkungan[normId]) {
+    return data.kksByLingkungan[normId]
   }
 
-  // Resolve canonical name if not provided or if generic (e.g. 'Lingkungan')
-  let resolvedName = (namaLingkungan && namaLingkungan.trim().toLowerCase() !== 'lingkungan') ? namaLingkungan : ''
-  if (!resolvedName && lingkunganId) {
+  const normName = normalizeLookupKey(namaLingkungan || '')
+  if (normName && data.kksByLingkungan[normName]) {
+    return data.kksByLingkungan[normName]
+  }
+
+  // Handle double 'n' in Yohanes / Yohannes
+  if (normId) {
+    const doubleN = normId.replace(/yohanes/g, 'yohannes')
+    if (data.kksByLingkungan[doubleN]) return data.kksByLingkungan[doubleN]
+  }
+  if (normName) {
+    const doubleN = normName.replace(/yohanes/g, 'yohannes')
+    if (data.kksByLingkungan[doubleN]) return data.kksByLingkungan[doubleN]
+  }
+
+  // Fallback: search by resolved name from master
+  if (lingkunganId) {
     const all = getAllMasterLingkungan()
     const targetUuid = getLingkunganDbUuid(lingkunganId)
     const found = all.find(l => l.id === lingkunganId || l.slug === lingkunganId || getLingkunganDbUuid(l.id) === targetUuid)
-    if (found) resolvedName = found.nama_lingkungan
+    if (found) {
+      const fn = normalizeLookupKey(found.nama_lingkungan)
+      if (fn && data.kksByLingkungan[fn]) return data.kksByLingkungan[fn]
+    }
   }
 
-  const keysToTry: string[] = []
-  if (lingkunganId) keysToTry.push(lingkunganId, normalizeLookupKey(lingkunganId))
-  if (resolvedName) keysToTry.push(resolvedName, normalizeLookupKey(resolvedName))
-
-  for (const k of keysToTry) {
-    if (!k) continue
-    if (data.kksByLingkungan[k]) return data.kksByLingkungan[k]
-    if (data.kksByLingkungan[`csv-${k}`]) return data.kksByLingkungan[`csv-${k}`]
-    if (data.kksByLingkungan[`st${k}`]) return data.kksByLingkungan[`st${k}`]
-    if (data.kksByLingkungan[`csv-st-${k}`]) return data.kksByLingkungan[`csv-st-${k}`]
-
-    const withDoubleN = k.replace(/yohanes/g, 'yohannes')
-    if (data.kksByLingkungan[withDoubleN]) return data.kksByLingkungan[withDoubleN]
-    if (data.kksByLingkungan[`st${withDoubleN}`]) return data.kksByLingkungan[`st${withDoubleN}`]
-    if (data.kksByLingkungan[`csv-st-${withDoubleN}`]) return data.kksByLingkungan[`csv-st-${withDoubleN}`]
-  }
+  // Direct key check as last resort
+  if (lingkunganId && data.kksByLingkungan[lingkunganId]) return data.kksByLingkungan[lingkunganId]
 
   return []
+}
+
+/**
+ * Returns pre-calculated aggregate stats (kkCount, jiwaCount) for a Lingkungan in O(1) time.
+ */
+export function getLingkunganStats(lingkunganId: string, namaLingkungan?: string): { kkCount: number; jiwaCount: number } {
+  const normId = normalizeLookupKey(lingkunganId)
+  if (normId && data.lingkunganStats?.[normId]) return data.lingkunganStats[normId]
+
+  const normName = normalizeLookupKey(namaLingkungan || '')
+  if (normName && data.lingkunganStats?.[normName]) return data.lingkunganStats[normName]
+
+  if (lingkunganId) {
+    const all = getAllMasterLingkungan()
+    const targetUuid = getLingkunganDbUuid(lingkunganId)
+    const found = all.find(l => l.id === lingkunganId || l.slug === lingkunganId || getLingkunganDbUuid(l.id) === targetUuid)
+    if (found) {
+      const fn = normalizeLookupKey(found.nama_lingkungan)
+      if (fn && data.lingkunganStats?.[fn]) return data.lingkunganStats[fn]
+    }
+  }
+
+  const kks = getRealKkListForLingkungan(lingkunganId, namaLingkungan)
+  return { kkCount: kks.length, jiwaCount: kks.length * 3 }
 }
 
 // Backward compatibility alias for existing code

@@ -281,6 +281,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   className={`flex items-center justify-between px-3 py-2.5 text-xs font-semibold transition-all duration-150 ${
                     isActive
                       ? 'border-l-2 border-[#A9834F] bg-white/[0.06] text-white font-bold rounded-r-[7px] rounded-l-none pl-2.5'

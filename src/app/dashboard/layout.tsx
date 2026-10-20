@@ -5,30 +5,42 @@ import { redirect } from 'next/navigation'
 import { ClientDashboardShell } from './ClientDashboardShell'
 import { UserProfile, Lingkungan } from '@/lib/types'
 
+let cachedLingkunganList: Lingkungan[] | null = null
+let cacheExpiry = 0
+const CACHE_TTL_MS = 1000 * 60 * 15 // 15 minutes
+
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies()
   let profile: UserProfile | null = null
   let lingkunganList: Lingkungan[] = []
 
-  // Ambil list lingkungan dari database
-  try {
-    const supabase = await createClient()
-    const { data: lData } = await supabase
-      .from('lingkungan')
-      .select('*')
-      .order('nama_lingkungan', { ascending: true })
+  // Ambil list lingkungan dari in-memory cache atau database
+  if (cachedLingkunganList && Date.now() < cacheExpiry) {
+    lingkunganList = cachedLingkunganList
+  } else {
+    try {
+      const supabase = await createClient()
+      const { data: lData } = await supabase
+        .from('lingkungan')
+        .select('*')
+        .order('nama_lingkungan', { ascending: true })
 
-    if (lData && lData.length > 0) {
-      lingkunganList = lData
+      if (lData && lData.length > 0) {
+        lingkunganList = lData
+        cachedLingkunganList = lData
+        cacheExpiry = Date.now() + CACHE_TTL_MS
+      }
+    } catch (err) {
+      console.log('Supabase connection error in layout:', err)
     }
-  } catch (err) {
-    console.log('Supabase connection error in layout:', err)
-  }
 
-  // Jika lingkunganList kosong, fallback ke master list
-  if (lingkunganList.length === 0) {
-    const { getAllMasterLingkungan } = await import('@/lib/constants')
-    lingkunganList = getAllMasterLingkungan().map(m => ({ id: m.id, nama_lingkungan: m.nama_lingkungan }))
+    // Jika lingkunganList kosong, fallback ke master list
+    if (lingkunganList.length === 0) {
+      const { getAllMasterLingkungan } = await import('@/lib/constants')
+      lingkunganList = getAllMasterLingkungan().map(m => ({ id: m.id, nama_lingkungan: m.nama_lingkungan }))
+      cachedLingkunganList = lingkunganList
+      cacheExpiry = Date.now() + CACHE_TTL_MS
+    }
   }
 
   // Baca sesi login langsung dari cookie (berbasis username & password)

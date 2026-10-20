@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getAllMasterLingkungan, formatNamaLingkungan, getWilayahForLingkungan, getLingkunganDbUuid } from '@/lib/constants'
-import { ensureDummyKksForLingkungan, getDummyAnggotaForKk, santaClaraStats } from '@/lib/dummyData'
+import { ensureDummyKksForLingkungan, getLingkunganStats, santaClaraStats } from '@/lib/dummyData'
 import { getPengurusForLingkungan } from '@/lib/pengurusData'
 import { createClient } from '@/utils/supabase/client'
 import { formatRupiah } from '@/lib/utils'
@@ -38,17 +38,11 @@ export function ParokiOverviewDashboard({ onSelectLingkungan }: ParokiOverviewDa
   const [profilMap, setProfilMap] = useState<Map<string, any>>(new Map())
   const [lingkunganKasMap, setLingkunganKasMap] = useState<Record<string, number>>({})
 
-  // Compute exact KK and Jiwa counts per Lingkungan from the official Santa Clara dataset
+  // Instant O(1) KK and Jiwa counts per Lingkungan from the pre-calculated Santa Clara dataset
   const lingkunganUmatStats = useMemo(() => {
     const map: Record<string, { kkCount: number; jiwaCount: number }> = {}
     masterList.forEach(ling => {
-      const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [], undefined, true)
-      let jiwa = 0
-      kks.forEach(k => {
-        const anggota = getDummyAnggotaForKk(k)
-        jiwa += (anggota && anggota.length > 0) ? anggota.length : (k.jumlah_anggota || 1)
-      })
-      map[ling.id] = { kkCount: kks.length, jiwaCount: jiwa }
+      map[ling.id] = getLingkunganStats(ling.id, ling.nama_lingkungan)
     })
     return map
   }, [masterList])

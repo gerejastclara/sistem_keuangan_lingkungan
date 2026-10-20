@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/select'
 import { getAllMasterLingkungan, formatNamaLingkungan, getWilayahForLingkungan } from '@/lib/constants'
 import { getDafuApprovals, fetchDafuApprovals, DafuApprovalItem } from '@/lib/dafuApproval'
-import { ensureDummyKksForLingkungan, getDummyAnggotaForKk, getDummyGolonganForKk, santaClaraStats } from '@/lib/dummyData'
+import { ensureDummyKksForLingkungan, getDummyGolonganForKk, getLingkunganStats, santaClaraStats } from '@/lib/dummyData'
 
 export function SekretarisParokiDashboard() {
   const [approvals, setApprovals] = useState<DafuApprovalItem[]>([])
@@ -50,17 +50,11 @@ export function SekretarisParokiDashboard() {
 
   const masterList = getAllMasterLingkungan()
 
-  // Real aggregate KK and Jiwa counts per Lingkungan from Santa Clara dataset
+  // Instant O(1) aggregate KK and Jiwa counts per Lingkungan from Santa Clara dataset
   const lingkunganUmatStats = useMemo(() => {
     const map: Record<string, { kkCount: number; jiwaCount: number }> = {}
     masterList.forEach(ling => {
-      const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [], undefined, true)
-      let jiwa = 0
-      kks.forEach(k => {
-        const anggota = getDummyAnggotaForKk(k)
-        jiwa += (anggota && anggota.length > 0) ? anggota.length : (k.jumlah_anggota || 1)
-      })
-      map[ling.id] = { kkCount: kks.length, jiwaCount: jiwa }
+      map[ling.id] = getLingkunganStats(ling.id, ling.nama_lingkungan)
     })
     return map
   }, [masterList])
@@ -84,8 +78,14 @@ export function SekretarisParokiDashboard() {
   const [golonganCatatan, setGolonganCatatan] = useState<string>('')
   const [golonganUpdateSuccess, setGolonganUpdateSuccess] = useState<string | null>(null)
 
-  // Pre-load all 2.884 KKs for quick search & update
+  // Pre-load all 2.884 KKs for quick search & update (optimized: parse localStorage once)
   const allParishKks = useMemo(() => {
+    let localGolonganStore: Record<string, any> = {}
+    try {
+      const rawStore = localStorage.getItem('custom_golongan_all_store')
+      if (rawStore) localGolonganStore = JSON.parse(rawStore)
+    } catch (e) {}
+
     const list: Array<{
       id: string
       nama_kk: string
@@ -98,15 +98,8 @@ export function SekretarisParokiDashboard() {
     masterList.forEach((ling) => {
       const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [], undefined, true)
       kks.forEach((k) => {
-        let currentGol = 'Sejahtera'
-        try {
-          const rawStore = localStorage.getItem('custom_golongan_all_store')
-          if (rawStore) {
-            const s = JSON.parse(rawStore)
-            if (s[k.id]?.golongan) currentGol = s[k.id].golongan
-          }
-        } catch (e) {}
-        if (currentGol === 'Sejahtera') {
+        let currentGol = localGolonganStore[k.id]?.golongan
+        if (!currentGol) {
           const defaultG = getDummyGolonganForKk(k)
           currentGol = defaultG.golongan
         }
