@@ -114,7 +114,7 @@ export function ensureDummyKksForLingkungan(
   namaLingkungan: string,
   existingList: KepalaKeluarga[],
   preloadedApprovals?: any[],
-  includeParishDummy: boolean = false
+  includeParishData: boolean = true
 ): KepalaKeluarga[] {
   let deletedSet = new Set<string>()
   if (typeof window !== 'undefined') {
@@ -132,8 +132,8 @@ export function ensureDummyKksForLingkungan(
 
   const combinedMap = new Map<string, KepalaKeluarga>()
 
-  // 1. Only include parish CSV dummy dataset if explicitly requested (e.g. Paroki overview)
-  if (includeParishDummy) {
+  // 1. Include real parish families from Santa Clara CSV dataset
+  if (includeParishData) {
     const realList = getRealKkListForLingkungan(lingkunganId, namaLingkungan)
     realList.forEach(k => {
       if (!deletedSet.has(k.id)) {

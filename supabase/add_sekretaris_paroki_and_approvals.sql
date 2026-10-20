@@ -56,24 +56,7 @@ CREATE POLICY "Enable all access for DAFU_APPROVALS" ON public.dafu_approvals
   USING (true)
   WITH CHECK (true);
 
--- 5. Masukkan Seed Data Awal untuk simulasi approval langsung
-INSERT INTO public.dafu_approvals (
-  lingkungan_id, nama_lingkungan, action_type, nama_kk, alamat, is_biduk, golongan, kriteria_catatan, anggota_keluarga, status, submitted_by
-)
-VALUES (
-  'da1b6d3b-db10-48cc-8159-b211dffc3c22',
-  'Padre Pio 1',
-  'TAMBAH_KK',
-  'Keluarga FX Sudirman & Maria Fransisca',
-  'Taman Harapan Baru Blok D5 No. 12',
-  true,
-  'Sejahtera',
-  'Keluarga mandiri, kedua orang tua bekerja tetap, memiliki rumah pribadi.',
-  '[{"nama":"FX Sudirman","peran":"Kepala Keluarga","is_kaj":true},{"nama":"Maria Fransisca","peran":"Istri","is_kaj":true},{"nama":"Benedictus Bryan","peran":"Anak","is_kaj":true}]'::jsonb,
-  'PENDING',
-  'sekretaris_padrepio1'
-)
-ON CONFLICT DO NOTHING;
+
 
 -- 6. Pastikan RLS KEPALA_KELUARGA, ANGGOTA_KELUARGA, GOLONGAN_KELUARGA terbuka penuh
 ALTER TABLE IF EXISTS public.kepala_keluarga ENABLE ROW LEVEL SECURITY;
