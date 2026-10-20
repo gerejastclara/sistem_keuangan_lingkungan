@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { UserProfile, Aset } from '@/lib/types'
 import { formatRupiah } from '@/lib/utils'
-import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery } from '@/lib/constants'
+import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -112,17 +112,28 @@ export default function AsetPage() {
           if (uData) setUserProfile(uData)
         }
 
+        const cookieRole = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_role=').pop()?.split(';').shift() : '') || ''
+        const cookieLingId = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_lingkungan_id=').pop()?.split(';').shift() : '') || ''
+        let cookieLingNama = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_lingkungan_nama=').pop()?.split(';').shift() : '') || ''
+        try { cookieLingNama = decodeURIComponent(cookieLingNama) } catch (e) {}
+
+        const cookieUsername = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_username=').pop()?.split(';').shift() : '') || ''
         let rawDemoEmail = typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() || '' : ''
         try {
           rawDemoEmail = decodeURIComponent(rawDemoEmail)
         } catch (e) {}
-        const effectiveEmail = user?.email || rawDemoEmail || ''
-        const effectiveRole = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_role=').pop()?.split(';').shift() : '') || ''
+        const effectiveEmail = user?.email || rawDemoEmail || cookieUsername || ''
+        const effectiveRole = cookieRole || ''
 
         let targetLingkunganId: string | null = null
         let targetLingkunganNama: string | null = null
 
-        if (effectiveRole !== 'PAROKI' && effectiveEmail) {
+        if (effectiveRole !== 'PAROKI' && cookieLingId) {
+          targetLingkunganId = cookieLingId
+          targetLingkunganNama = cookieLingNama || null
+        }
+
+        if (!targetLingkunganId && effectiveRole !== 'PAROKI' && effectiveEmail) {
           const matched = findLingkunganByQuery(effectiveEmail)
           if (matched) {
             targetLingkunganId = matched.id
@@ -152,11 +163,12 @@ export default function AsetPage() {
         setLingkunganId(targetLingkunganId)
 
         if (targetLingkunganId) {
+          const dbUuid = getLingkunganDbUuid(targetLingkunganId)
           // Load profil for officers info
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .eq('lingkungan_id', targetLingkunganId)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .maybeSingle()
 
           const pengurusInfo = getPengurusForLingkungan(targetLingkunganId, targetLingkunganNama, profil)
@@ -187,11 +199,12 @@ export default function AsetPage() {
 
   const fetchAset = async (lId: string) => {
     let list: Aset[] = []
+    const dbUuid = getLingkunganDbUuid(lId)
     try {
       const { data: items } = await supabase
         .from('aset')
         .select('*')
-        .eq('lingkungan_id', lId)
+        .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${lId}`)
         .order('created_at', { ascending: false })
 
       if (items) list = items
@@ -199,7 +212,7 @@ export default function AsetPage() {
 
     // Merge with localStorage custom assets
     try {
-      const raw = localStorage.getItem(`custom_aset_${lId}`)
+      const raw = localStorage.getItem(`custom_aset_${lId}`) || (dbUuid ? localStorage.getItem(`custom_aset_${dbUuid}`) : null)
       if (raw) {
         const localList: Aset[] = JSON.parse(raw)
         const map = new Map<string, Aset>()
@@ -224,8 +237,9 @@ export default function AsetPage() {
     }
 
     setSubmitting(true)
+    const dbLingkunganId = getLingkunganDbUuid(lingkunganId) || lingkunganId || 'default-lingkungan'
     const payload = {
-      lingkungan_id: lingkunganId || 'default-lingkungan',
+      lingkungan_id: dbLingkunganId,
       nama_barang: namaBarang.trim(),
       kategori: kategori,
       tahun_beli: tahunBeli ? parseInt(tahunBeli, 10) : 2026,

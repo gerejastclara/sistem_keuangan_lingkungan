@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { JurnalTransaksi, KepalaKeluarga } from '@/lib/types'
 import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { getAllMasterCOA, MasterCOAItem } from '@/lib/masterCoa'
-import { formatNamaLingkungan, getAllMasterLingkungan, getWilayahForLingkungan, getLingkunganDbUuid } from '@/lib/constants'
+import { formatNamaLingkungan, getAllMasterLingkungan, getWilayahForLingkungan, getLingkunganDbUuid, findLingkunganByQuery, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
 import { reconcileJournals } from '@/lib/journalSync'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -132,13 +132,32 @@ export default function FormSetoranPage() {
           return null
         }
 
-        let effId = savedLId || getCookieVal('demo_user_lingkungan_id') || 'lingkungan-1'
-        let effNama = getCookieVal('demo_user_lingkungan_nama') || 'St. Maria'
+        const demoEmail = getCookieVal('demo_user_email') || getCookieVal('demo_user_username') || ''
+        const demoRole = getCookieVal('demo_user_role') || ''
+        const isGlobalScope = demoRole === 'PAROKI' || demoRole === 'SEKRETARIS_PAROKI'
 
-        const master = getAllMasterLingkungan()
-        const matched = master.find((m) => m.id === effId)
-        if (matched) {
-          effNama = matched.nama_lingkungan
+        let effId = ''
+        let effNama = ''
+
+        if (!isGlobalScope && demoEmail) {
+          const matched = findLingkunganByQuery(demoEmail)
+          if (matched) {
+            effId = matched.id
+            effNama = matched.nama_lingkungan
+          }
+        }
+
+        if (!effId) {
+          effId = getCookieVal('demo_user_lingkungan_id') || savedLId || ''
+          effNama = getCookieVal('demo_user_lingkungan_nama') || ''
+        }
+
+        if (!effId || effId === 'all') {
+          const allM = getAllMasterLingkungan()
+          effId = allM[0].id
+          effNama = allM[0].nama_lingkungan
+        } else {
+          effNama = getNamaLingkunganFromAnyIdentifier(effId) || effNama
         }
 
         setLingkunganId(effId)
@@ -151,7 +170,7 @@ export default function FormSetoranPage() {
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .or(`id.eq.${dbUuid},id.eq.${effId}`)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${effId}`)
           const peng = getPengurusForLingkungan(dbLingkId, effNama, profil?.[0] || {})
           setPengurus(peng)
         }

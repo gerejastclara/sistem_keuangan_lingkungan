@@ -184,7 +184,7 @@ export default function LaporanPage() {
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .eq('lingkungan_id', dbUuid)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .maybeSingle()
 
           const pInfo = getPengurusForLingkungan(targetLingkunganId, targetLingkunganNama, profil)
@@ -197,7 +197,7 @@ export default function LaporanPage() {
             const { data: dbJournals, error } = await supabase
               .from('jurnal_transaksi')
               .select('*')
-              .eq('lingkungan_id', dbUuid)
+              .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
 
             if (!error && Array.isArray(dbJournals)) {
               supabaseSuccess = true

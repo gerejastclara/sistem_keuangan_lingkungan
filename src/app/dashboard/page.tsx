@@ -390,7 +390,7 @@ export default function DashboardOverviewPage() {
           const { data: kks } = await supabase
             .from('kepala_keluarga')
             .select('*')
-            .eq('lingkungan_id', dbUuid)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .order('nama_kk', { ascending: true })
 
             const dbKks = (kks || []).filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
@@ -404,7 +404,7 @@ export default function DashboardOverviewPage() {
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .eq('lingkungan_id', dbUuid)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .maybeSingle()
 
           const pInfo = getPengurusForLingkungan(targetLingkunganId, lName, profil)
@@ -420,7 +420,7 @@ export default function DashboardOverviewPage() {
               const { data: journals, error } = await supabase
                 .from('jurnal_transaksi')
                 .select('*, kepala_keluarga:kk_id(nama_kk)')
-                .eq('lingkungan_id', dbUuid)
+                .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
                 .order('tanggal', { ascending: false })
 
               if (!error && Array.isArray(journals)) {

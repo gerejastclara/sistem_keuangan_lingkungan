@@ -189,7 +189,7 @@ export default function JurnalPage() {
           const { data: kks } = await supabase
             .from('kepala_keluarga')
             .select('*')
-            .eq('lingkungan_id', dbUuid)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .order('nama_kk', { ascending: true })
 
           const dbKks = kks || []
@@ -200,7 +200,7 @@ export default function JurnalPage() {
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .eq('lingkungan_id', dbUuid)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .maybeSingle()
 
           const pengurusInfo = getPengurusForLingkungan(targetLingkunganId, targetLingkunganNama, profil)

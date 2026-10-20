@@ -102,11 +102,12 @@ export default function BukuBesarDanaTalanganPage() {
         setLingkunganId(targetLingkunganId)
 
         if (targetLingkunganId) {
+          const dbUuid = getLingkunganDbUuid(targetLingkunganId)
           // Load profil for pengurus
           const { data: profil } = await supabase
             .from('profil_lingkungan')
             .select('*')
-            .eq('lingkungan_id', targetLingkunganId)
+            .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .maybeSingle()
 
           const pengurusInfo = getPengurusForLingkungan(targetLingkunganId, targetLingkunganNama, profil)
@@ -114,7 +115,6 @@ export default function BukuBesarDanaTalanganPage() {
 
           // Load Journals
           let list: JurnalTransaksi[] = []
-          const dbUuid = getLingkunganDbUuid(targetLingkunganId)
           let supabaseSuccess = false
           try {
             const { data: journals, error } = await supabase
