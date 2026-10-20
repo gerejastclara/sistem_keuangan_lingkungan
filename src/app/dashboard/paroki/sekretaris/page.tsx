@@ -90,7 +90,7 @@ export default function ParokiSekretariatPage() {
       // 2. Load DAFU for all Lingkungan
       const dMap: Record<string, KepalaKeluarga[]> = {}
       masterList.forEach(ling => {
-        const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [])
+        const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [], undefined, true)
         dMap[ling.id] = kks
       })
       setDafuDataMap(dMap)

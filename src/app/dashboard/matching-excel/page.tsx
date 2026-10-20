@@ -137,7 +137,7 @@ export default function MatchingDataExcelPage() {
     }[] = []
 
     masterLingkunganList.forEach((ling) => {
-      const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [])
+      const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [], undefined, true)
       kks.forEach((kk) => {
         const anggota = getDummyAnggotaForKk(kk)
         const gol = getDummyGolonganForKk(kk)

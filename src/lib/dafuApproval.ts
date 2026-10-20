@@ -34,73 +34,7 @@ export interface DafuApprovalItem {
 
 const STORAGE_KEY = 'dafu_approvals_store'
 
-const INITIAL_APPROVAL_SEED: DafuApprovalItem[] = [
-  {
-    id: '35fb2279-43d5-424d-b349-d95313d9901e',
-    lingkungan_id: 'da1b6d3b-db10-48cc-8159-b211dffc3c22',
-    nama_lingkungan: 'Padre Pio 1',
-    kk_id: null,
-    action_type: 'TAMBAH_KK',
-    nama_kk: 'Keluarga FX Sudirman & Maria Fransisca',
-    alamat: 'Taman Harapan Baru Blok D5 No. 12',
-    is_biduk: true,
-    golongan: 'Sejahtera',
-    kriteria_catatan: 'Keluarga mandiri, kedua orang tua bekerja tetap, memiliki rumah pribadi.',
-    anggota_keluarga: [
-      { nama: 'FX Sudirman', peran: 'Kepala Keluarga', is_kaj: true, keterangan: 'Kepala Keluarga' },
-      { nama: 'Maria Fransisca', peran: 'Istri', is_kaj: true, keterangan: 'Istri' },
-      { nama: 'Benedictus Bryan', peran: 'Anak', is_kaj: true, keterangan: 'Anak Pertama' }
-    ],
-    status: 'PENDING',
-    catatan_paroki: null,
-    submitted_by: 'sekretaris_padrepio1',
-    created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    is_read: false
-  },
-  {
-    id: 'ca43092a-537d-4604-b5ad-dbfb35de5c91',
-    lingkungan_id: 'lingkungan-st-catarina-1',
-    nama_lingkungan: 'St. Catarina 1',
-    kk_id: null,
-    action_type: 'TAMBAH_KK',
-    nama_kk: 'Keluarga Antonius Wijaya',
-    alamat: 'Pesona Anggrek Harapan Blok B2 No. 8',
-    is_biduk: true,
-    golongan: 'Terduga Prasejahtera',
-    kriteria_catatan: 'Kepala keluarga baru mengalami PHK bulan lalu, saat ini mengandalkan usaha toko kelontong kecil.',
-    anggota_keluarga: [
-      { nama: 'Antonius Wijaya', peran: 'Kepala Keluarga', is_kaj: true, keterangan: 'Kepala Keluarga' },
-      { nama: 'Theresia Linda', peran: 'Istri', is_kaj: true, keterangan: 'Istri' }
-    ],
-    status: 'PENDING',
-    catatan_paroki: null,
-    submitted_by: 'sekretaris_stcatarina1',
-    created_at: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
-    is_read: false
-  },
-  {
-    id: '7ac5b273-c7a4-4176-a7d4-2658a8b892a1',
-    lingkungan_id: '835a6f75-e179-4bf4-b91a-6f130e10f815',
-    nama_lingkungan: 'Padre Pio 2',
-    kk_id: null,
-    action_type: 'TAMBAH_KK',
-    nama_kk: 'Keluarga Yohanes Kristianto & Agnes Wijaya',
-    alamat: 'Taman Harapan Baru Blok F2 No. 15',
-    is_biduk: true,
-    golongan: 'Sejahtera',
-    kriteria_catatan: 'Keluarga baru pindahan dari Paroki Kramat, berkas baptis dan perkawinan lengkap.',
-    anggota_keluarga: [
-      { nama: 'Yohanes Kristianto', peran: 'Kepala Keluarga', is_kaj: true, keterangan: 'Kepala Keluarga' },
-      { nama: 'Agnes Wijaya', peran: 'Istri', is_kaj: true, keterangan: 'Istri' },
-      { nama: 'Gabriella Clarissa', peran: 'Anak', is_kaj: true, keterangan: 'Anak Pertama' }
-    ],
-    status: 'PENDING',
-    catatan_paroki: null,
-    submitted_by: 'sekretaris_padrepio2',
-    created_at: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
-    is_read: false
-  }
-]
+const INITIAL_APPROVAL_SEED: DafuApprovalItem[] = []
 
 function mapDbRowToApprovalItem(item: any): DafuApprovalItem {
   return {

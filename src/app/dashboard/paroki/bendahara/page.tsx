@@ -71,7 +71,7 @@ export default function ParokiBendaharaPage() {
       // 1. Load All DAFU KKs per Lingkungan
       const dafuMap: Record<string, KepalaKeluarga[]> = {}
       masterList.forEach(ling => {
-        dafuMap[ling.id] = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [])
+        dafuMap[ling.id] = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [], undefined, true)
       })
       setDafuByLingkungan(dafuMap)
 

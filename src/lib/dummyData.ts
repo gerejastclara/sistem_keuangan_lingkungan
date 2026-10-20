@@ -43,6 +43,22 @@ if (typeof window !== 'undefined') {
         }
       }
     }
+
+    // Purge old dummy seeds from dafu_approvals_store
+    const rawAppr = localStorage.getItem('dafu_approvals_store')
+    if (rawAppr) {
+      try {
+        const parsed = JSON.parse(rawAppr)
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(a =>
+            a.id !== '35fb2279-43d5-424d-b349-d95313d9901e' &&
+            a.id !== 'ca43092a-537d-4604-b5ad-dbfb35de5c91' &&
+            a.id !== '7ac5b273-c7a4-4176-a7d4-2658a8b892a1'
+          )
+          localStorage.setItem('dafu_approvals_store', JSON.stringify(filtered))
+        }
+      } catch (e) {}
+    }
   } catch (e) {}
 }
 
@@ -97,10 +113,9 @@ export function ensureDummyKksForLingkungan(
   lingkunganId: string,
   namaLingkungan: string,
   existingList: KepalaKeluarga[],
-  preloadedApprovals?: any[]
+  preloadedApprovals?: any[],
+  includeParishDummy: boolean = false
 ): KepalaKeluarga[] {
-  const realList = getRealKkListForLingkungan(lingkunganId, namaLingkungan)
-
   let deletedSet = new Set<string>()
   if (typeof window !== 'undefined') {
     try {
@@ -116,14 +131,18 @@ export function ensureDummyKksForLingkungan(
   }
 
   const combinedMap = new Map<string, KepalaKeluarga>()
-  // Load real parishioners first (excluding deleted)
-  realList.forEach(k => {
-    if (!deletedSet.has(k.id)) {
-      combinedMap.set(k.id, k)
-    }
-  })
 
-  // Merge any locally saved / custom user entries (from Supabase or localStorage), strictly ignoring any legacy dummy IDs or deleted entries
+  // 1. Only include parish CSV dummy dataset if explicitly requested (e.g. Paroki overview)
+  if (includeParishDummy) {
+    const realList = getRealKkListForLingkungan(lingkunganId, namaLingkungan)
+    realList.forEach(k => {
+      if (!deletedSet.has(k.id)) {
+        combinedMap.set(k.id, k)
+      }
+    })
+  }
+
+  // 2. Merge any locally saved / custom user entries (from Supabase or localStorage), strictly ignoring any legacy dummy IDs or deleted entries
   if (existingList && existingList.length > 0) {
     existingList.forEach(k => {
       if (

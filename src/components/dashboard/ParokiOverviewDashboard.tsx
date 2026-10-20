@@ -42,7 +42,7 @@ export function ParokiOverviewDashboard({ onSelectLingkungan }: ParokiOverviewDa
   const lingkunganUmatStats = useMemo(() => {
     const map: Record<string, { kkCount: number; jiwaCount: number }> = {}
     masterList.forEach(ling => {
-      const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [])
+      const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [], undefined, true)
       let jiwa = 0
       kks.forEach(k => {
         const anggota = getDummyAnggotaForKk(k)
