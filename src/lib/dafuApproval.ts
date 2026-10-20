@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/client'
 import { KategoriGolongan } from './types'
 import { getLingkunganDbUuid } from '@/lib/constants'
+import { toDeterministicUuid } from './uuid'
 
 export interface DafuMemberItem {
   id?: string
@@ -339,7 +340,7 @@ export async function approveDafuItem(
     const item = updated.find(i => i.id === id)
     if (item && item.action_type !== 'HAPUS_KK') {
       const dbUuid = getLingkunganDbUuid(item.lingkungan_id) || item.lingkungan_id
-      const kkId = item.kk_id || `kk-appr-${item.id}`
+      const kkId = item.kk_id || toDeterministicUuid('kk', `appr-${item.id}`)
       await supabase.from('kepala_keluarga').upsert({
         id: kkId,
         lingkungan_id: dbUuid,
@@ -350,7 +351,7 @@ export async function approveDafuItem(
 
       if (Array.isArray(item.anggota_keluarga) && item.anggota_keluarga.length > 0) {
         const mems = item.anggota_keluarga.map((m, idx) => ({
-          id: m.id || `mem-${kkId}-${idx}`,
+          id: m.id || toDeterministicUuid('mem', `${kkId}:${idx}`),
           kk_id: kkId,
           nama: m.nama,
           peran: m.peran,

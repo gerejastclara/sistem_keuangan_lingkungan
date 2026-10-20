@@ -32,6 +32,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import {
   getKriteriaGolonganList,
+  fetchKriteriaGolonganFromDb,
   saveKriteriaGolonganList,
   resetKriteriaGolonganDefault,
   KriteriaGolonganItem,
@@ -109,7 +110,9 @@ export default function KriteriaGolonganPage() {
 
   // Load items & check role
   useEffect(() => {
+    const supabase = createClient()
     setItems(getKriteriaGolonganList())
+    fetchKriteriaGolonganFromDb(supabase).then(res => setItems(res)).catch(() => {})
 
     const handleUpdate = () => {
       setItems(getKriteriaGolonganList())
@@ -251,7 +254,8 @@ export default function KriteriaGolonganPage() {
       setSuccessMessage(`Parameter golongan baru "${formNama.trim()}" berhasil ditambahkan.`)
     }
 
-    saveKriteriaGolonganList(updatedList)
+    const supabase = createClient()
+    saveKriteriaGolonganList(updatedList, supabase)
     setItems(updatedList)
     setIsModalOpen(false)
 
@@ -267,7 +271,8 @@ export default function KriteriaGolonganPage() {
     }
     if (confirm(`Hapus parameter klasifikasi golongan "${nama}"?`)) {
       const updatedList = items.filter((it) => it.id !== id)
-      saveKriteriaGolonganList(updatedList)
+      const supabase = createClient()
+      saveKriteriaGolonganList(updatedList, supabase)
       setItems(updatedList)
       setSuccessMessage(`Parameter golongan "${nama}" telah dihapus.`)
       setTimeout(() => setSuccessMessage(null), 3000)
@@ -280,7 +285,8 @@ export default function KriteriaGolonganPage() {
       return
     }
     if (confirm('Kembalikan parameter klasifikasi ke 4 standar baku resmi Pedoman DUPRAS KAJ 2025?')) {
-      const def = resetKriteriaGolonganDefault()
+      const supabase = createClient()
+      const def = resetKriteriaGolonganDefault(supabase)
       setItems(def)
       setSuccessMessage('Parameter kriteria telah dikembalikan ke 4 standar baku Pedoman DUPRAS KAJ 2025.')
       setTimeout(() => setSuccessMessage(null), 3000)

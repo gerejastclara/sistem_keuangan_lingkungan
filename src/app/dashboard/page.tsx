@@ -26,6 +26,8 @@ import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import { SekretarisParokiDashboard } from '@/components/dashboard/SekretarisParokiDashboard'
 import { ParokiOverviewDashboard } from '@/components/dashboard/ParokiOverviewDashboard'
 import { fetchDafuApprovals, type DafuApprovalItem } from '@/lib/dafuApproval'
+import LocalStorageMigrationModal from '@/components/migration/LocalStorageMigrationModal'
+import { scanLocalStorageData } from '@/lib/migrationService'
 import {
   TrendingUp,
   TrendingDown,
@@ -54,7 +56,9 @@ import {
   Phone,
   Calendar,
   CreditCard,
-  Clock
+  Clock,
+  Database,
+  CloudUpload
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -96,6 +100,22 @@ export default function DashboardOverviewPage() {
   const [golonganMap, setGolonganMap] = useState<Record<string, GolonganKeluarga>>({})
   const [expandedKkIds, setExpandedKkIds] = useState<Set<string>>(new Set())
   const [pendingApprovals, setPendingApprovals] = useState<DafuApprovalItem[]>([])
+
+  // LocalStorage Migration State
+  const [isMigrationModalOpen, setIsMigrationModalOpen] = useState(false)
+  const [hasLocalData, setHasLocalData] = useState(false)
+  const [localDataCount, setLocalDataCount] = useState(0)
+
+  useEffect(() => {
+    const inv = scanLocalStorageData()
+    if (inv && inv.totalItems > 0) {
+      setHasLocalData(true)
+      setLocalDataCount(inv.totalItems)
+    } else {
+      setHasLocalData(false)
+      setLocalDataCount(0)
+    }
+  }, [])
 
   // Edit Pengurus Modal State (Khusus Sekretaris & Paroki)
   const [isEditPengurusOpen, setIsEditPengurusOpen] = useState(false)
@@ -992,6 +1012,55 @@ export default function DashboardOverviewPage() {
     </Dialog>
   )
 
+  const renderMigrationModal = () => (
+    <LocalStorageMigrationModal
+      isOpen={isMigrationModalOpen}
+      onClose={() => {
+        setIsMigrationModalOpen(false)
+        const inv = scanLocalStorageData()
+        setHasLocalData(inv.totalItems > 0)
+        setLocalDataCount(inv.totalItems)
+      }}
+      onSuccess={() => {
+        const inv = scanLocalStorageData()
+        setHasLocalData(inv.totalItems > 0)
+        setLocalDataCount(inv.totalItems)
+        window.location.reload()
+      }}
+    />
+  )
+
+  const renderMigrationBanner = () => {
+    if (!hasLocalData) return null
+    return (
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-300 dark:border-amber-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white shrink-0 shadow-md shadow-amber-500/20">
+            <Database className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-amber-950 dark:text-amber-100 flex items-center gap-2">
+              Terdeteksi {localDataCount} Data di Local Storage Browser
+              <span className="text-[10px] bg-amber-200 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-full font-semibold">
+                Perlu Migrasi
+              </span>
+            </h4>
+            <p className="text-xs text-amber-800/90 dark:text-amber-300/80 mt-0.5">
+              Pindahkan seluruh transaksi kas, data umat, aset, dan profil ke Supabase Database Cloud agar tersimpan permanen dan tersinkronisasi saat hosting.
+            </p>
+          </div>
+        </div>
+        <Button
+          onClick={() => setIsMigrationModalOpen(true)}
+          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold px-4 py-2 text-xs rounded-xl shadow-md shadow-orange-500/20 shrink-0 cursor-pointer"
+        >
+          <CloudUpload className="w-4 h-4 mr-1.5" />
+          Pindahkan ke Cloud Database
+        </Button>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -1004,7 +1073,13 @@ export default function DashboardOverviewPage() {
   // VIEW KHUSUS SEKRETARIS PAROKI: DASHBOARD SELURUH LINGKUNGAN
   // ==========================================
   if (userRole === 'SEKRETARIS_PAROKI') {
-    return <SekretarisParokiDashboard />
+    return (
+      <div className="space-y-4 max-w-7xl mx-auto">
+        {renderMigrationBanner()}
+        <SekretarisParokiDashboard />
+        {renderMigrationModal()}
+      </div>
+    )
   }
 
   // ==========================================
@@ -1012,14 +1087,18 @@ export default function DashboardOverviewPage() {
   // ==========================================
   if (userRole === 'PAROKI' && (!lingkunganId || lingkunganId === 'all')) {
     return (
-      <ParokiOverviewDashboard
-        onSelectLingkungan={(selectedId) => {
-          setLingkunganId(selectedId)
-          const allM = getAllMasterLingkungan()
-          const matchedM = allM.find(m => m.id === selectedId)
-          if (matchedM) setLingkunganName(matchedM.nama_lingkungan)
-        }}
-      />
+      <div className="space-y-4 max-w-7xl mx-auto">
+        {renderMigrationBanner()}
+        <ParokiOverviewDashboard
+          onSelectLingkungan={(selectedId) => {
+            setLingkunganId(selectedId)
+            const allM = getAllMasterLingkungan()
+            const matchedM = allM.find(m => m.id === selectedId)
+            if (matchedM) setLingkunganName(matchedM.nama_lingkungan)
+          }}
+        />
+        {renderMigrationModal()}
+      </div>
     )
   }
 
@@ -1060,8 +1139,24 @@ export default function DashboardOverviewPage() {
                 Input Data di DAFU
               </Button>
             </Link>
+
+            {/* Migration Button */}
+            <Button
+              onClick={() => setIsMigrationModalOpen(true)}
+              variant="outline"
+              className="border-amber-300 hover:bg-amber-50 text-amber-800 font-bold px-3.5 py-2.5 rounded-xl shadow-2xs cursor-pointer h-11 shrink-0 transition-all flex items-center gap-2 text-xs"
+            >
+              <Database className="w-4 h-4 text-amber-600" />
+              <span>Migrasi Database</span>
+              {hasLocalData && (
+                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+              )}
+            </Button>
           </div>
         </div>
+
+        {/* LocalStorage Migration Alert Banner */}
+        {renderMigrationBanner()}
 
         {/* Summary Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1510,6 +1605,9 @@ export default function DashboardOverviewPage() {
 
         {/* Dialog Atur Pengurus Lingkungan Khusus Sekretaris */}
         {renderEditPengurusDialog()}
+
+        {/* Local Storage Migration Modal */}
+        {renderMigrationModal()}
       </div>
     )
   }
@@ -1595,8 +1693,24 @@ export default function DashboardOverviewPage() {
               </Link>
             </>
           )}
+
+          {/* Migration Button */}
+          <Button
+            onClick={() => setIsMigrationModalOpen(true)}
+            variant="outline"
+            className="border-amber-300 hover:bg-amber-50 text-amber-800 font-bold px-3.5 py-2.5 rounded-xl shadow-2xs cursor-pointer transition-all text-xs flex items-center gap-2"
+          >
+            <Database className="w-4 h-4 text-amber-600" />
+            <span>Migrasi Database</span>
+            {hasLocalData && (
+              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+            )}
+          </Button>
         </div>
       </div>
+
+      {/* LocalStorage Migration Alert Banner */}
+      {renderMigrationBanner()}
 
       {/* STRUKTUR PENGURUS LINGKUNGAN */}
       {renderPengurusCard(userRole === 'PAROKI')}
@@ -2068,6 +2182,9 @@ export default function DashboardOverviewPage() {
 
       {/* Detail Dialog for Bendahara & Paroki */}
       {renderDetailDialog()}
+
+      {/* Local Storage Migration Modal */}
+      {renderMigrationModal()}
     </div>
   )
 }

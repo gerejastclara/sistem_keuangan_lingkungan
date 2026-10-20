@@ -34,8 +34,10 @@ export type KategoriGolongan = 'Sejahtera' | 'Terduga Prasejahtera' | 'Terduga P
 export interface AnggotaKeluarga {
   id: string;
   kk_id: string;
+  no_anggota?: string;
   nama: string;
   peran: PeranKeluarga;
+  jenis_kelamin?: string;
   is_kaj: boolean;
   keterangan?: string | null;
 }
@@ -116,5 +118,34 @@ export interface Aset {
   jumlah: number;
   harga_satuan: number;
   kondisi?: 'Baik' | 'Rusak Ringan' | 'Rusak Berat' | string;
+}
+
+export interface DokumenParoki {
+  id: string;
+  kode_form?: string | null;
+  nama_dokumen: string;
+  kategori?: string;
+  file_name: string;
+  file_path: string;
+  file_size_bytes?: number;
+  mime_type?: string;
+  keterangan?: string | null;
+  is_active?: boolean;
+  created_at?: string;
+}
+
+export interface RiwayatImportDafu {
+  id: string;
+  file_name: string;
+  file_size_bytes?: number;
+  total_baris?: number;
+  total_kk?: number;
+  total_jiwa?: number;
+  lingkungan_terdampak?: number;
+  uploaded_by?: string;
+  user_role?: string;
+  status?: string;
+  catatan?: string | null;
+  created_at?: string;
 }
 

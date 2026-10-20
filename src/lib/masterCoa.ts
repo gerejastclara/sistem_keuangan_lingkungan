@@ -168,15 +168,53 @@ export function deleteCustomCOA(id: string): MasterCOAItem[] {
 }
 
 /**
+ * Fetch COA directly from Supabase database table `coa`
+ */
+export async function fetchMasterCoaFromDb(supabase: any): Promise<MasterCOAItem[]> {
+  try {
+    const { data, error } = await supabase
+      .from('coa')
+      .select('*')
+      .order('id', { ascending: true })
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      const mapped: MasterCOAItem[] = data.map((item: any) => ({
+        id: String(item.id),
+        nama_akun: String(item.nama_akun),
+        tipe: item.tipe as 'DEBIT' | 'KREDIT',
+        kategori: (item.kategori || (item.id.startsWith('1') ? 'KAS' : item.id.startsWith('4') ? 'PENERIMAAN' : 'PENGELUARAN')) as any,
+        keterangan: item.keterangan || undefined
+      }))
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(CUSTOM_COA_STORAGE_KEY, JSON.stringify(mapped))
+          window.dispatchEvent(new Event('coaDataUpdated'))
+        } catch (e) {}
+      }
+
+      return mapped
+    }
+  } catch (err) {
+    console.warn('Notice querying Supabase coa:', err)
+  }
+
+  return getAllMasterCOA()
+}
+
+/**
  * Sinkronisasi seluruh COA ke database Supabase tabel `coa`
  */
 export async function syncAllCoaToDatabase(supabase: any): Promise<{ success: boolean; count: number; error?: string }> {
   try {
     const allCoas = getAllMasterCOA()
-    const rows = allCoas.map(item => ({
+    const rows = allCoas.map((item, idx) => ({
       id: item.id,
       nama_akun: item.nama_akun,
-      tipe: item.tipe
+      tipe: item.tipe,
+      kategori: item.kategori,
+      keterangan: item.keterangan || null,
+      urutan: idx + 1
     }))
 
     const { error } = await supabase

@@ -120,7 +120,88 @@ export const DEFAULT_KRITERIA_GOLONGAN: KriteriaGolonganItem[] = [
 const STORAGE_KEY = 'kriteria_golongan_dupras_kaj_v4';
 const LEGACY_STORAGE_KEY = 'kriteria_golongan_custom_list';
 
+let memoryKriteriaCache: KriteriaGolonganItem[] | null = null;
+
+export async function fetchKriteriaGolonganFromDb(supabase: any): Promise<KriteriaGolonganItem[]> {
+  try {
+    const { data, error } = await supabase
+      .from('kriteria_golongan')
+      .select('*')
+      .order('urutan', { ascending: true });
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      const mapped: KriteriaGolonganItem[] = data.map((item: any) => ({
+        id: item.id,
+        nama: item.nama,
+        badgeColor: item.badge_color || '#16a34a',
+        bgLight: item.bg_light || '#f0fdf4',
+        borderLight: item.border_light || '#bbf7d0',
+        textColor: item.text_color || '#15803d',
+        iconEmoji: item.icon_emoji || '🟢',
+        subjudul: item.subjudul || '',
+        garisPengeluaran: item.garis_pengeluaran || '',
+        tahapMetode: item.tahap_metode || '',
+        indikator: item.indikator || '',
+        contohKondisi: item.contoh_kondisi || '',
+        rekomendasiBantuan: item.rekomendasi_bantuan || '',
+        isDefault: item.is_default !== false,
+        urutan: item.urutan || 1
+      }));
+
+      memoryKriteriaCache = mapped;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+        window.dispatchEvent(new CustomEvent('kriteriaGolonganChanged', { detail: mapped }));
+      }
+      return mapped;
+    }
+  } catch (err) {
+    console.warn('Notice loading kriteria golongan from Supabase:', err);
+  }
+
+  return getKriteriaGolonganList();
+}
+
+export async function syncKriteriaGolonganToDb(supabase: any, list: KriteriaGolonganItem[]): Promise<boolean> {
+  try {
+    const rows = list.map(item => ({
+      id: item.id,
+      nama: item.nama,
+      badge_color: item.badgeColor,
+      bg_light: item.bgLight,
+      border_light: item.borderLight,
+      text_color: item.textColor,
+      icon_emoji: item.iconEmoji,
+      subjudul: item.subjudul,
+      garis_pengeluaran: item.garisPengeluaran || null,
+      tahap_metode: item.tahapMetode || null,
+      indikator: item.indikator,
+      contoh_kondisi: item.contohKondisi,
+      rekomendasi_bantuan: item.rekomendasiBantuan,
+      is_default: item.isDefault !== false,
+      urutan: item.urutan
+    }));
+
+    const { error } = await supabase
+      .from('kriteria_golongan')
+      .upsert(rows, { onConflict: 'id' });
+
+    if (error) {
+      console.warn('Supabase upsert kriteria_golongan notice:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Exception upserting kriteria_golongan:', err);
+    return false;
+  }
+}
+
 export function getKriteriaGolonganList(): KriteriaGolonganItem[] {
+  if (memoryKriteriaCache && memoryKriteriaCache.length > 0) {
+    return memoryKriteriaCache;
+  }
+
   if (typeof window === 'undefined') {
     return DEFAULT_KRITERIA_GOLONGAN;
   }
@@ -128,13 +209,14 @@ export function getKriteriaGolonganList(): KriteriaGolonganItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      // Initialize with default KAJ
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_KRITERIA_GOLONGAN));
       return DEFAULT_KRITERIA_GOLONGAN;
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed.sort((a, b) => (a.urutan || 0) - (b.urutan || 0));
+      const sorted = parsed.sort((a, b) => (a.urutan || 0) - (b.urutan || 0));
+      memoryKriteriaCache = sorted;
+      return sorted;
     }
   } catch (err) {
     console.error('Error loading custom kriteria golongan:', err);
@@ -143,11 +225,17 @@ export function getKriteriaGolonganList(): KriteriaGolonganItem[] {
   return DEFAULT_KRITERIA_GOLONGAN;
 }
 
-export function saveKriteriaGolonganList(list: KriteriaGolonganItem[]): void {
+export function saveKriteriaGolonganList(list: KriteriaGolonganItem[], supabase?: any): void {
+  const sorted = [...list].sort((a, b) => (a.urutan || 0) - (b.urutan || 0));
+  memoryKriteriaCache = sorted;
+
+  if (supabase) {
+    syncKriteriaGolonganToDb(supabase, sorted).catch(() => {});
+  }
+
   if (typeof window === 'undefined') return;
 
   try {
-    const sorted = [...list].sort((a, b) => (a.urutan || 0) - (b.urutan || 0));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sorted));
     localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(sorted));
     window.dispatchEvent(new CustomEvent('kriteriaGolonganChanged', { detail: sorted }));
@@ -157,7 +245,13 @@ export function saveKriteriaGolonganList(list: KriteriaGolonganItem[]): void {
   }
 }
 
-export function resetKriteriaGolonganDefault(): KriteriaGolonganItem[] {
+export function resetKriteriaGolonganDefault(supabase?: any): KriteriaGolonganItem[] {
+  memoryKriteriaCache = DEFAULT_KRITERIA_GOLONGAN;
+
+  if (supabase) {
+    syncKriteriaGolonganToDb(supabase, DEFAULT_KRITERIA_GOLONGAN).catch(() => {});
+  }
+
   if (typeof window === 'undefined') return DEFAULT_KRITERIA_GOLONGAN;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_KRITERIA_GOLONGAN));

@@ -54,8 +54,10 @@ import {
   Wallet,
   UserCheck,
   Clock,
-  Send
+  Send,
+  FileSpreadsheet
 } from 'lucide-react'
+import { ImportExcelDafuModal } from '@/components/dafu/ImportExcelDafuModal'
 
 const ROLE_OPTIONS: PeranKeluarga[] = [
   'Kepala Keluarga',
@@ -167,6 +169,7 @@ function DafuFormContent() {
   const [pengurusSuccessMsg, setPengurusSuccessMsg] = useState<string | null>(null)
   const [kriteriaList, setKriteriaList] = useState<KriteriaGolonganItem[]>(() => getKriteriaGolonganList())
   const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   // Sinkronisasi data kriteria golongan secara real-time dari modul kriteria & deteksi user role
   useEffect(() => {
@@ -1062,6 +1065,16 @@ function DafuFormContent() {
               Atur Pengurus
             </Button>
           )}
+
+          <Button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-11 px-4 cursor-pointer shadow-xs shadow-emerald-600/20"
+            title="Import data umat resmi dari file Excel (.xlsx) atau CSV langsung ke Database Cloud"
+          >
+            <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+            Import Excel / CSV
+          </Button>
 
           <Link href="/dashboard">
             <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-xl h-11 cursor-pointer">
@@ -2024,6 +2037,19 @@ function DafuFormContent() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL IMPORT EXCEL / CSV DATA UMAT DAFU */}
+      <ImportExcelDafuModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        userRole={userRole}
+        userLingkunganId={lingkunganId}
+        onSuccess={() => {
+          if (lingkunganId) {
+            loadKks(lingkunganId, lingkunganName || '')
+          }
+        }}
+      />
     </div>
   )
 }
