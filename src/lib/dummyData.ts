@@ -126,8 +126,18 @@ export function ensureDummyKksForLingkungan(
       const allD: string[] = rawAll ? JSON.parse(rawAll) : []
       const lD: string[] = rawL ? JSON.parse(rawL) : []
       const uD: string[] = rawU ? JSON.parse(rawU) : []
-      deletedSet = new Set([...allD, ...lD, ...uD])
+      deletedSet = new Set([...allD, ...lD, ...uD].map(s => String(s).toLowerCase().trim()))
     } catch (e) {}
+  }
+
+  const isDeleted = (id?: string | null, name?: string | null): boolean => {
+    if (!id && !name) return false
+    const idClean = (id || '').toLowerCase().trim()
+    const nameClean = (name || '').toLowerCase().trim()
+    if (idClean && deletedSet.has(idClean)) return true
+    if (nameClean && deletedSet.has(nameClean)) return true
+    if (idClean && idClean.startsWith('kk-appr-') && deletedSet.has(idClean.replace('kk-appr-', ''))) return true
+    return false
   }
 
   const combinedMap = new Map<string, KepalaKeluarga>()
@@ -136,7 +146,7 @@ export function ensureDummyKksForLingkungan(
   if (includeParishData) {
     const realList = getRealKkListForLingkungan(lingkunganId, namaLingkungan)
     realList.forEach(k => {
-      if (!deletedSet.has(k.id)) {
+      if (!isDeleted(k.id, k.nama_kk)) {
         combinedMap.set(k.id, k)
       }
     })
@@ -151,7 +161,7 @@ export function ensureDummyKksForLingkungan(
         !k.id.startsWith('dummy-') &&
         !k.id.includes('dummy') &&
         k.nama_kk.toLowerCase().trim() !== 'dimas' &&
-        !deletedSet.has(k.id)
+        !isDeleted(k.id, k.nama_kk)
       ) {
         combinedMap.set(k.id, k)
       }
@@ -179,6 +189,13 @@ export function ensureDummyKksForLingkungan(
       if (!matchesLingkungan) return
 
       const kkId = appr.kk_id || `kk-appr-${appr.id}`
+
+      // Skip if deleted by user
+      if (isDeleted(kkId, appr.nama_kk) || isDeleted(appr.id, appr.nama_kk) || (appr.kk_id && isDeleted(appr.kk_id, appr.nama_kk))) {
+        combinedMap.delete(kkId)
+        if (appr.kk_id) combinedMap.delete(appr.kk_id)
+        return
+      }
 
       if (appr.action_type === 'HAPUS_KK') {
         combinedMap.delete(kkId)

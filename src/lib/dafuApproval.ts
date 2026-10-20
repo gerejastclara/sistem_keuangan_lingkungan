@@ -449,3 +449,55 @@ export function getPendingApprovalCount(): number {
   const current = getDafuApprovals()
   return current.filter(item => item.status === 'PENDING').length
 }
+
+/**
+ * Permanently removes an approval record from Supabase table `dafu_approvals`
+ * and local cache by approval id, kk_id, or family name.
+ */
+export async function removeDafuApproval(identifier: string, namaKk?: string): Promise<boolean> {
+  const supabase = createClient()
+  const cleanId = (identifier || '').trim()
+  const cleanName = (namaKk || '').trim()
+
+  try {
+    const filters: string[] = []
+    if (cleanId) {
+      filters.push(`id.eq.${cleanId}`)
+      filters.push(`kk_id.eq.${cleanId}`)
+      const stripped = cleanId.replace('kk-appr-', '')
+      if (stripped && stripped !== cleanId) {
+        filters.push(`id.eq.${stripped}`)
+        filters.push(`kk_id.eq.${stripped}`)
+      }
+    }
+    if (cleanName) {
+      filters.push(`nama_kk.eq.${cleanName}`)
+    }
+
+    if (filters.length > 0) {
+      await supabase.from('dafu_approvals').delete().or(filters.join(','))
+    }
+  } catch (err) {
+    console.warn('Notice removing dafu approval from Supabase:', err)
+  }
+
+  // Remove from memory and localStorage
+  const current = getDafuApprovals()
+  const cleanNameLower = cleanName.toLowerCase()
+  const cleanIdLower = cleanId.toLowerCase()
+  const filtered = current.filter(item => {
+    const itemNamaLower = (item.nama_kk || '').toLowerCase().trim()
+    const matchName = cleanNameLower && itemNamaLower === cleanNameLower
+    const matchId =
+      item.id === cleanId ||
+      item.kk_id === cleanId ||
+      `kk-appr-${item.id}` === cleanId ||
+      item.id.toLowerCase() === cleanIdLower ||
+      (item.kk_id && item.kk_id.toLowerCase() === cleanIdLower)
+    return !matchName && !matchId
+  })
+
+  saveDafuApprovals(filtered)
+  return true
+}
+

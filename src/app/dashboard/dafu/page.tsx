@@ -22,7 +22,7 @@ import {
 } from '@/lib/dummyData'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { getKriteriaGolonganList, KriteriaGolonganItem } from '@/lib/kriteriaGolonganData'
-import { createDafuApproval, fetchDafuApprovals } from '@/lib/dafuApproval'
+import { createDafuApproval, fetchDafuApprovals, removeDafuApproval } from '@/lib/dafuApproval'
 import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -873,41 +873,102 @@ function DafuFormContent() {
   const handleDelete = async (id: string, nama: string) => {
     if (!confirm(`Apakah Anda yakin ingin menghapus data Kepala Keluarga "${nama}"?`)) return
 
-    try {
-      await supabase.from('anggota_keluarga').delete().eq('kk_id', id)
-      await supabase.from('golongan_keluarga').delete().eq('kk_id', id)
-      await supabase.from('kepala_keluarga').delete().eq('id', id)
-    } catch (err) {}
-
+    const cleanId = (id || '').trim()
+    const cleanName = (nama || '').trim()
     const dbUuid = getLingkunganDbUuid(lingkunganId)
+
+    // 1. Immediately store into custom_kks_deleted_store
     if (typeof window !== 'undefined') {
       try {
         const rawAll = localStorage.getItem('custom_kks_deleted_store')
         const list: string[] = rawAll ? JSON.parse(rawAll) : []
-        if (!list.includes(id)) list.push(id)
+        const toAdd = [
+          cleanId,
+          cleanId.toLowerCase(),
+          cleanName,
+          cleanName.toLowerCase(),
+          cleanId.replace('kk-appr-', ''),
+          `kk-appr-${cleanId}`
+        ]
+        toAdd.forEach(item => {
+          if (item && !list.includes(item)) list.push(item)
+        })
         localStorage.setItem('custom_kks_deleted_store', JSON.stringify(list))
         if (lingkunganId) localStorage.setItem(`custom_kks_deleted_${lingkunganId}`, JSON.stringify(list))
         if (dbUuid) localStorage.setItem(`custom_kks_deleted_${dbUuid}`, JSON.stringify(list))
+
+        // Also prune from custom_kks_${lingkunganId}, custom_kks_${dbUuid}, and custom_kks_all_store
+        const filterKk = (k: any) =>
+          k &&
+          k.id !== cleanId &&
+          k.id !== `kk-appr-${cleanId}` &&
+          (k.nama_kk || '').toLowerCase().trim() !== cleanName.toLowerCase()
+
+        const lStore = localStorage.getItem(`custom_kks_${lingkunganId}`)
+        if (lStore) {
+          const parsed = JSON.parse(lStore)
+          localStorage.setItem(`custom_kks_${lingkunganId}`, JSON.stringify(parsed.filter(filterKk)))
+        }
+        if (dbUuid) {
+          const uStore = localStorage.getItem(`custom_kks_${dbUuid}`)
+          if (uStore) {
+            const parsed = JSON.parse(uStore)
+            localStorage.setItem(`custom_kks_${dbUuid}`, JSON.stringify(parsed.filter(filterKk)))
+          }
+        }
+        const allStore = localStorage.getItem('custom_kks_all_store')
+        if (allStore) {
+          const parsed = JSON.parse(allStore)
+          localStorage.setItem('custom_kks_all_store', JSON.stringify(parsed.filter(filterKk)))
+        }
+
+        // Prune from custom_anggota_all_store and custom_golongan_all_store
+        const rawA = localStorage.getItem('custom_anggota_all_store')
+        if (rawA) {
+          const aStore = JSON.parse(rawA)
+          delete aStore[cleanId]
+          delete aStore[cleanId.replace('kk-appr-', '')]
+          localStorage.setItem('custom_anggota_all_store', JSON.stringify(aStore))
+        }
+        const rawG = localStorage.getItem('custom_golongan_all_store')
+        if (rawG) {
+          const gStore = JSON.parse(rawG)
+          delete gStore[cleanId]
+          delete gStore[cleanId.replace('kk-appr-', '')]
+          localStorage.setItem('custom_golongan_all_store', JSON.stringify(gStore))
+        }
       } catch (e) {}
     }
 
-    setKkList(prev => {
-      const updated = prev.filter(k => k.id !== id)
-      if (lingkunganId) localStorage.setItem(`custom_kks_${lingkunganId}`, JSON.stringify(updated))
-      if (dbUuid) localStorage.setItem(`custom_kks_${dbUuid}`, JSON.stringify(updated))
-      try {
-        const allSaved = localStorage.getItem('custom_kks_all_store')
-        if (allSaved) {
-          const list = JSON.parse(allSaved).filter((k: any) => k.id !== id)
-          localStorage.setItem('custom_kks_all_store', JSON.stringify(list))
-        }
-      } catch(e) {}
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('dafuDataUpdated'))
-        window.dispatchEvent(new Event('storage'))
-      }
-      return updated
-    })
+    // 2. Remove from dafu_approvals (both in Supabase database and local cache)
+    await removeDafuApproval(cleanId, cleanName)
+
+    // 3. Delete from Supabase tables (anggota, golongan, kepala_keluarga)
+    try {
+      const stripped = cleanId.replace('kk-appr-', '')
+      await supabase.from('anggota_keluarga').delete().or(`kk_id.eq.${cleanId},kk_id.eq.${stripped}`)
+      await supabase.from('golongan_keluarga').delete().or(`kk_id.eq.${cleanId},kk_id.eq.${stripped}`)
+      await supabase.from('kepala_keluarga').delete().or(`id.eq.${cleanId},nama_kk.eq.${cleanName}`)
+    } catch (err) {
+      console.warn('Notice deleting from Supabase:', err)
+    }
+
+    // 4. Update UI State immediately
+    setKkList(prev => prev.filter(k =>
+      k.id !== cleanId &&
+      k.id !== `kk-appr-${cleanId}` &&
+      (k.nama_kk || '').toLowerCase().trim() !== cleanName.toLowerCase()
+    ))
+
+    // 5. Provide clear success feedback
+    setSuccessMessage(`Data Kepala Keluarga "${cleanName}" berhasil dihapus.`)
+    setTimeout(() => setSuccessMessage(null), 4000)
+
+    // 6. Notify other tabs / components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('dafuDataUpdated'))
+      window.dispatchEvent(new Event('storage'))
+    }
   }
 
   const canEdit = userRole === 'SEKRETARIS' || userRole === 'SEKRETARIS_PAROKI'
