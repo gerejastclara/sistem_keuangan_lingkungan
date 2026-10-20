@@ -160,6 +160,7 @@ export function ensureDummyKksForLingkungan(
         k.id &&
         !k.id.startsWith('dummy-') &&
         !k.id.includes('dummy') &&
+        !k.id.startsWith('kk-prop-') &&
         k.nama_kk.toLowerCase().trim() !== 'dimas' &&
         !isDeleted(k.id, k.nama_kk)
       ) {

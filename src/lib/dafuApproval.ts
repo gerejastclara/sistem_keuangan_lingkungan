@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/client'
 import { KategoriGolongan } from './types'
+import { getLingkunganDbUuid } from '@/lib/constants'
 
 export interface DafuMemberItem {
   id?: string
@@ -337,7 +338,7 @@ export async function approveDafuItem(
   try {
     const item = updated.find(i => i.id === id)
     if (item && item.action_type !== 'HAPUS_KK') {
-      const dbUuid = item.lingkungan_id
+      const dbUuid = getLingkunganDbUuid(item.lingkungan_id) || item.lingkungan_id
       const kkId = item.kk_id || `kk-appr-${item.id}`
       await supabase.from('kepala_keluarga').upsert({
         id: kkId,

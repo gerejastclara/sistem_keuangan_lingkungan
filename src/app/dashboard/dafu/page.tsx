@@ -22,7 +22,7 @@ import {
 } from '@/lib/dummyData'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { getKriteriaGolonganList, KriteriaGolonganItem } from '@/lib/kriteriaGolonganData'
-import { createDafuApproval, fetchDafuApprovals, removeDafuApproval } from '@/lib/dafuApproval'
+import { createDafuApproval, fetchDafuApprovals, removeDafuApproval, type DafuApprovalItem } from '@/lib/dafuApproval'
 import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -52,7 +52,9 @@ import {
   ChevronRight,
   ShieldCheck,
   Wallet,
-  UserCheck
+  UserCheck,
+  Clock,
+  Send
 } from 'lucide-react'
 
 const ROLE_OPTIONS: PeranKeluarga[] = [
@@ -126,6 +128,7 @@ function DafuFormContent() {
   const [kkList, setKkList] = useState<KepalaKeluarga[]>([])
   const [anggotaMap, setAnggotaMap] = useState<Record<string, AnggotaKeluarga[]>>({})
   const [golonganMap, setGolonganMap] = useState<Record<string, GolonganKeluarga>>({})
+  const [pendingApprovals, setPendingApprovals] = useState<DafuApprovalItem[]>([])
 
   // Form State (Direct on-page, NOT a popup modal!)
   const [editingKk, setEditingKk] = useState<KepalaKeluarga | null>(null)
@@ -443,6 +446,18 @@ function DafuFormContent() {
         setLingkunganId(targetLingkunganId)
 
         if (targetLingkunganId) {
+          const targetUuid = getLingkunganDbUuid(targetLingkunganId)
+          const pending = (latestApprovals || []).filter(a => {
+            if (a.status !== 'PENDING') return false
+            const aUuid = getLingkunganDbUuid(a.lingkungan_id)
+            return (
+              targetLingkunganId === 'all' ||
+              a.lingkungan_id === targetLingkunganId ||
+              (targetUuid && aUuid && targetUuid === aUuid)
+            )
+          })
+          setPendingApprovals(pending)
+
           await loadKks(targetLingkunganId, lName, latestApprovals)
         }
       } catch (err) {
@@ -671,6 +686,83 @@ function DafuFormContent() {
     setSubmitting(true)
     setSuccessMessage(null)
 
+    const isParoki = userRole === 'SEKRETARIS_PAROKI' || userRole === 'PAROKI'
+
+    // Format anggota keluarga
+    const validMembers = formAnggotaList
+      .filter(m => m.nama.trim().length > 0)
+      .map((m, idx) => ({
+        id: m.id || `member-${Date.now()}-${idx}`,
+        nama: m.nama.trim(),
+        peran: m.peran,
+        is_kaj: m.is_kaj,
+        keterangan: m.keterangan ? m.keterangan.trim() : undefined
+      }))
+
+    if (validMembers.length === 0) {
+      validMembers.push({
+        id: `member-${Date.now()}-0`,
+        nama: formNama.trim(),
+        peran: 'Kepala Keluarga',
+        is_kaj: formIsBiduk,
+        keterangan: 'Kepala Keluarga'
+      })
+    }
+
+    // SKENARIO 1: SEKRETARIS LINGKUNGAN -> Mengajukan usulan data & golongan ke Paroki
+    // Data TIDAK langsung dimasukkan ke tabel aktif DAFU sampai disetujui Sekretaris Paroki
+    if (!isParoki) {
+      const approvalAction = editingKk ? 'UBAH_KK' : 'TAMBAH_KK'
+      const propKkId = editingKk ? editingKk.id : `kk-prop-${Date.now()}`
+
+      try {
+        await createDafuApproval({
+          lingkungan_id: lingkunganId,
+          nama_lingkungan: lingkunganName || 'Lingkungan',
+          kk_id: propKkId,
+          action_type: approvalAction,
+          nama_kk: formNama.trim(),
+          alamat: formAlamat.trim() || null,
+          is_biduk: formIsBiduk,
+          golongan: formGolongan,
+          kriteria_catatan: formKriteriaCatatan.trim() || null,
+          anggota_keluarga: validMembers,
+          submitted_by: userProfile?.username || `sekretaris_${(lingkunganName || 'lingkungan').toLowerCase().replace(/[^a-z0-9]/g, '')}`
+        })
+      } catch (err) {
+        console.warn('Failed to submit dafu approval:', err)
+      }
+
+      // Refresh list pengajuan menunggu persetujuan
+      try {
+        const latestApprovals = await fetchDafuApprovals()
+        const targetUuid = getLingkunganDbUuid(lingkunganId)
+        const lNorm = (lingkunganName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+        const pending = (latestApprovals || []).filter(a => {
+          if (a.status !== 'PENDING') return false
+          const aUuid = getLingkunganDbUuid(a.lingkungan_id)
+          const aNorm = (a.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+          return (
+            lingkunganId === 'all' ||
+            a.lingkungan_id === lingkunganId ||
+            (targetUuid && aUuid && targetUuid === aUuid) ||
+            (lNorm && aNorm && (lNorm === aNorm || lNorm.includes(aNorm) || aNorm.includes(lNorm)))
+          )
+        })
+        setPendingApprovals(pending)
+      } catch (e) {}
+
+      setSubmitting(false)
+      setSuccessMessage(
+        editingKk
+          ? `Usulan perubahan data keluarga "${formNama.trim()}" (usulan golongan: ${formGolongan}) berhasil diajukan ke Sekretaris Paroki! Data akan resmi diperbarui di DAFU setelah disetujui Paroki.`
+          : `Usulan penambahan keluarga baru "${formNama.trim()}" dengan usulan golongan "${formGolongan}" berhasil diajukan ke Sekretaris Paroki! Data akan resmi masuk ke daftar DAFU setelah disetujui Paroki.`
+      )
+      handleResetForm()
+      return
+    }
+
+    // SKENARIO 2: SEKRETARIS PAROKI -> Simpan langsung dengan hak otoritas paroki
     const kkPayload = {
       lingkungan_id: lingkunganId,
       nama_kk: formNama.trim(),
@@ -679,7 +771,6 @@ function DafuFormContent() {
     }
 
     let savedKkId = editingKk?.id
-
     const dbUuid = getLingkunganDbUuid(lingkunganId)
 
     if (editingKk) {
@@ -737,7 +828,6 @@ function DafuFormContent() {
           const list: string[] = JSON.parse(rawAll).filter((d: string) => d !== savedKkId)
           localStorage.setItem('custom_kks_deleted_store', JSON.stringify(list))
         }
-        // Update cached transaction KK references
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i)
           if (key && key.startsWith('tx_kk_')) {
@@ -754,14 +844,14 @@ function DafuFormContent() {
     }
 
     if (savedKkId) {
-      // 1. Save Golongan / Desil (Separate Table)
+      // 1. Save Golongan
       const golonganItem: GolonganKeluarga = {
         id: golonganMap[savedKkId]?.id || `gol-${Date.now()}`,
         kk_id: savedKkId,
         lingkungan_id: lingkunganId,
         golongan: formGolongan,
         kriteria_catatan: formKriteriaCatatan.trim() || null,
-        updated_by_role: 'SEKRETARIS',
+        updated_by_role: 'SEKRETARIS_PAROKI',
         updated_at: new Date().toISOString()
       }
 
@@ -780,94 +870,41 @@ function DafuFormContent() {
         return next
       })
 
-      // 2. Save Anggota Keluarga (Separate Table)
-      const validMembers = formAnggotaList
-        .filter(m => m.nama.trim().length > 0)
-        .map((m, idx) => ({
-          id: m.id || `member-${Date.now()}-${idx}`,
-          kk_id: savedKkId!,
-          nama: m.nama.trim(),
-          peran: m.peran,
-          is_kaj: m.is_kaj,
-          keterangan: m.keterangan ? m.keterangan.trim() : null
-        }))
-
-      if (validMembers.length === 0) {
-        validMembers.push({
-          id: `member-${Date.now()}-0`,
-          kk_id: savedKkId,
-          nama: formNama.trim(),
-          peran: 'Kepala Keluarga',
-          is_kaj: formIsBiduk,
-          keterangan: 'Kepala Keluarga'
-        })
-      }
+      // 2. Save Anggota Keluarga
+      const dbMembers = validMembers.map(m => ({
+        id: m.id || `member-${Date.now()}`,
+        kk_id: savedKkId!,
+        nama: m.nama.trim(),
+        peran: m.peran,
+        is_kaj: m.is_kaj,
+        keterangan: m.keterangan || null
+      }))
 
       try {
         await supabase.from('anggota_keluarga').delete().eq('kk_id', savedKkId)
-        await supabase.from('anggota_keluarga').insert(validMembers)
+        await supabase.from('anggota_keluarga').insert(dbMembers)
       } catch (err) {}
 
       setAnggotaMap(prev => {
-        const next = { ...prev, [savedKkId!]: validMembers }
+        const next = { ...prev, [savedKkId!]: dbMembers as any }
         try {
           const rawA = localStorage.getItem('custom_anggota_all_store')
           const store = rawA ? JSON.parse(rawA) : {}
-          store[savedKkId!] = validMembers
+          store[savedKkId!] = dbMembers
           localStorage.setItem('custom_anggota_all_store', JSON.stringify(store))
         } catch (e) {}
         return next
       })
 
-      // Notify other tabs and components
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('dafuDataUpdated'))
         window.dispatchEvent(new Event('storage'))
       }
-
-      // Kirim permohonan approval DAFU ke Sekretaris Paroki (tersimpan langsung di tabel dafu_approvals Supabase)
-      try {
-        const approvalAction = editingKk ? 'UBAH_KK' : 'TAMBAH_KK'
-        await createDafuApproval({
-          lingkungan_id: lingkunganId,
-          nama_lingkungan: lingkunganName || 'Lingkungan',
-          kk_id: savedKkId,
-          action_type: approvalAction,
-          nama_kk: formNama.trim(),
-          alamat: formAlamat.trim() || null,
-          is_biduk: formIsBiduk,
-          golongan: formGolongan,
-          kriteria_catatan: formKriteriaCatatan.trim() || null,
-          anggota_keluarga: validMembers.map(m => ({
-            id: m.id,
-            nama: m.nama,
-            peran: m.peran,
-            is_kaj: m.is_kaj,
-            keterangan: m.keterangan || undefined
-          })),
-          submitted_by: userProfile?.username || `sekretaris_${(lingkunganName || 'lingkungan').toLowerCase().replace(/[^a-z0-9]/g, '')}`
-        })
-      } catch (err) {
-        console.warn('Failed to record dafu approval:', err)
-      }
     }
 
     setSubmitting(false)
-    setSuccessMessage(`Data keluarga "${formNama.trim()}" berhasil disimpan & notifikasi pengajuan telah dikirim ke Sekretaris Paroki untuk approval!`)
-    setEditingKk(null)
-    setFormNama('')
-    setFormAlamat('')
-    setFormIsBiduk(true)
-    setFormGolongan('Sejahtera')
-    setFormKriteriaCatatan('')
-    setFormAnggotaList([
-      {
-        nama: '',
-        peran: 'Kepala Keluarga',
-        is_kaj: true,
-        keterangan: 'Kepala Keluarga'
-      }
-    ])
+    setSuccessMessage(`Data keluarga "${formNama.trim()}" dengan status golongan "${formGolongan}" berhasil disimpan ke DAFU!`)
+    handleResetForm()
   }
 
   const handleDelete = async (id: string, nama: string) => {
@@ -1153,44 +1190,37 @@ function DafuFormContent() {
             <div className="bg-slate-50/70 p-5 rounded-xl border border-slate-200 space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2 font-serif">
-                  <Sparkles className="w-4 h-4 text-[#A9834F]" />
-                  2. STATUS GOLONGAN KELUARGA (DIUPDATE OLEH SEKRETARIS PAROKI)
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  2. STATUS GOLONGAN KELUARGA (USULAN LINGKUNGAN / VERIFIKASI PAROKI)
                 </div>
                 <Link
                   href="/dashboard/kriteria-golongan"
-                  className="text-[11px] text-[#A9834F] hover:underline font-semibold flex items-center gap-1"
+                  className="text-[11px] text-emerald-700 hover:underline font-semibold flex items-center gap-1"
                 >
                   Lihat Parameter Kriteria Golongan →
                 </Link>
               </div>
 
-              {userRole !== 'SEKRETARIS_PAROKI' && (
-                <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs flex items-center gap-2.5">
-                  <ShieldCheck className="w-4 h-4 text-[#A9834F] shrink-0" />
-                  <span>
-                    <strong>Wewenang Paroki:</strong> Penetapan dan pembaruan Status Golongan (DUPRAS) merupakan kewenangan <strong>Sekretaris Paroki</strong>. Sekretaris Lingkungan mencantumkan usulan catatan kondisi keluarga untuk ditinjau oleh Paroki.
-                  </span>
-                </div>
-              )}
+              <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs flex items-center gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>
+                  <strong>Alur Pengusulan:</strong> Sekretaris Lingkungan menentukan usulan status golongan keluarga dan mencantumkan catatan kondisi keluarga di bawah ini. Pengajuan ini akan ditinjau dan disetujui (dapat disesuaikan jika diperlukan) oleh <strong>Sekretaris Paroki</strong> sebelum resmi aktif di DAFU.
+                </span>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="golongan" className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                    <span>Status Golongan Keluarga *</span>
-                    {userRole !== 'SEKRETARIS_PAROKI' && (
-                      <span className="text-[10px] font-normal text-slate-500">(Terkunci untuk verifikasi Paroki)</span>
-                    )}
+                    <span>Usulan Status Golongan Keluarga *</span>
+                    <span className="text-[10px] font-normal text-slate-500">(Diajukan oleh Sekretaris Lingkungan)</span>
                   </Label>
                   <Select
                     value={formGolongan}
                     onValueChange={(val) => setFormGolongan(val as KategoriGolongan)}
-                    disabled={userRole !== 'SEKRETARIS_PAROKI'}
                   >
                     <SelectTrigger
                       id="golongan"
-                      className={`bg-white border-slate-300 text-slate-900 rounded-xl h-11 font-bold text-sm ${
-                        userRole !== 'SEKRETARIS_PAROKI' ? 'opacity-85 cursor-not-allowed bg-slate-100 text-slate-600' : 'focus:ring-slate-400'
-                      }`}
+                      className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 font-bold text-sm focus:ring-slate-400"
                     >
                       <SelectValue />
                     </SelectTrigger>
@@ -1443,13 +1473,97 @@ function DafuFormContent() {
                 disabled={submitting}
                 className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl h-11 px-6 shadow-xs cursor-pointer w-full sm:w-auto transition-all"
               >
-                <Save className="w-4 h-4 mr-2 text-white" />
-                {submitting ? 'Menyimpan...' : 'Simpan Data Lengkap'}
+                {userRole === 'SEKRETARIS_PAROKI' ? (
+                  <Save className="w-4 h-4 mr-2 text-white" />
+                ) : (
+                  <Send className="w-4 h-4 mr-2 text-white" />
+                )}
+                {submitting
+                  ? 'Memproses...'
+                  : (userRole === 'SEKRETARIS_PAROKI'
+                      ? (editingKk ? 'Simpan Perubahan KK' : 'Simpan Data Keluarga')
+                      : (editingKk ? 'Ajukan Perubahan ke Paroki' : 'Ajukan Data Keluarga ke Paroki'))}
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
+      )}
+
+      {/* DAFTAR PENGAJUAN MENUNGGU PERSETUJUAN PAROKI (JIKA ADA) */}
+      {pendingApprovals.length > 0 && (
+        <Card className="bg-amber-50/60 border-amber-200 rounded-2xl shadow-xs overflow-hidden">
+          <CardHeader className="bg-amber-100/70 border-b border-amber-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-700 animate-pulse" />
+                <CardTitle className="text-sm font-bold text-amber-950">
+                  Daftar Pengajuan Menunggu Persetujuan Paroki ({pendingApprovals.length})
+                </CardTitle>
+                <span className="text-[10px] font-bold bg-amber-200/90 text-amber-900 px-2 py-0.5 rounded-full">
+                  Menunggu Approval Paroki
+                </span>
+              </div>
+              <CardDescription className="text-xs text-amber-800/80 mt-0.5">
+                Pengajuan data keluarga berikut telah terkirim ke Sekretaris Paroki untuk diverifikasi &amp; ditetapkan golongannya sebelum resmi masuk ke DAFU.
+              </CardDescription>
+            </div>
+            {(userRole === 'SEKRETARIS_PAROKI' || userRole === 'PAROKI') && (
+              <Link href="/dashboard/approval">
+                <Button size="sm" className="bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold rounded-xl h-8 cursor-pointer">
+                  Buka Modul Approval Paroki →
+                </Button>
+              </Link>
+            )}
+          </CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-amber-100/40 text-amber-950 font-bold text-xs border-b border-amber-200">
+                <TableRow>
+                  <TableHead className="w-12 text-center">No</TableHead>
+                  <TableHead>Nama Kepala Keluarga &amp; Alamat</TableHead>
+                  <TableHead>Tipe</TableHead>
+                  <TableHead>Usulan Golongan</TableHead>
+                  <TableHead>Catatan Kriteria / Kondisi</TableHead>
+                  <TableHead>Anggota</TableHead>
+                  <TableHead className="text-right">Waktu Pengajuan</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-amber-200/50 text-xs">
+                {pendingApprovals.map((item, idx) => (
+                  <TableRow key={item.id} className="hover:bg-amber-100/50 transition">
+                    <TableCell className="text-center font-bold text-amber-900">{idx + 1}</TableCell>
+                    <TableCell>
+                      <div className="font-bold text-slate-900">{item.nama_kk}</div>
+                      <div className="text-[11px] text-slate-500">{item.alamat || 'Alamat belum diisi'}</div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        item.action_type === 'TAMBAH_KK' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {item.action_type === 'TAMBAH_KK' ? '+ Tambah KK' : '✎ Ubah KK'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-bold text-slate-900 bg-white px-2 py-1 rounded-lg border border-amber-200 shadow-2xs">
+                        {item.golongan}
+                      </span>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate text-slate-700 italic">
+                      &ldquo;{item.kriteria_catatan || '-'}&rdquo;
+                    </TableCell>
+                    <TableCell className="font-semibold text-slate-700">
+                      {item.anggota_keluarga?.length || 1} Jiwa
+                    </TableCell>
+                    <TableCell className="text-right text-slate-500 text-[11px]">
+                      {new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       {/* RECENT FAMILIES LIST BELOW THE FORM */}

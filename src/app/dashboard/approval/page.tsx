@@ -512,7 +512,14 @@ export default function DafuApprovalPage() {
                     {/* Col 2: Golongan & Kriteria Catatan (Bisa Disesuaikan Oleh Sekretaris Paroki) */}
                     <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-1.5 text-xs">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                        <span className="text-[11px] text-slate-500 font-semibold uppercase">Golongan Keluarga:</span>
+                        <div className="flex flex-col">
+                          <span className="text-[11px] text-slate-500 font-semibold uppercase">Golongan Keluarga:</span>
+                          {isPending && item.golongan && (
+                            <span className="text-[10px] text-slate-500">
+                              Usulan Lingkungan: <strong className="text-slate-800">{item.golongan}</strong>
+                            </span>
+                          )}
+                        </div>
                         {isPending ? (
                           <Select
                             value={selectedGolonganMap[item.id] || item.golongan}
@@ -520,13 +527,14 @@ export default function DafuApprovalPage() {
                               setSelectedGolonganMap(prev => ({ ...prev, [item.id]: val }))
                             }}
                           >
-                            <SelectTrigger className="h-7 text-[11px] font-semibold bg-white border-slate-300 rounded-lg w-full sm:w-44 text-slate-900 shadow-2xs">
+                            <SelectTrigger className="h-8 text-xs font-semibold bg-white border-slate-300 rounded-lg w-full sm:w-56 text-slate-900 shadow-2xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-white border-slate-200 text-xs">
                               <SelectItem value="Sejahtera">🟢 Sejahtera</SelectItem>
-                              <SelectItem value="Terduga Prasejahtera">🟡 Terduga Prasejahtera</SelectItem>
-                              <SelectItem value="Rentan Tidak Mampu">🔴 Rentan Tidak Mampu</SelectItem>
+                              <SelectItem value="Terduga Pra Sejahtera">🟡 Terduga Pra Sejahtera</SelectItem>
+                              <SelectItem value="Rentan Tidak Mampu">🟠 Rentan Tidak Mampu</SelectItem>
+                              <SelectItem value="Tidak Mampu">🔴 Tidak Mampu</SelectItem>
                             </SelectContent>
                           </Select>
                         ) : (
