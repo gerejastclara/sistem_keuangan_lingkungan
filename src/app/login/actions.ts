@@ -36,6 +36,10 @@ export async function login(formData: FormData) {
     role = 'PAROKI'
   }
 
+  const formLingkunganId = (formData.get('lingkungan_id') as string || '').trim()
+
+  const cookieOptions = { httpOnly: false, path: '/', maxAge: 60 * 60 * 24 * 7 }
+
   try {
     const supabase = await createClient()
 
@@ -51,14 +55,14 @@ export async function login(formData: FormData) {
     if (dbUser) {
       const actualRole = dbUser.role || role
       const cookieStore = await cookies()
-      cookieStore.set('demo_user_id', dbUser.id)
-      cookieStore.set('demo_user_username', dbUser.username)
-      cookieStore.set('demo_user_email', dbUser.username)
-      cookieStore.set('demo_user_role', actualRole)
+      cookieStore.set('demo_user_id', dbUser.id, cookieOptions)
+      cookieStore.set('demo_user_username', dbUser.username, cookieOptions)
+      cookieStore.set('demo_user_email', dbUser.username, cookieOptions)
+      cookieStore.set('demo_user_role', actualRole, cookieOptions)
       
       if (dbUser.lingkungan_id) {
-        cookieStore.set('demo_user_lingkungan_id', dbUser.lingkungan_id)
-        cookieStore.set('demo_user_lingkungan_nama', dbUser.lingkungan?.nama_lingkungan || '')
+        cookieStore.set('demo_user_lingkungan_id', dbUser.lingkungan_id, cookieOptions)
+        cookieStore.set('demo_user_lingkungan_nama', dbUser.lingkungan?.nama_lingkungan || '', cookieOptions)
       } else {
         cookieStore.delete('demo_user_lingkungan_id')
         cookieStore.delete('demo_user_lingkungan_nama')
@@ -80,20 +84,36 @@ export async function login(formData: FormData) {
     let fallbackLingkunganNama: string | null = null
 
     if (role !== 'PAROKI' && role !== 'SEKRETARIS_PAROKI') {
-      const matched = findLingkunganByQuery(normalizedUsername) || findLingkunganByQuery(cleanUsername)
-      if (matched) {
-        fallbackLingkunganId = matched.id
-        fallbackLingkunganNama = matched.nama_lingkungan
+      if (formLingkunganId && formLingkunganId !== 'all') {
+        const { getAllMasterLingkungan } = await import('@/lib/constants')
+        const all = getAllMasterLingkungan()
+        const found = all.find(l => l.id === formLingkunganId || l.slug === formLingkunganId)
+        if (found) {
+          fallbackLingkunganId = found.id
+          fallbackLingkunganNama = found.nama_lingkungan
+        }
+      }
+      if (!fallbackLingkunganId) {
+        const matched =
+          findLingkunganByQuery(normalizedUsername) ||
+          findLingkunganByQuery(cleanUsername) ||
+          findLingkunganByQuery(cleanUsername.replace(/\s+/g, '_')) ||
+          findLingkunganByQuery(cleanUsername.replace(/_/g, ' '))
+        if (matched) {
+          fallbackLingkunganId = matched.id
+          fallbackLingkunganNama = matched.nama_lingkungan
+        }
       }
     }
 
     const cookieStore = await cookies()
-    cookieStore.set('demo_user_username', cleanUsername)
-    cookieStore.set('demo_user_email', cleanUsername)
-    cookieStore.set('demo_user_role', role)
+    cookieStore.set('demo_user_id', `user-${Date.now()}`, cookieOptions)
+    cookieStore.set('demo_user_username', cleanUsername, cookieOptions)
+    cookieStore.set('demo_user_email', cleanUsername, cookieOptions)
+    cookieStore.set('demo_user_role', role, cookieOptions)
     if (fallbackLingkunganId) {
-      cookieStore.set('demo_user_lingkungan_id', fallbackLingkunganId)
-      cookieStore.set('demo_user_lingkungan_nama', fallbackLingkunganNama || '')
+      cookieStore.set('demo_user_lingkungan_id', fallbackLingkunganId, cookieOptions)
+      cookieStore.set('demo_user_lingkungan_nama', fallbackLingkunganNama || '', cookieOptions)
     } else {
       cookieStore.delete('demo_user_lingkungan_id')
       cookieStore.delete('demo_user_lingkungan_nama')

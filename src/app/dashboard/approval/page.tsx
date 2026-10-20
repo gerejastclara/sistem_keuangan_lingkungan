@@ -37,7 +37,7 @@ import {
   markAllApprovalsAsRead,
   DafuApprovalItem
 } from '@/lib/dafuApproval'
-import { getAllMasterLingkungan, formatNamaLingkungan, getWilayahForLingkungan } from '@/lib/constants'
+import { getAllMasterLingkungan, formatNamaLingkungan, getWilayahForLingkungan, getLingkunganDbUuid } from '@/lib/constants'
 
 export default function DafuApprovalPage() {
   const router = useRouter()
@@ -96,9 +96,7 @@ export default function DafuApprovalPage() {
   const handleFilterLingkunganChange = (val: string | null) => {
     const nextVal = val || 'all'
     setSelectedLingkunganId(nextVal)
-    localStorage.setItem('selected_lingkungan_id', nextVal)
-    window.dispatchEvent(new Event('lingkunganChanged'))
-    window.dispatchEvent(new Event('storage'))
+    localStorage.setItem('selected_lingkungan_approval', nextVal)
   }
 
   useEffect(() => {
@@ -137,34 +135,41 @@ export default function DafuApprovalPage() {
     markAllApprovalsAsRead()
 
     const readStoredLingkungan = () => {
-      const stored = localStorage.getItem('selected_lingkungan_id') || 'all'
+      // For Paroki approval module, always default to 'all' so Paroki sees submissions from all 69 lingkungan
+      const stored = localStorage.getItem('selected_lingkungan_approval') || 'all'
       setSelectedLingkunganId(stored)
     }
     readStoredLingkungan()
 
     const handleUpdate = () => loadData()
     window.addEventListener('dafuApprovalUpdated', handleUpdate)
-    window.addEventListener('lingkunganChanged', readStoredLingkungan)
-    window.addEventListener('storage', readStoredLingkungan)
     window.addEventListener('storage', handleUpdate)
 
     return () => {
       window.removeEventListener('dafuApprovalUpdated', handleUpdate)
-      window.removeEventListener('lingkunganChanged', readStoredLingkungan)
-      window.removeEventListener('storage', readStoredLingkungan)
       window.removeEventListener('storage', handleUpdate)
     }
   }, [router])
 
   // Scope approvals based on selected lingkungan (all vs specific lingkungan)
   const scopedApprovals = useMemo(() => {
-    if (!currentMasterLingkungan) return approvals
-    const targetNorm = currentMasterLingkungan.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (!selectedLingkunganId || selectedLingkunganId === 'all' || selectedLingkunganId === 'ALL') {
+      return approvals
+    }
+    const targetUuid = getLingkunganDbUuid(selectedLingkunganId)
+    const targetMaster = resolveMasterLingkungan(selectedLingkunganId)
+    const targetNorm = (targetMaster?.nama_lingkungan || selectedLingkunganId).toLowerCase().replace(/[^a-z0-9]/g, '')
+
     return approvals.filter(item => {
-      const itemNorm = item.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '')
-      return item.lingkungan_id === currentMasterLingkungan.id || itemNorm === targetNorm
+      const itemUuid = getLingkunganDbUuid(item.lingkungan_id)
+      const itemNorm = (item.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      return (
+        item.lingkungan_id === selectedLingkunganId ||
+        (targetUuid && itemUuid && targetUuid === itemUuid) ||
+        (targetNorm && itemNorm && (targetNorm === itemNorm || targetNorm.includes(itemNorm) || itemNorm.includes(targetNorm)))
+      )
     })
-  }, [approvals, currentMasterLingkungan])
+  }, [approvals, selectedLingkunganId])
 
   const pendingList = useMemo(() => scopedApprovals.filter(a => a.status === 'PENDING'), [scopedApprovals])
   const approvedList = useMemo(() => scopedApprovals.filter(a => a.status === 'APPROVED'), [scopedApprovals])

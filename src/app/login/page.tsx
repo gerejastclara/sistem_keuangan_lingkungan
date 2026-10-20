@@ -64,6 +64,10 @@ export default function LoginPage() {
       const found = masterLingkunganList.find(l => l.id === lId)
       const slug = found ? found.slug.replace(/-/g, '') : 'lingkungan'
       setUsername(`${role.toLowerCase()}_${slug}`)
+      if (typeof window !== 'undefined' && lId) {
+        localStorage.setItem('selected_lingkungan_id', lId)
+        localStorage.setItem('last_user_role', role)
+      }
     }
   }
 
@@ -191,8 +195,21 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form action={login} className="space-y-4">
-              <input type="hidden" name="lingkungan_id" value={isQuickMode ? selectedLingkunganId : ''} />
+            <form
+              action={login}
+              onSubmit={() => {
+                if (typeof window !== 'undefined') {
+                  if (username.includes('paroki')) {
+                    localStorage.setItem('selected_lingkungan_id', 'all')
+                    localStorage.setItem('last_user_role', username.includes('sekretaris') ? 'SEKRETARIS_PAROKI' : 'PAROKI')
+                  } else if (selectedLingkunganId && selectedLingkunganId !== 'all') {
+                    localStorage.setItem('selected_lingkungan_id', selectedLingkunganId)
+                  }
+                }
+              }}
+              className="space-y-4"
+            >
+              <input type="hidden" name="lingkungan_id" value={selectedLingkunganId || ''} />
 
               <div className="space-y-1.5">
                 <Label htmlFor="username" className="text-xs font-semibold text-[#1B2130]">Username</Label>

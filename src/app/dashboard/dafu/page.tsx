@@ -405,14 +405,19 @@ function DafuFormContent() {
         }
 
         let rawDemoEmail = typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() || '' : ''
+        let rawDemoUsername = typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_username=').pop()?.split(';').shift() || '' : ''
         try {
           rawDemoEmail = decodeURIComponent(rawDemoEmail)
+          rawDemoUsername = decodeURIComponent(rawDemoUsername)
         } catch (e) {}
-        const effectiveEmail = user?.email || rawDemoEmail || ''
+        const effectiveEmail = user?.email || rawDemoEmail || rawDemoUsername || ''
         
-        // Strictly match Lingkungan from user email if non-PAROKI
-        if (currentRole !== 'PAROKI' && effectiveEmail) {
-          const matchedByEmail = findLingkunganByQuery(effectiveEmail)
+        // Strictly match Lingkungan from user email/username if non-PAROKI
+        if (currentRole !== 'PAROKI' && currentRole !== 'SEKRETARIS_PAROKI' && effectiveEmail) {
+          const matchedByEmail =
+            findLingkunganByQuery(effectiveEmail) ||
+            findLingkunganByQuery(effectiveEmail.replace(/\s+/g, '_')) ||
+            findLingkunganByQuery(effectiveEmail.replace(/_/g, ' '))
           if (matchedByEmail) {
             currentLingkunganId = matchedByEmail.id
             currentLingkunganNama = matchedByEmail.nama_lingkungan
@@ -426,7 +431,7 @@ function DafuFormContent() {
         }
 
         let targetLingkunganId: string | null = null
-        if (currentRole !== 'PAROKI' && currentLingkunganId) {
+        if (currentRole !== 'PAROKI' && currentRole !== 'SEKRETARIS_PAROKI' && currentLingkunganId) {
           targetLingkunganId = currentLingkunganId
           if (typeof window !== 'undefined') {
             localStorage.setItem('selected_lingkungan_id', currentLingkunganId)
@@ -447,13 +452,16 @@ function DafuFormContent() {
 
         if (targetLingkunganId) {
           const targetUuid = getLingkunganDbUuid(targetLingkunganId)
+          const lNorm = (lName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
           const pending = (latestApprovals || []).filter(a => {
             if (a.status !== 'PENDING') return false
             const aUuid = getLingkunganDbUuid(a.lingkungan_id)
+            const aNorm = (a.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
             return (
               targetLingkunganId === 'all' ||
               a.lingkungan_id === targetLingkunganId ||
-              (targetUuid && aUuid && targetUuid === aUuid)
+              (targetUuid && aUuid && targetUuid === aUuid) ||
+              (lNorm && aNorm && (lNorm === aNorm || lNorm.includes(aNorm) || aNorm.includes(lNorm)))
             )
           })
           setPendingApprovals(pending)
@@ -1492,25 +1500,25 @@ function DafuFormContent() {
 
       {/* DAFTAR PENGAJUAN MENUNGGU PERSETUJUAN PAROKI (JIKA ADA) */}
       {pendingApprovals.length > 0 && (
-        <Card className="bg-amber-50/60 border-amber-200 rounded-2xl shadow-xs overflow-hidden">
-          <CardHeader className="bg-amber-100/70 border-b border-amber-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <Card className="bg-white border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+          <CardHeader className="bg-slate-50/70 border-b border-slate-100 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-700 animate-pulse" />
-                <CardTitle className="text-sm font-bold text-amber-950">
+                <Clock className="w-4 h-4 text-slate-500" />
+                <CardTitle className="text-sm font-bold text-slate-800">
                   Daftar Pengajuan Menunggu Persetujuan Paroki ({pendingApprovals.length})
                 </CardTitle>
-                <span className="text-[10px] font-bold bg-amber-200/90 text-amber-900 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-full">
                   Menunggu Approval Paroki
                 </span>
               </div>
-              <CardDescription className="text-xs text-amber-800/80 mt-0.5">
+              <CardDescription className="text-xs text-slate-500 mt-0.5">
                 Pengajuan data keluarga berikut telah terkirim ke Sekretaris Paroki untuk diverifikasi &amp; ditetapkan golongannya sebelum resmi masuk ke DAFU.
               </CardDescription>
             </div>
             {(userRole === 'SEKRETARIS_PAROKI' || userRole === 'PAROKI') && (
               <Link href="/dashboard/approval">
-                <Button size="sm" className="bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold rounded-xl h-8 cursor-pointer">
+                <Button size="sm" className="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-xl h-8 cursor-pointer">
                   Buka Modul Approval Paroki →
                 </Button>
               </Link>
@@ -1518,7 +1526,7 @@ function DafuFormContent() {
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <Table>
-              <TableHeader className="bg-amber-100/40 text-amber-950 font-bold text-xs border-b border-amber-200">
+              <TableHeader className="bg-slate-50 text-slate-700 font-bold text-xs border-b border-slate-200">
                 <TableRow>
                   <TableHead className="w-12 text-center">No</TableHead>
                   <TableHead>Nama Kepala Keluarga &amp; Alamat</TableHead>
@@ -1529,27 +1537,27 @@ function DafuFormContent() {
                   <TableHead className="text-right">Waktu Pengajuan</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-amber-200/50 text-xs">
+              <TableBody className="divide-y divide-slate-100 text-xs">
                 {pendingApprovals.map((item, idx) => (
-                  <TableRow key={item.id} className="hover:bg-amber-100/50 transition">
-                    <TableCell className="text-center font-bold text-amber-900">{idx + 1}</TableCell>
+                  <TableRow key={item.id} className="hover:bg-slate-50 transition">
+                    <TableCell className="text-center font-bold text-slate-600">{idx + 1}</TableCell>
                     <TableCell>
                       <div className="font-bold text-slate-900">{item.nama_kk}</div>
                       <div className="text-[11px] text-slate-500">{item.alamat || 'Alamat belum diisi'}</div>
                     </TableCell>
                     <TableCell>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        item.action_type === 'TAMBAH_KK' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                        item.action_type === 'TAMBAH_KK' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
                       }`}>
                         {item.action_type === 'TAMBAH_KK' ? '+ Tambah KK' : '✎ Ubah KK'}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="font-bold text-slate-900 bg-white px-2 py-1 rounded-lg border border-amber-200 shadow-2xs">
+                      <span className="font-semibold text-slate-800 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs">
                         {item.golongan}
                       </span>
                     </TableCell>
-                    <TableCell className="max-w-xs truncate text-slate-700 italic">
+                    <TableCell className="max-w-xs truncate text-slate-600 italic">
                       &ldquo;{item.kriteria_catatan || '-'}&rdquo;
                     </TableCell>
                     <TableCell className="font-semibold text-slate-700">

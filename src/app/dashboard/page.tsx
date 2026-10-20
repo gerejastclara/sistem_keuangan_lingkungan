@@ -25,7 +25,7 @@ import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData
 import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import { SekretarisParokiDashboard } from '@/components/dashboard/SekretarisParokiDashboard'
 import { ParokiOverviewDashboard } from '@/components/dashboard/ParokiOverviewDashboard'
-import { fetchDafuApprovals } from '@/lib/dafuApproval'
+import { fetchDafuApprovals, type DafuApprovalItem } from '@/lib/dafuApproval'
 import {
   TrendingUp,
   TrendingDown,
@@ -53,7 +53,8 @@ import {
   UserCheck,
   Phone,
   Calendar,
-  CreditCard
+  CreditCard,
+  Clock
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -94,6 +95,7 @@ export default function DashboardOverviewPage() {
   const [anggotaMap, setAnggotaMap] = useState<Record<string, AnggotaKeluarga[]>>({})
   const [golonganMap, setGolonganMap] = useState<Record<string, GolonganKeluarga>>({})
   const [expandedKkIds, setExpandedKkIds] = useState<Set<string>>(new Set())
+  const [pendingApprovals, setPendingApprovals] = useState<DafuApprovalItem[]>([])
 
   // Edit Pengurus Modal State (Khusus Sekretaris & Paroki)
   const [isEditPengurusOpen, setIsEditPengurusOpen] = useState(false)
@@ -337,16 +339,21 @@ export default function DashboardOverviewPage() {
         }
 
         let rawDemoEmail = typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() || '' : ''
+        let rawDemoUsername = typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_username=').pop()?.split(';').shift() || '' : ''
         try {
           rawDemoEmail = decodeURIComponent(rawDemoEmail)
+          rawDemoUsername = decodeURIComponent(rawDemoUsername)
         } catch (e) {}
-        const effectiveEmail = user?.email || rawDemoEmail || ''
+        const effectiveEmail = user?.email || rawDemoEmail || rawDemoUsername || ''
         
         const isGlobalScope = role === 'PAROKI' || role === 'SEKRETARIS_PAROKI'
 
-        // Strictly match Lingkungan from user email if non-PAROKI / non-SEKRETARIS_PAROKI
+        // Strictly match Lingkungan from user email/username if non-PAROKI / non-SEKRETARIS_PAROKI
         if (!isGlobalScope && effectiveEmail) {
-          const matchedByEmail = findLingkunganByQuery(effectiveEmail)
+          const matchedByEmail =
+            findLingkunganByQuery(effectiveEmail) ||
+            findLingkunganByQuery(effectiveEmail.replace(/\s+/g, '_')) ||
+            findLingkunganByQuery(effectiveEmail.replace(/_/g, ' '))
           if (matchedByEmail) {
             currentLId = matchedByEmail.id
             currentLNama = matchedByEmail.nama_lingkungan
@@ -396,6 +403,21 @@ export default function DashboardOverviewPage() {
             const dbKks = (kks || []).filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
             const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lName, dbKks, latestApprovals)
             setKkList(finalKks)
+
+            // Filter pending approvals for this lingkungan
+            const lNorm = (lName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+            const pending = (latestApprovals || []).filter(a => {
+              if (a.status !== 'PENDING') return false
+              const aUuid = getLingkunganDbUuid(a.lingkungan_id)
+              const aNorm = (a.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+              return (
+                targetLingkunganId === 'all' ||
+                a.lingkungan_id === targetLingkunganId ||
+                (dbUuid && aUuid && dbUuid === aUuid) ||
+                (lNorm && aNorm && (lNorm === aNorm || lNorm.includes(aNorm) || aNorm.includes(lNorm)))
+              )
+            })
+            setPendingApprovals(pending)
 
           // Load Anggota & Golongan
           await loadAnggotaAndGolongan(finalKks, targetLingkunganId)
@@ -1115,6 +1137,80 @@ export default function DashboardOverviewPage() {
 
         {/* Susunan Pengurus Lingkungan & Form Edit untuk Sekretaris */}
         {renderPengurusCard(true)}
+
+        {/* Box Status Pengajuan Menunggu Persetujuan Paroki (Jika Ada) */}
+        {pendingApprovals.length > 0 && (
+          <Card className="bg-white border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+            <CardHeader className="bg-slate-50/70 border-b border-slate-100 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-slate-500" />
+                  <CardTitle className="text-sm font-bold text-slate-800">
+                    Daftar Pengajuan Menunggu Persetujuan Paroki ({pendingApprovals.length})
+                  </CardTitle>
+                  <span className="text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-full">
+                    Menunggu Approval Paroki
+                  </span>
+                </div>
+                <CardDescription className="text-xs text-slate-500 mt-0.5">
+                  Pengajuan data keluarga dari {formatNamaLingkungan(lingkunganName)} sedang ditinjau Sekretaris Paroki sebelum resmi masuk ke DAFU.
+                </CardDescription>
+              </div>
+              <Link href="/dashboard/dafu">
+                <Button size="sm" variant="outline" className="text-xs font-bold rounded-xl border-slate-300 text-slate-700 hover:bg-slate-100">
+                  Buka di Formulir DAFU →
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50 text-slate-700 font-bold text-xs border-b border-slate-200">
+                  <TableRow>
+                    <TableHead className="w-12 text-center">No</TableHead>
+                    <TableHead>Nama Kepala Keluarga &amp; Alamat</TableHead>
+                    <TableHead>Tipe</TableHead>
+                    <TableHead>Usulan Golongan</TableHead>
+                    <TableHead>Catatan Kriteria / Kondisi</TableHead>
+                    <TableHead>Anggota</TableHead>
+                    <TableHead className="text-right">Waktu Pengajuan</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100 text-xs">
+                  {pendingApprovals.map((item, idx) => (
+                    <TableRow key={item.id} className="hover:bg-slate-50 transition">
+                      <TableCell className="text-center font-bold text-slate-600">{idx + 1}</TableCell>
+                      <TableCell>
+                        <div className="font-bold text-slate-900">{item.nama_kk}</div>
+                        <div className="text-[11px] text-slate-500">{item.alamat || 'Alamat belum diisi'}</div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          item.action_type === 'TAMBAH_KK' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                        }`}>
+                          {item.action_type === 'TAMBAH_KK' ? '+ Tambah KK' : '✎ Ubah KK'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold text-slate-800 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs">
+                          {item.golongan}
+                        </span>
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate text-slate-600 italic">
+                        &ldquo;{item.kriteria_catatan || '-'}&rdquo;
+                      </TableCell>
+                      <TableCell className="font-semibold text-slate-700">
+                        {item.anggota_keluarga?.length || 1} Jiwa
+                      </TableCell>
+                      <TableCell className="text-right text-slate-500 text-[11px]">
+                        {new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Search & Filter Toolbar */}
         <Card className="bg-white border-slate-200 rounded-2xl shadow-xs overflow-hidden">
