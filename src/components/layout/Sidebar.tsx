@@ -215,7 +215,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
             <div className="min-w-0">
               <div className="text-base font-extrabold text-white tracking-wide truncate uppercase font-serif">SICLAR</div>
-              <div className="text-[11px] text-[#8A90A3] font-medium truncate">Keuangan Lingkungan</div>
+              <div className="text-[11px] text-[#8A90A3] font-medium truncate">Lingkungan</div>
             </div>
           </div>
           {onToggle && (

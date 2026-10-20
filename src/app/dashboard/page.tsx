@@ -25,6 +25,7 @@ import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData
 import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import { SekretarisParokiDashboard } from '@/components/dashboard/SekretarisParokiDashboard'
 import { ParokiOverviewDashboard } from '@/components/dashboard/ParokiOverviewDashboard'
+import { fetchDafuApprovals } from '@/lib/dafuApproval'
 import {
   TrendingUp,
   TrendingDown,
@@ -271,6 +272,9 @@ export default function DashboardOverviewPage() {
       }
 
       try {
+        // Pre-fetch latest approved DAFU items from Supabase database
+        const latestApprovals = await fetchDafuApprovals().catch(() => [])
+
         // 1. Get user profile & role
         const { data } = await supabase.auth.getUser()
         const user = data?.user
@@ -390,7 +394,7 @@ export default function DashboardOverviewPage() {
             .order('nama_kk', { ascending: true })
 
             const dbKks = (kks || []).filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
-            const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lName, dbKks)
+            const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lName, dbKks, latestApprovals)
             setKkList(finalKks)
 
           // Load Anggota & Golongan
@@ -468,12 +472,14 @@ export default function DashboardOverviewPage() {
       loadDashboardData(false)
     }
     window.addEventListener('dafuDataUpdated', handleSync)
+    window.addEventListener('dafuApprovalUpdated', handleSync)
     window.addEventListener('pengurusUpdated', handleSync)
     window.addEventListener('customJournalsUpdated', handleSync)
     window.addEventListener('lingkunganChanged', handleSync)
 
     return () => {
       window.removeEventListener('dafuDataUpdated', handleSync)
+      window.removeEventListener('dafuApprovalUpdated', handleSync)
       window.removeEventListener('pengurusUpdated', handleSync)
       window.removeEventListener('customJournalsUpdated', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)

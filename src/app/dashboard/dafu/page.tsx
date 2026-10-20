@@ -22,7 +22,7 @@ import {
 } from '@/lib/dummyData'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { getKriteriaGolonganList, KriteriaGolonganItem } from '@/lib/kriteriaGolonganData'
-import { createDafuApproval } from '@/lib/dafuApproval'
+import { createDafuApproval, fetchDafuApprovals } from '@/lib/dafuApproval'
 import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -350,9 +350,13 @@ function DafuFormContent() {
   })
 
   useEffect(() => {
-    async function loadData() {
-      setLoading(true)
+    async function loadData(showSpinner: boolean = true) {
+      if (showSpinner) {
+        setLoading(true)
+      }
       try {
+        const latestApprovals = await fetchDafuApprovals().catch(() => [])
+
         const { data } = await supabase.auth.getUser()
         const user = data?.user
 
@@ -439,7 +443,7 @@ function DafuFormContent() {
         setLingkunganId(targetLingkunganId)
 
         if (targetLingkunganId) {
-          await loadKks(targetLingkunganId, lName)
+          await loadKks(targetLingkunganId, lName, latestApprovals)
         }
       } catch (err) {
         console.error('Error loading dafu form page:', err)
@@ -448,14 +452,28 @@ function DafuFormContent() {
       }
     }
 
-    loadData()
+    loadData(true)
+
+    const handleSync = () => {
+      loadData(false)
+    }
+    window.addEventListener('dafuDataUpdated', handleSync)
+    window.addEventListener('dafuApprovalUpdated', handleSync)
+    window.addEventListener('lingkunganChanged', handleSync)
+
+    return () => {
+      window.removeEventListener('dafuDataUpdated', handleSync)
+      window.removeEventListener('dafuApprovalUpdated', handleSync)
+      window.removeEventListener('lingkunganChanged', handleSync)
+    }
   }, [supabase])
 
-  const loadKks = async (targetLingkunganId: string, lName: string) => {
+  const loadKks = async (targetLingkunganId: string, lName: string, preloadedApprovals?: any[]) => {
+    const dbUuid = getLingkunganDbUuid(targetLingkunganId)
     const { data: kks } = await supabase
       .from('kepala_keluarga')
       .select('*')
-      .eq('lingkungan_id', targetLingkunganId)
+      .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
       .order('nama_kk', { ascending: true })
 
     // Purge any legacy dummy entries from localStorage
@@ -504,7 +522,7 @@ function DafuFormContent() {
       } catch (e) {}
     }
 
-    const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lName, dbKks)
+    const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lName, dbKks, preloadedApprovals)
     setKkList(finalKks)
 
     // Load Anggota & Golongan

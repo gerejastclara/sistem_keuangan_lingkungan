@@ -125,6 +125,8 @@ function mapDbRowToApprovalItem(item: any): DafuApprovalItem {
   }
 }
 
+let memoryApprovalsCache: DafuApprovalItem[] | null = null
+
 /**
  * Fetch approvals directly from Supabase database table `dafu_approvals`.
  * Updates cache and dispatches events.
@@ -139,6 +141,7 @@ export async function fetchDafuApprovals(): Promise<DafuApprovalItem[]> {
 
     if (!error && Array.isArray(data)) {
       const mapped = data.map(mapDbRowToApprovalItem)
+      memoryApprovalsCache = mapped
       if (typeof window !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped))
         window.dispatchEvent(new Event('dafuApprovalUpdated'))
@@ -161,6 +164,10 @@ export async function fetchDafuApprovals(): Promise<DafuApprovalItem[]> {
  * In browser environment, it also schedules a background DB fetch if needed.
  */
 export function getDafuApprovals(): DafuApprovalItem[] {
+  if (memoryApprovalsCache && memoryApprovalsCache.length > 0) {
+    return memoryApprovalsCache
+  }
+
   if (typeof window === 'undefined') return INITIAL_APPROVAL_SEED
 
   try {
@@ -173,6 +180,7 @@ export function getDafuApprovals(): DafuApprovalItem[] {
     }
     const parsed = JSON.parse(raw)
     if (Array.isArray(parsed) && parsed.length > 0) {
+      memoryApprovalsCache = parsed
       return parsed
     }
   } catch (e) {
@@ -183,6 +191,7 @@ export function getDafuApprovals(): DafuApprovalItem[] {
 }
 
 export function saveDafuApprovals(list: DafuApprovalItem[]) {
+  memoryApprovalsCache = list
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
@@ -321,20 +330,113 @@ export async function approveDafuItem(
 
   if (found) {
     saveDafuApprovals(updated)
+
+    // Sync to active KK / anggota / golongan stores and notify listeners
+    try {
+      const approvedItem = updated.find(i => i.id === id)
+      if (approvedItem && typeof window !== 'undefined') {
+        const kkId = approvedItem.kk_id || `kk-appr-${approvedItem.id}`
+        const newKkObj = {
+          id: kkId,
+          lingkungan_id: approvedItem.lingkungan_id,
+          nama_kk: approvedItem.nama_kk,
+          alamat: approvedItem.alamat || '',
+          is_biduk: approvedItem.is_biduk,
+          jumlah_anggota: Array.isArray(approvedItem.anggota_keluarga) && approvedItem.anggota_keluarga.length > 0 ? approvedItem.anggota_keluarga.length : 1
+        }
+
+        // 1. custom_kks_all_store
+        const rawAll = localStorage.getItem('custom_kks_all_store')
+        let allKks: any[] = rawAll ? JSON.parse(rawAll) : []
+        allKks = allKks.filter(k => k.id !== kkId && k.id !== approvedItem.kk_id)
+        if (approvedItem.action_type !== 'HAPUS_KK') {
+          allKks.push(newKkObj)
+        }
+        localStorage.setItem('custom_kks_all_store', JSON.stringify(allKks))
+
+        // 2. custom_kks_[lingkungan_id]
+        const rawLing = localStorage.getItem(`custom_kks_${approvedItem.lingkungan_id}`)
+        let lingKks: any[] = rawLing ? JSON.parse(rawLing) : []
+        lingKks = lingKks.filter(k => k.id !== kkId && k.id !== approvedItem.kk_id)
+        if (approvedItem.action_type !== 'HAPUS_KK') {
+          lingKks.push(newKkObj)
+        }
+        localStorage.setItem(`custom_kks_${approvedItem.lingkungan_id}`, JSON.stringify(lingKks))
+
+        // 3. custom_anggota_all_store
+        if (Array.isArray(approvedItem.anggota_keluarga) && approvedItem.anggota_keluarga.length > 0) {
+          const rawAng = localStorage.getItem('custom_anggota_all_store')
+          const angStore = rawAng ? JSON.parse(rawAng) : {}
+          angStore[kkId] = approvedItem.anggota_keluarga.map((m, idx) => ({
+            id: m.id || `mem-${kkId}-${idx}`,
+            kk_id: kkId,
+            nama: m.nama,
+            peran: m.peran,
+            is_kaj: m.is_kaj,
+            keterangan: m.keterangan || undefined
+          }))
+          localStorage.setItem('custom_anggota_all_store', JSON.stringify(angStore))
+        }
+
+        // 4. custom_golongan_all_store
+        const rawGol = localStorage.getItem('custom_golongan_all_store')
+        const golStore = rawGol ? JSON.parse(rawGol) : {}
+        golStore[kkId] = {
+          id: `gol-${kkId}`,
+          kk_id: kkId,
+          lingkungan_id: approvedItem.lingkungan_id,
+          golongan: adjustedGolongan || approvedItem.golongan,
+          kriteria_catatan: adjustedCatatan !== undefined ? adjustedCatatan : approvedItem.kriteria_catatan,
+          updated_by_role: 'SEKRETARIS_PAROKI',
+          updated_at: new Date().toISOString()
+        }
+        localStorage.setItem('custom_golongan_all_store', JSON.stringify(golStore))
+
+        window.dispatchEvent(new Event('dafuDataUpdated'))
+      }
+    } catch (e) {
+      console.warn('Error syncing approved DAFU stores:', e)
+    }
   }
 
-  // If approved and has kk_id, optionally sync to golongan_keluarga table
+  // Sync approved item to Supabase kepala_keluarga, anggota_keluarga, and golongan_keluarga tables
   try {
-    const item = current.find(i => i.id === id)
-    if (item?.kk_id) {
+    const item = updated.find(i => i.id === id)
+    if (item && item.action_type !== 'HAPUS_KK') {
+      const dbUuid = item.lingkungan_id
+      const kkId = item.kk_id || `kk-appr-${item.id}`
+      await supabase.from('kepala_keluarga').upsert({
+        id: kkId,
+        lingkungan_id: dbUuid,
+        nama_kk: item.nama_kk,
+        alamat: item.alamat || null,
+        is_biduk: item.is_biduk
+      }, { onConflict: 'id' })
+
+      if (Array.isArray(item.anggota_keluarga) && item.anggota_keluarga.length > 0) {
+        const mems = item.anggota_keluarga.map((m, idx) => ({
+          id: m.id || `mem-${kkId}-${idx}`,
+          kk_id: kkId,
+          nama: m.nama,
+          peran: m.peran,
+          is_kaj: m.is_kaj,
+          keterangan: m.keterangan || null
+        }))
+        await supabase.from('anggota_keluarga').upsert(mems, { onConflict: 'id' })
+      }
+
       await supabase.from('golongan_keluarga').upsert({
-        kk_id: item.kk_id,
-        lingkungan_id: item.lingkungan_id,
+        kk_id: kkId,
+        lingkungan_id: dbUuid,
         golongan: adjustedGolongan || item.golongan,
         kriteria_catatan: adjustedCatatan !== undefined ? adjustedCatatan : item.kriteria_catatan,
         updated_by_role: 'SEKRETARIS_PAROKI',
         updated_at: new Date().toISOString()
       }, { onConflict: 'kk_id' })
+    } else if (item && item.action_type === 'HAPUS_KK' && item.kk_id) {
+      await supabase.from('anggota_keluarga').delete().eq('kk_id', item.kk_id)
+      await supabase.from('golongan_keluarga').delete().eq('kk_id', item.kk_id)
+      await supabase.from('kepala_keluarga').delete().eq('id', item.kk_id)
     }
   } catch (e) {}
 

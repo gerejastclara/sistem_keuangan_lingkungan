@@ -81,7 +81,7 @@ export default function LoginPage() {
           </div>
           <div className="space-y-1">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-serif">
-              Sistem Keuangan Lingkungan
+              Sistem Lingkungan
             </h1>
             <p className="text-xs text-[#A9834F] font-semibold tracking-widest uppercase">
               Gereja St. Clara • Paroki Bekasi Utara

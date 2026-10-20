@@ -121,7 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <div className="min-w-0">
             <h1 className="font-bold text-sm sm:text-base tracking-tight text-white flex items-center gap-2 truncate font-serif">
-              Sistem Keuangan Lingkungan
+              Sistem Lingkungan
               <span className="text-[10px] font-semibold uppercase tracking-wider bg-[#22335A] text-[#A9834F] border border-[#2C3E66] px-1.5 py-0.5 rounded-[4px] hidden xs:inline-block font-sans">
                 v1.1
               </span>

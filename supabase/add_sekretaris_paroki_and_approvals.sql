@@ -74,3 +74,17 @@ VALUES (
   'sekretaris_padrepio1'
 )
 ON CONFLICT DO NOTHING;
+
+-- 6. Pastikan RLS KEPALA_KELUARGA, ANGGOTA_KELUARGA, GOLONGAN_KELUARGA terbuka penuh
+ALTER TABLE IF EXISTS public.kepala_keluarga ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all access for KEPALA_KELUARGA" ON public.kepala_keluarga;
+CREATE POLICY "Enable all access for KEPALA_KELUARGA" ON public.kepala_keluarga FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS public.anggota_keluarga ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all access for ANGGOTA_KELUARGA" ON public.anggota_keluarga;
+CREATE POLICY "Enable all access for ANGGOTA_KELUARGA" ON public.anggota_keluarga FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS public.golongan_keluarga ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all access for GOLONGAN_KELUARGA" ON public.golongan_keluarga;
+CREATE POLICY "Enable all access for GOLONGAN_KELUARGA" ON public.golongan_keluarga FOR ALL USING (true) WITH CHECK (true);
+

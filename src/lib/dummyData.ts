@@ -1,6 +1,7 @@
-import { KepalaKeluarga, AnggotaKeluarga, GolonganKeluarga } from './types'
+import { KepalaKeluarga, AnggotaKeluarga, GolonganKeluarga, PeranKeluarga } from './types'
 import rawSantaClaraData from '@/data/santaClaraUmat.json'
 import { getAllMasterLingkungan, getLingkunganDbUuid } from './constants'
+import { getDafuApprovals } from './dafuApproval'
 
 interface SantaClaraDataset {
   totalFamilies: number
@@ -95,7 +96,8 @@ export const getDummyKkListForLingkungan = getRealKkListForLingkungan
 export function ensureDummyKksForLingkungan(
   lingkunganId: string,
   namaLingkungan: string,
-  existingList: KepalaKeluarga[]
+  existingList: KepalaKeluarga[],
+  preloadedApprovals?: any[]
 ): KepalaKeluarga[] {
   const realList = getRealKkListForLingkungan(lingkunganId, namaLingkungan)
 
@@ -137,21 +139,85 @@ export function ensureDummyKksForLingkungan(
     })
   }
 
+  // 3. Merge officially approved families from DAFU Approval system
+  try {
+    const approvals = (preloadedApprovals && Array.isArray(preloadedApprovals) && preloadedApprovals.length > 0)
+      ? preloadedApprovals
+      : (typeof window !== 'undefined' ? getDafuApprovals() : [])
+    const targetUuid = getLingkunganDbUuid(lingkunganId)
+    const targetNorm = (namaLingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+
+    approvals.forEach(appr => {
+      if (appr.status !== 'APPROVED') return
+      const apprUuid = getLingkunganDbUuid(appr.lingkungan_id)
+      const apprNorm = (appr.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const matchesLingkungan =
+        lingkunganId === 'all' ||
+        appr.lingkungan_id === lingkunganId ||
+        (targetUuid && apprUuid && targetUuid === apprUuid) ||
+        (targetNorm && apprNorm && (targetNorm === apprNorm || targetNorm.includes(apprNorm) || apprNorm.includes(targetNorm)))
+
+      if (!matchesLingkungan) return
+
+      const kkId = appr.kk_id || `kk-appr-${appr.id}`
+
+      if (appr.action_type === 'HAPUS_KK') {
+        combinedMap.delete(kkId)
+        if (appr.kk_id) combinedMap.delete(appr.kk_id)
+        return
+      }
+
+      const approvedKk: KepalaKeluarga = {
+        id: kkId,
+        lingkungan_id: targetUuid || lingkunganId,
+        nama_kk: appr.nama_kk,
+        alamat: appr.alamat || '',
+        is_biduk: appr.is_biduk,
+        jumlah_anggota: Array.isArray(appr.anggota_keluarga) && appr.anggota_keluarga.length > 0 ? appr.anggota_keluarga.length : 1
+      }
+
+      combinedMap.set(kkId, approvedKk)
+    })
+  } catch (e) {
+    console.warn('Notice merging approved DAFU items:', e)
+  }
+
   return Array.from(combinedMap.values()).sort((a, b) => a.nama_kk.localeCompare(b.nama_kk))
 }
 
 /**
- * Returns the real family members (Kepala Keluarga, Istri, Anak, Orang Tua, dll.) from CSV
+ * Returns the real family members (Kepala Keluarga, Istri, Anak, Orang Tua, dll.) from CSV or approved DAFU
  */
 export function getDummyAnggotaForKk(kk: KepalaKeluarga): AnggotaKeluarga[] {
   if (!kk) return []
 
-  // 1. Check real anggota map
+  // 1. Check if this is an approved DAFU approval
+  if (typeof window !== 'undefined') {
+    try {
+      const approvals = getDafuApprovals()
+      const foundAppr = approvals.find(a =>
+        a.status === 'APPROVED' &&
+        (a.kk_id === kk.id || `kk-appr-${a.id}` === kk.id || a.nama_kk.toLowerCase().trim() === kk.nama_kk.toLowerCase().trim())
+      )
+      if (foundAppr && Array.isArray(foundAppr.anggota_keluarga) && foundAppr.anggota_keluarga.length > 0) {
+        return foundAppr.anggota_keluarga.map((m, idx) => ({
+          id: m.id || `mem-${kk.id}-${idx}`,
+          kk_id: kk.id,
+          nama: m.nama,
+          peran: (m.peran || 'Anggota') as PeranKeluarga,
+          is_kaj: m.is_kaj,
+          keterangan: m.keterangan || undefined
+        }))
+      }
+    } catch (e) {}
+  }
+
+  // 2. Check real anggota map
   if (data.anggotaMap[kk.id]) {
     return data.anggotaMap[kk.id]
   }
 
-  // 2. Fallback for newly created custom KK
+  // 3. Fallback for newly created custom KK
   return [
     {
       id: `member-${kk.id}-1`,
@@ -167,7 +233,7 @@ export function getDummyAnggotaForKk(kk: KepalaKeluarga): AnggotaKeluarga[] {
 export const getRealAnggotaForKk = getDummyAnggotaForKk
 
 /**
- * Returns the real economic status (Golongan) for the family from CSV
+ * Returns the real economic status (Golongan) for the family from CSV or approved DAFU
  */
 export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
   if (!kk) {
@@ -182,12 +248,34 @@ export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
     }
   }
 
-  // 1. Check real golongan map
+  // 1. Check if this is an approved DAFU approval
+  if (typeof window !== 'undefined') {
+    try {
+      const approvals = getDafuApprovals()
+      const foundAppr = approvals.find(a =>
+        a.status === 'APPROVED' &&
+        (a.kk_id === kk.id || `kk-appr-${a.id}` === kk.id || a.nama_kk.toLowerCase().trim() === kk.nama_kk.toLowerCase().trim())
+      )
+      if (foundAppr && foundAppr.golongan) {
+        return {
+          id: `gol-${kk.id}`,
+          kk_id: kk.id,
+          lingkungan_id: kk.lingkungan_id,
+          golongan: foundAppr.golongan,
+          kriteria_catatan: foundAppr.kriteria_catatan || 'Ditetapkan Sekretaris Paroki',
+          updated_by_role: 'SEKRETARIS_PAROKI',
+          updated_at: foundAppr.reviewed_at || foundAppr.created_at
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 2. Check real golongan map
   if (data.golonganMap[kk.id]) {
     return data.golonganMap[kk.id]
   }
 
-  // 2. Default for newly created custom KK
+  // 3. Default for newly created custom KK
   return {
     id: `gol-${kk.id}`,
     kk_id: kk.id,
