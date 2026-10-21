@@ -21,6 +21,8 @@ export function purgeAllObsoleteLocalStorageCache() {
           k === 'custom_journals_all_store' ||
           k.startsWith('custom_kks_') ||
           k === 'custom_kks_all_store' ||
+          k.startsWith('profil_manual_') ||
+          k.startsWith('pengurus_manual_') ||
           k.startsWith('tx_kk_'))
       ) {
         keysToRemove.push(k)

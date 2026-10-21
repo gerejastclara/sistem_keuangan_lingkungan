@@ -492,7 +492,7 @@ function DafuFormContent() {
       window.removeEventListener('dafuApprovalUpdated', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
     }
-  }, [supabase])
+  }, [])
 
   const loadKks = async (targetLingkunganId: string, lName: string, preloadedApprovals?: any[]) => {
     const dbUuid = getLingkunganDbUuid(targetLingkunganId)
@@ -524,14 +524,14 @@ function DafuFormContent() {
       } catch (e) {}
     }
 
-    let dbKks = (kks || []).filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
+    let dbKks = (kks || []).filter((k: any) => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
     const localSaved = localStorage.getItem(`custom_kks_${targetLingkunganId}`)
     if (localSaved) {
       try {
         const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
         const combinedMap = new Map<string, KepalaKeluarga>()
-        dbKks.forEach(k => combinedMap.set(k.id, k))
-        parsed.filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy')).forEach(k => combinedMap.set(k.id, k))
+        dbKks.forEach((k: any) => combinedMap.set(k.id, k))
+        parsed.filter((k: any) => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy')).forEach((k: any) => combinedMap.set(k.id, k))
         dbKks = Array.from(combinedMap.values())
       } catch (e) {}
     }
@@ -540,10 +540,10 @@ function DafuFormContent() {
     if (allSaved) {
       try {
         const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
-        const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
+        const matched = allParsed.filter((k: any) => k.lingkungan_id === targetLingkunganId && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
         const combinedMap = new Map<string, KepalaKeluarga>()
-        dbKks.forEach(k => combinedMap.set(k.id, k))
-        matched.forEach(k => combinedMap.set(k.id, k))
+        dbKks.forEach((k: any) => combinedMap.set(k.id, k))
+        matched.forEach((k: any) => combinedMap.set(k.id, k))
         dbKks = Array.from(combinedMap.values())
       } catch (e) {}
     }

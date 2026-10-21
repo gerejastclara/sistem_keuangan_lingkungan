@@ -189,8 +189,8 @@ export default function FormSetoranPage() {
             try {
               const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
               const map = new Map<string, KepalaKeluarga>()
-              finalKks.forEach(k => map.set(k.id, k))
-              parsed.forEach(k => map.set(k.id, k))
+              finalKks.forEach((k: any) => map.set(k.id, k))
+              parsed.forEach((k: any) => map.set(k.id, k))
               finalKks = Array.from(map.values())
             } catch (e) {}
           }
@@ -199,10 +199,10 @@ export default function FormSetoranPage() {
           if (allSaved) {
             try {
               const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
-              const matchedAll = allParsed.filter(k => k.lingkungan_id === effId || (dbUuid && k.lingkungan_id === dbUuid))
+              const matchedAll = allParsed.filter((k: any) => k.lingkungan_id === effId || (dbUuid && k.lingkungan_id === dbUuid))
               const map = new Map<string, KepalaKeluarga>()
-              finalKks.forEach(k => map.set(k.id, k))
-              matchedAll.forEach(k => map.set(k.id, k))
+              finalKks.forEach((k: any) => map.set(k.id, k))
+              matchedAll.forEach((k: any) => map.set(k.id, k))
               finalKks = Array.from(map.values())
             } catch (e) {}
           }

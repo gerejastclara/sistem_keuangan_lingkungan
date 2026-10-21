@@ -179,7 +179,7 @@ export default function FormStandarPage() {
 
         const aMap: Record<string, AnggotaKeluarga[]> = {}
         finalKks.forEach((k) => {
-          let mems = dbAnggota?.filter((a) => a.kk_id === k.id) || []
+          let mems = dbAnggota?.filter((a: any) => a.kk_id === k.id) || []
           if (mems.length === 0) mems = getDummyAnggotaForKk(k)
           aMap[k.id] = mems
         })

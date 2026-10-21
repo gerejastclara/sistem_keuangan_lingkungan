@@ -192,8 +192,8 @@ export default function KartuSetoranPage() {
             try {
               const parsed: KepalaKeluarga[] = JSON.parse(localSaved)
               const combinedMap = new Map<string, KepalaKeluarga>()
-              dbKks.forEach(k => combinedMap.set(k.id, k))
-              parsed.forEach(k => combinedMap.set(k.id, k))
+              dbKks.forEach((k: any) => combinedMap.set(k.id, k))
+              parsed.forEach((k: any) => combinedMap.set(k.id, k))
               dbKks = Array.from(combinedMap.values())
             } catch (e) {}
           }
@@ -202,10 +202,10 @@ export default function KartuSetoranPage() {
           if (allSaved) {
             try {
               const allParsed: KepalaKeluarga[] = JSON.parse(allSaved)
-              const matched = allParsed.filter(k => k.lingkungan_id === targetLingkunganId || (dbUuid && k.lingkungan_id === dbUuid))
+              const matched = allParsed.filter((k: any) => k.lingkungan_id === targetLingkunganId || (dbUuid && k.lingkungan_id === dbUuid))
               const combinedMap = new Map<string, KepalaKeluarga>()
-              dbKks.forEach(k => combinedMap.set(k.id, k))
-              matched.forEach(k => combinedMap.set(k.id, k))
+              dbKks.forEach((k: any) => combinedMap.set(k.id, k))
+              matched.forEach((k: any) => combinedMap.set(k.id, k))
               dbKks = Array.from(combinedMap.values())
             } catch (e) {}
           }

@@ -26,8 +26,6 @@ import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import { SekretarisParokiDashboard } from '@/components/dashboard/SekretarisParokiDashboard'
 import { ParokiOverviewDashboard } from '@/components/dashboard/ParokiOverviewDashboard'
 import { fetchDafuApprovals, type DafuApprovalItem } from '@/lib/dafuApproval'
-import LocalStorageMigrationModal from '@/components/migration/LocalStorageMigrationModal'
-import { scanLocalStorageData } from '@/lib/migrationService'
 import {
   TrendingUp,
   TrendingDown,
@@ -101,21 +99,6 @@ export default function DashboardOverviewPage() {
   const [expandedKkIds, setExpandedKkIds] = useState<Set<string>>(new Set())
   const [pendingApprovals, setPendingApprovals] = useState<DafuApprovalItem[]>([])
 
-  // LocalStorage Migration State
-  const [isMigrationModalOpen, setIsMigrationModalOpen] = useState(false)
-  const [hasLocalData, setHasLocalData] = useState(false)
-  const [localDataCount, setLocalDataCount] = useState(0)
-
-  useEffect(() => {
-    const inv = scanLocalStorageData()
-    if (inv && inv.totalItems > 0) {
-      setHasLocalData(true)
-      setLocalDataCount(inv.totalItems)
-    } else {
-      setHasLocalData(false)
-      setLocalDataCount(0)
-    }
-  }, [])
 
   // Edit Pengurus Modal State (Khusus Sekretaris & Paroki)
   const [isEditPengurusOpen, setIsEditPengurusOpen] = useState(false)
@@ -420,13 +403,12 @@ export default function DashboardOverviewPage() {
             .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
             .order('nama_kk', { ascending: true })
 
-            const dbKks = (kks || []).filter(k => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
+            const dbKks = (kks || []).filter((k: any) => k && !k.id.startsWith('dummy-') && !k.id.includes('dummy'))
             const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, lName, dbKks, latestApprovals)
-            setKkList(finalKks)
 
             // Filter pending approvals for this lingkungan
             const lNorm = (lName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-            const pending = (latestApprovals || []).filter(a => {
+            const pending = (latestApprovals || []).filter((a: any) => {
               if (a.status !== 'PENDING') return false
               const aUuid = getLingkunganDbUuid(a.lingkungan_id)
               const aNorm = (a.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -439,8 +421,9 @@ export default function DashboardOverviewPage() {
             })
             setPendingApprovals(pending)
 
-          // Load Anggota & Golongan
+          // Load Anggota & Golongan first, then commit finalKks together so stats don't flash 0
           await loadAnggotaAndGolongan(finalKks, targetLingkunganId)
+          setKkList(finalKks)
 
           // Load Profil & Pengurus Lingkungan directly from Supabase (sole source of truth)
           const { data: profil } = await supabase
@@ -496,7 +479,7 @@ export default function DashboardOverviewPage() {
               .eq('lingkungan_id', dbUuid)
 
             if (asetList) {
-              const totalVal = asetList.reduce((acc, curr) => acc + (Number(curr.jumlah || 0) * Number(curr.harga_satuan || 0)), 0)
+              const totalVal = asetList.reduce((acc: number, curr: any) => acc + (Number(curr.jumlah || 0) * Number(curr.harga_satuan || 0)), 0)
               setTotalNilaiAset(totalVal)
             }
           }
@@ -526,7 +509,7 @@ export default function DashboardOverviewPage() {
       window.removeEventListener('customJournalsUpdated', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
     }
-  }, [supabase])
+  }, [])
 
   const loadAnggotaAndGolongan = async (kks: KepalaKeluarga[], lId: string) => {
     const kkIds = kks.map(k => k.id)
@@ -1012,54 +995,8 @@ export default function DashboardOverviewPage() {
     </Dialog>
   )
 
-  const renderMigrationModal = () => (
-    <LocalStorageMigrationModal
-      isOpen={isMigrationModalOpen}
-      onClose={() => {
-        setIsMigrationModalOpen(false)
-        const inv = scanLocalStorageData()
-        setHasLocalData(inv.totalItems > 0)
-        setLocalDataCount(inv.totalItems)
-      }}
-      onSuccess={() => {
-        const inv = scanLocalStorageData()
-        setHasLocalData(inv.totalItems > 0)
-        setLocalDataCount(inv.totalItems)
-        window.location.reload()
-      }}
-    />
-  )
-
-  const renderMigrationBanner = () => {
-    if (!hasLocalData) return null
-    return (
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-300 dark:border-amber-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white shrink-0 shadow-md shadow-amber-500/20">
-            <Database className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-amber-950 dark:text-amber-100 flex items-center gap-2">
-              Terdeteksi {localDataCount} Data di Local Storage Browser
-              <span className="text-[10px] bg-amber-200 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-full font-semibold">
-                Perlu Migrasi
-              </span>
-            </h4>
-            <p className="text-xs text-amber-800/90 dark:text-amber-300/80 mt-0.5">
-              Pindahkan seluruh transaksi kas, data umat, aset, dan profil ke Supabase Database Cloud agar tersimpan permanen dan tersinkronisasi saat hosting.
-            </p>
-          </div>
-        </div>
-        <Button
-          onClick={() => setIsMigrationModalOpen(true)}
-          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold px-4 py-2 text-xs rounded-xl shadow-md shadow-orange-500/20 shrink-0 cursor-pointer"
-        >
-          <CloudUpload className="w-4 h-4 mr-1.5" />
-          Pindahkan ke Cloud Database
-        </Button>
-      </div>
-    )
-  }
+  const renderMigrationModal = () => null
+  const renderMigrationBanner = () => null
 
   if (loading) {
     return (
@@ -1140,23 +1077,8 @@ export default function DashboardOverviewPage() {
               </Button>
             </Link>
 
-            {/* Migration Button */}
-            <Button
-              onClick={() => setIsMigrationModalOpen(true)}
-              variant="outline"
-              className="border-amber-300 hover:bg-amber-50 text-amber-800 font-bold px-3.5 py-2.5 rounded-xl shadow-2xs cursor-pointer h-11 shrink-0 transition-all flex items-center gap-2 text-xs"
-            >
-              <Database className="w-4 h-4 text-amber-600" />
-              <span>Migrasi Database</span>
-              {hasLocalData && (
-                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-              )}
-            </Button>
           </div>
         </div>
-
-        {/* LocalStorage Migration Alert Banner */}
-        {renderMigrationBanner()}
 
         {/* Summary Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1694,23 +1616,8 @@ export default function DashboardOverviewPage() {
             </>
           )}
 
-          {/* Migration Button */}
-          <Button
-            onClick={() => setIsMigrationModalOpen(true)}
-            variant="outline"
-            className="border-amber-300 hover:bg-amber-50 text-amber-800 font-bold px-3.5 py-2.5 rounded-xl shadow-2xs cursor-pointer transition-all text-xs flex items-center gap-2"
-          >
-            <Database className="w-4 h-4 text-amber-600" />
-            <span>Migrasi Database</span>
-            {hasLocalData && (
-              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-            )}
-          </Button>
         </div>
       </div>
-
-      {/* LocalStorage Migration Alert Banner */}
-      {renderMigrationBanner()}
 
       {/* STRUKTUR PENGURUS LINGKUNGAN */}
       {renderPengurusCard(userRole === 'PAROKI')}
