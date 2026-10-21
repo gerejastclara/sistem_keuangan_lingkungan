@@ -79,21 +79,27 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     lingkungan_nama: isGlobalScope ? undefined : (sessionLingkunganNama || undefined),
   }
 
-  // Pastikan nama lingkungan dan id lingkungan sinkron dengan database
-  if (profile && !isGlobalScope) {
-    const isDbUuid = profile.lingkungan_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profile.lingkungan_id)
-    if (!isDbUuid || !profile.lingkungan_nama) {
-      const { findLingkunganByQuery } = await import('@/lib/constants')
-      const matched = findLingkunganByQuery(profile.username || '')
-      if (matched) {
-        const dbL = lingkunganList.find(l => l.nama_lingkungan.toLowerCase() === matched.nama_lingkungan.toLowerCase())
-        profile.lingkungan_id = dbL ? dbL.id : matched.id
-        profile.lingkungan_nama = matched.nama_lingkungan
+  // Pastikan nama lingkungan dan id lingkungan sinkron dengan username atau database
+  if (profile && !isGlobalScope && profile.username) {
+    const { findLingkunganByQuery } = await import('@/lib/constants')
+    const matched = findLingkunganByQuery(profile.username)
+    if (matched) {
+      const dbL = lingkunganList.find(l => l.nama_lingkungan.toLowerCase() === matched.nama_lingkungan.toLowerCase())
+      profile.lingkungan_id = dbL ? dbL.id : matched.id
+      profile.lingkungan_nama = matched.nama_lingkungan
 
-        try {
-          cookieStore.set('demo_user_lingkungan_id', profile.lingkungan_id)
-          cookieStore.set('demo_user_lingkungan_nama', profile.lingkungan_nama)
-        } catch (e) {}
+      try {
+        cookieStore.set('demo_user_lingkungan_id', profile.lingkungan_id)
+        cookieStore.set('demo_user_lingkungan_nama', profile.lingkungan_nama)
+      } catch (e) {}
+    } else {
+      const isDbUuid = profile.lingkungan_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profile.lingkungan_id)
+      if (!isDbUuid || !profile.lingkungan_nama) {
+        if (lingkunganList.length > 0) {
+          profile.lingkungan_id = profile.lingkungan_id || lingkunganList[0].id
+          const found = lingkunganList.find(l => l.id === profile.lingkungan_id)
+          profile.lingkungan_nama = found?.nama_lingkungan || lingkunganList[0].nama_lingkungan
+        }
       }
     }
   }

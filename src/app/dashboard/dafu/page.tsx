@@ -448,7 +448,7 @@ function DafuFormContent() {
         }
 
         const allM = getAllMasterLingkungan()
-        const matched = allM.find(l => l.id === targetLingkunganId)
+        const matched = allM.find(l => l.id === targetLingkunganId || getLingkunganDbUuid(l.id) === targetLingkunganId)
         const lName = matched?.nama_lingkungan || currentLingkunganNama || 'Lingkungan'
         setLingkunganName(lName)
         setLingkunganId(targetLingkunganId)
@@ -1658,7 +1658,22 @@ function DafuFormContent() {
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100 text-xs">
-              {filteredKkList.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i} className="animate-pulse">
+                    <TableCell className="w-10 text-center"><div className="w-4 h-4 bg-slate-200 rounded mx-auto" /></TableCell>
+                    <TableCell className="w-12 text-center"><div className="w-6 h-4 bg-slate-200 rounded mx-auto" /></TableCell>
+                    <TableCell>
+                      <div className="h-4 w-48 bg-slate-200 rounded mb-1.5" />
+                      <div className="h-3 w-64 bg-slate-100 rounded" />
+                    </TableCell>
+                    <TableCell><div className="h-6 w-24 bg-slate-200 rounded-full" /></TableCell>
+                    <TableCell><div className="h-4 w-20 bg-slate-200 rounded" /></TableCell>
+                    <TableCell className="text-center"><div className="h-5 w-16 bg-slate-200 rounded mx-auto" /></TableCell>
+                    <TableCell className="text-right"><div className="h-7 w-20 bg-slate-200 rounded-lg ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredKkList.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-slate-400">
                     {searchQuery ? 'Tidak ada keluarga yang cocok dengan kata kunci pencarian.' : 'Belum ada data keluarga di lingkungan ini.'}

@@ -108,10 +108,12 @@ export default function CoaSaldoPage() {
         }
 
         let rawDemoEmail = typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_email=').pop()?.split(';').shift() || '' : ''
+        let rawDemoUsername = typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_username=').pop()?.split(';').shift() || '' : ''
         try {
           rawDemoEmail = decodeURIComponent(rawDemoEmail)
+          rawDemoUsername = decodeURIComponent(rawDemoUsername)
         } catch (e) {}
-        const effectiveEmail = user?.email || rawDemoEmail || ''
+        const effectiveEmail = user?.email || rawDemoEmail || rawDemoUsername || ''
         const effectiveRole = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_role=').pop()?.split(';').shift() : '') || ''
 
         let targetLingkunganId: string | null = null

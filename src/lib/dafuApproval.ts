@@ -80,7 +80,6 @@ export async function fetchDafuApprovals(): Promise<DafuApprovalItem[]> {
       memoryApprovalsCache = mapped
       if (typeof window !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped))
-        window.dispatchEvent(new Event('dafuApprovalUpdated'))
       }
       return mapped
     }

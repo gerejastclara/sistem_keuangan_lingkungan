@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { KeyRound, Eye, EyeOff, Building, Users, Shield, Sparkles } from 'lucide-react'
-import { getAllMasterLingkungan, formatNamaLingkungan } from '@/lib/constants'
+import { getAllMasterLingkungan, formatNamaLingkungan, findLingkunganByQuery } from '@/lib/constants'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -22,14 +22,6 @@ export default function LoginPage() {
   const [isQuickMode, setIsQuickMode] = useState(false)
 
   const masterLingkunganList = getAllMasterLingkungan()
-
-  useEffect(() => {
-    if (masterLingkunganList.length > 0 && !selectedLingkunganId) {
-      // Find Padre Pio 1 or default first
-      const defaultL = masterLingkunganList.find(l => l.nama_lingkungan.toLowerCase().includes('padre pio')) || masterLingkunganList[0]
-      setSelectedLingkunganId(defaultL.id)
-    }
-  }, [masterLingkunganList, selectedLingkunganId])
 
   // Read URL query param message if present on client
   useEffect(() => {
@@ -202,14 +194,24 @@ export default function LoginPage() {
                   if (username.includes('paroki')) {
                     localStorage.setItem('selected_lingkungan_id', 'all')
                     localStorage.setItem('last_user_role', username.includes('sekretaris') ? 'SEKRETARIS_PAROKI' : 'PAROKI')
-                  } else if (selectedLingkunganId && selectedLingkunganId !== 'all') {
-                    localStorage.setItem('selected_lingkungan_id', selectedLingkunganId)
+                  } else {
+                    const matched = findLingkunganByQuery(username)
+                    const targetId = matched?.id || selectedLingkunganId
+                    if (targetId && targetId !== 'all') {
+                      localStorage.setItem('selected_lingkungan_id', targetId)
+                    }
+                    const derivedRole = (username.includes('sekretaris') || username.includes('sekertaris')) ? 'SEKRETARIS' : 'BENDAHARA'
+                    localStorage.setItem('last_user_role', derivedRole)
                   }
                 }
               }}
               className="space-y-4"
             >
-              <input type="hidden" name="lingkungan_id" value={selectedLingkunganId || ''} />
+              <input
+                type="hidden"
+                name="lingkungan_id"
+                value={findLingkunganByQuery(username)?.id || selectedLingkunganId || ''}
+              />
 
               <div className="space-y-1.5">
                 <Label htmlFor="username" className="text-xs font-semibold text-[#1B2130]">Username</Label>

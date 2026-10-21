@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserProfile, Lingkungan } from '@/lib/types'
-import { getWilayahForLingkungan, formatNamaLingkungan, getAllMasterLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
+import { getWilayahForLingkungan, formatNamaLingkungan, getAllMasterLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier, findLingkunganByQuery } from '@/lib/constants'
 import { LogOut, Building2, User, ChevronDown, Menu, Bell, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -99,7 +99,13 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   }
 
+  const userLingkunganFromUsername =
+    userProfile?.username && userProfile.role !== 'PAROKI' && userProfile.role !== 'SEKRETARIS_PAROKI'
+      ? findLingkunganByQuery(userProfile.username)
+      : null
+
   const currentLingkunganName =
+    userLingkunganFromUsername?.nama_lingkungan ||
     userProfile?.lingkungan_nama ||
     resolveLingkunganLabel(selectedLingkunganId)
 

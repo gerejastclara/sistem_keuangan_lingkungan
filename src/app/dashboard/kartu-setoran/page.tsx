@@ -126,19 +126,19 @@ export default function KartuSetoranPage() {
         let targetLingkunganId: string | null = null
         let targetLingkunganNama: string | null = null
 
-        // 1. Jika Bendahara/Sekretaris, prioritaskan data sesi lingkungan di cookie
-        if (effectiveRole !== 'PAROKI' && cookieLingId) {
-          targetLingkunganId = cookieLingId
-          targetLingkunganNama = cookieLingNama || null
-        }
-
-        // 2. Jika belum ketemu, cari dari query email / username
-        if (!targetLingkunganId && effectiveRole !== 'PAROKI' && effectiveEmail) {
+        // 1. Jika Bendahara/Sekretaris, prioritaskan data identitas username / email
+        if (effectiveRole !== 'PAROKI' && effectiveEmail) {
           const matched = findLingkunganByQuery(effectiveEmail)
           if (matched) {
             targetLingkunganId = matched.id
             targetLingkunganNama = matched.nama_lingkungan
           }
+        }
+
+        // 2. Jika belum ketemu dari email/username, gunakan data sesi lingkungan di cookie
+        if (!targetLingkunganId && effectiveRole !== 'PAROKI' && cookieLingId) {
+          targetLingkunganId = cookieLingId
+          targetLingkunganNama = cookieLingNama || null
         }
 
         // 3. Fallback ke selected_lingkungan_id di localStorage (misal peran Paroki)

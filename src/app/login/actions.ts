@@ -84,24 +84,24 @@ export async function login(formData: FormData) {
     let fallbackLingkunganNama: string | null = null
 
     if (role !== 'PAROKI' && role !== 'SEKRETARIS_PAROKI') {
-      if (formLingkunganId && formLingkunganId !== 'all') {
+      // Prioritas 1: Lingkungan yang terkandung di dalam username (misal sekretaris_stagnes2 -> St. Agnes 2)
+      const matched =
+        findLingkunganByQuery(normalizedUsername) ||
+        findLingkunganByQuery(cleanUsername) ||
+        findLingkunganByQuery(cleanUsername.replace(/\s+/g, '_')) ||
+        findLingkunganByQuery(cleanUsername.replace(/_/g, ' '))
+
+      if (matched) {
+        fallbackLingkunganId = matched.id
+        fallbackLingkunganNama = matched.nama_lingkungan
+      } else if (formLingkunganId && formLingkunganId !== 'all') {
+        // Prioritas 2: Pilihan picker hanya jika username generic (misal 'sekretaris' saja)
         const { getAllMasterLingkungan } = await import('@/lib/constants')
         const all = getAllMasterLingkungan()
         const found = all.find(l => l.id === formLingkunganId || l.slug === formLingkunganId)
         if (found) {
           fallbackLingkunganId = found.id
           fallbackLingkunganNama = found.nama_lingkungan
-        }
-      }
-      if (!fallbackLingkunganId) {
-        const matched =
-          findLingkunganByQuery(normalizedUsername) ||
-          findLingkunganByQuery(cleanUsername) ||
-          findLingkunganByQuery(cleanUsername.replace(/\s+/g, '_')) ||
-          findLingkunganByQuery(cleanUsername.replace(/_/g, ' '))
-        if (matched) {
-          fallbackLingkunganId = matched.id
-          fallbackLingkunganNama = matched.nama_lingkungan
         }
       }
     }

@@ -128,17 +128,17 @@ export default function AsetPage() {
         let targetLingkunganId: string | null = null
         let targetLingkunganNama: string | null = null
 
-        if (effectiveRole !== 'PAROKI' && cookieLingId) {
-          targetLingkunganId = cookieLingId
-          targetLingkunganNama = cookieLingNama || null
-        }
-
-        if (!targetLingkunganId && effectiveRole !== 'PAROKI' && effectiveEmail) {
+        if (effectiveRole !== 'PAROKI' && effectiveEmail) {
           const matched = findLingkunganByQuery(effectiveEmail)
           if (matched) {
             targetLingkunganId = matched.id
             targetLingkunganNama = matched.nama_lingkungan
           }
+        }
+
+        if (!targetLingkunganId && effectiveRole !== 'PAROKI' && cookieLingId) {
+          targetLingkunganId = cookieLingId
+          targetLingkunganNama = cookieLingNama || null
         }
 
         if (!targetLingkunganId) {
