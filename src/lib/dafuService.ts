@@ -21,14 +21,39 @@ export interface ParishKkItem {
   jumlah_anggota?: number
 }
 
-// In-memory cache for ultra-fast parish-wide switches
+// In-memory & sessionStorage cache for ultra-fast parish-wide switches without flickering
 let cachedParishKks: ParishKkItem[] | null = null
 let lastParishFetchTime = 0
-const PARISH_CACHE_TTL = 30000 // 30 seconds
+const PARISH_CACHE_TTL = 300000 // 5 minutes
+
+export function getCachedParishKks(): ParishKkItem[] | null {
+  if (cachedParishKks && cachedParishKks.length > 0) {
+    return cachedParishKks
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = sessionStorage.getItem('cached_parish_kks')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          cachedParishKks = parsed
+          lastParishFetchTime = Date.now()
+          return parsed
+        }
+      }
+    } catch (e) {}
+  }
+  return null
+}
 
 export function invalidateParishCache() {
   cachedParishKks = null
   lastParishFetchTime = 0
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.removeItem('cached_parish_kks')
+    } catch (e) {}
+  }
 }
 
 /**
@@ -232,6 +257,11 @@ export async function fetchAllParishKksWithGolongan(
 
     cachedParishKks = parishItems
     lastParishFetchTime = Date.now()
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('cached_parish_kks', JSON.stringify(parishItems))
+      } catch (e) {}
+    }
     return parishItems
   } catch (err) {
     console.error('Error fetching all parish KKs with golongan:', err)
