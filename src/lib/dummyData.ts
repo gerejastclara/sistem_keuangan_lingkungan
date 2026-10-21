@@ -1,19 +1,9 @@
 import { KepalaKeluarga, AnggotaKeluarga, GolonganKeluarga, PeranKeluarga } from './types'
-import rawSantaClaraData from '@/data/santaClaraUmat.json'
+import rawLingkunganStats from '@/data/lingkunganStats.json'
 import { getAllMasterLingkungan, getLingkunganDbUuid } from './constants'
 import { getDafuApprovals } from './dafuApproval'
 
-interface SantaClaraDataset {
-  totalFamilies: number
-  totalMembers: number
-  wilayahLingkunganMap: Record<string, string[]>
-  lingkunganStats?: Record<string, { kkCount: number; jiwaCount: number }>
-  kksByLingkungan: Record<string, KepalaKeluarga[]>
-  anggotaMap: Record<string, AnggotaKeluarga[]>
-  golonganMap: Record<string, GolonganKeluarga>
-}
-
-const data = rawSantaClaraData as unknown as SantaClaraDataset
+const lingkunganStatsMap = rawLingkunganStats as Record<string, { kkCount: number; jiwaCount: number }>
 
 function normalizeLookupKey(key: string): string {
   if (!key) return ''
@@ -64,57 +54,22 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Returns the real Santa Clara parish families for a given Lingkungan ID or name.
+ * Compatibility helper. Real data is now fetched directly from Supabase Cloud.
  */
-export function getRealKkListForLingkungan(lingkunganId: string, namaLingkungan?: string): KepalaKeluarga[] {
-  if (!lingkunganId && !namaLingkungan) return []
-
-  const normId = normalizeLookupKey(lingkunganId)
-  if (normId && data.kksByLingkungan[normId]) {
-    return data.kksByLingkungan[normId]
-  }
-
-  const normName = normalizeLookupKey(namaLingkungan || '')
-  if (normName && data.kksByLingkungan[normName]) {
-    return data.kksByLingkungan[normName]
-  }
-
-  // Handle double 'n' in Yohanes / Yohannes
-  if (normId) {
-    const doubleN = normId.replace(/yohanes/g, 'yohannes')
-    if (data.kksByLingkungan[doubleN]) return data.kksByLingkungan[doubleN]
-  }
-  if (normName) {
-    const doubleN = normName.replace(/yohanes/g, 'yohannes')
-    if (data.kksByLingkungan[doubleN]) return data.kksByLingkungan[doubleN]
-  }
-
-  // Fallback: search by resolved name from master
-  if (lingkunganId) {
-    const all = getAllMasterLingkungan()
-    const targetUuid = getLingkunganDbUuid(lingkunganId)
-    const found = all.find(l => l.id === lingkunganId || l.slug === lingkunganId || getLingkunganDbUuid(l.id) === targetUuid)
-    if (found) {
-      const fn = normalizeLookupKey(found.nama_lingkungan)
-      if (fn && data.kksByLingkungan[fn]) return data.kksByLingkungan[fn]
-    }
-  }
-
-  // Direct key check as last resort
-  if (lingkunganId && data.kksByLingkungan[lingkunganId]) return data.kksByLingkungan[lingkunganId]
-
+export function getRealKkListForLingkungan(_lingkunganId: string, _namaLingkungan?: string): KepalaKeluarga[] {
   return []
 }
 
 /**
- * Returns pre-calculated aggregate stats (kkCount, jiwaCount) for a Lingkungan in O(1) time.
+ * Returns aggregate stats (kkCount, jiwaCount) for a Lingkungan in O(1) time.
+ * Pure lightweight JSON (under 4 KB).
  */
 export function getLingkunganStats(lingkunganId: string, namaLingkungan?: string): { kkCount: number; jiwaCount: number } {
   const normId = normalizeLookupKey(lingkunganId)
-  if (normId && data.lingkunganStats?.[normId]) return data.lingkunganStats[normId]
+  if (normId && lingkunganStatsMap[normId]) return lingkunganStatsMap[normId]
 
   const normName = normalizeLookupKey(namaLingkungan || '')
-  if (normName && data.lingkunganStats?.[normName]) return data.lingkunganStats[normName]
+  if (normName && lingkunganStatsMap[normName]) return lingkunganStatsMap[normName]
 
   if (lingkunganId) {
     const all = getAllMasterLingkungan()
@@ -122,27 +77,24 @@ export function getLingkunganStats(lingkunganId: string, namaLingkungan?: string
     const found = all.find(l => l.id === lingkunganId || l.slug === lingkunganId || getLingkunganDbUuid(l.id) === targetUuid)
     if (found) {
       const fn = normalizeLookupKey(found.nama_lingkungan)
-      if (fn && data.lingkunganStats?.[fn]) return data.lingkunganStats[fn]
+      if (fn && lingkunganStatsMap[fn]) return lingkunganStatsMap[fn]
     }
   }
 
-  const kks = getRealKkListForLingkungan(lingkunganId, namaLingkungan)
-  return { kkCount: kks.length, jiwaCount: kks.length * 3 }
+  return { kkCount: 0, jiwaCount: 0 }
 }
 
-// Backward compatibility alias for existing code
 export const getDummyKkListForLingkungan = getRealKkListForLingkungan
 
 /**
- * Ensures that the list contains all real Santa Clara parish families for this Lingkungan.
- * Custom families added by the user in the UI are merged seamlessly.
+ * Merges Supabase cloud family list with any approved DAFU items and local overrides.
  */
 export function ensureDummyKksForLingkungan(
   lingkunganId: string,
   namaLingkungan: string,
   existingList: KepalaKeluarga[],
   preloadedApprovals?: any[],
-  includeParishData: boolean = true
+  _includeParishData: boolean = true
 ): KepalaKeluarga[] {
   let deletedSet = new Set<string>()
   if (typeof window !== 'undefined') {
@@ -170,17 +122,7 @@ export function ensureDummyKksForLingkungan(
 
   const combinedMap = new Map<string, KepalaKeluarga>()
 
-  // 1. Include real parish families from Santa Clara CSV dataset
-  if (includeParishData) {
-    const realList = getRealKkListForLingkungan(lingkunganId, namaLingkungan)
-    realList.forEach(k => {
-      if (!isDeleted(k.id, k.nama_kk)) {
-        combinedMap.set(k.id, k)
-      }
-    })
-  }
-
-  // 2. Merge any locally saved / custom user entries (from Supabase or localStorage), strictly ignoring any legacy dummy IDs or deleted entries
+  // 1. Include cloud families fetched from Supabase
   if (existingList && existingList.length > 0) {
     existingList.forEach(k => {
       if (
@@ -197,7 +139,7 @@ export function ensureDummyKksForLingkungan(
     })
   }
 
-  // 3. Merge officially approved families from DAFU Approval system
+  // 2. Merge officially approved families from DAFU Approval system
   try {
     const approvals = (preloadedApprovals && Array.isArray(preloadedApprovals) && preloadedApprovals.length > 0)
       ? preloadedApprovals
@@ -251,12 +193,13 @@ export function ensureDummyKksForLingkungan(
 }
 
 /**
- * Returns the real family members (Kepala Keluarga, Istri, Anak, Orang Tua, dll.) from CSV or approved DAFU
+ * Returns family members for a given KK.
+ * Real data is loaded from Supabase; this handles approvals or fallback defaults.
  */
 export function getDummyAnggotaForKk(kk: KepalaKeluarga): AnggotaKeluarga[] {
   if (!kk) return []
 
-  // 1. Check if this is an approved DAFU approval
+  // Check if this is an approved DAFU approval
   if (typeof window !== 'undefined') {
     try {
       const approvals = getDafuApprovals()
@@ -277,12 +220,7 @@ export function getDummyAnggotaForKk(kk: KepalaKeluarga): AnggotaKeluarga[] {
     } catch (e) {}
   }
 
-  // 2. Check real anggota map
-  if (data.anggotaMap[kk.id]) {
-    return data.anggotaMap[kk.id]
-  }
-
-  // 3. Fallback for newly created custom KK
+  // Fallback for newly created KK
   return [
     {
       id: `member-${kk.id}-1`,
@@ -298,7 +236,8 @@ export function getDummyAnggotaForKk(kk: KepalaKeluarga): AnggotaKeluarga[] {
 export const getRealAnggotaForKk = getDummyAnggotaForKk
 
 /**
- * Returns the real economic status (Golongan) for the family from CSV or approved DAFU
+ * Returns economic status (Golongan) for the family.
+ * Real data is loaded from Supabase; this handles approvals or fallback defaults.
  */
 export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
   if (!kk) {
@@ -313,7 +252,7 @@ export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
     }
   }
 
-  // 1. Check if this is an approved DAFU approval
+  // Check if this is an approved DAFU approval
   if (typeof window !== 'undefined') {
     try {
       const approvals = getDafuApprovals()
@@ -335,12 +274,6 @@ export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
     } catch (e) {}
   }
 
-  // 2. Check real golongan map
-  if (data.golonganMap[kk.id]) {
-    return data.golonganMap[kk.id]
-  }
-
-  // 3. Default for newly created custom KK
   return {
     id: `gol-${kk.id}`,
     kk_id: kk.id,
@@ -355,8 +288,8 @@ export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
 export const getRealGolonganForKk = getDummyGolonganForKk
 
 export const santaClaraStats = {
-  totalFamilies: data.totalFamilies,
-  totalMembers: data.totalMembers,
+  totalFamilies: 2884,
+  totalMembers: 9802,
   totalLingkungan: 69,
   totalWilayah: 13
 }
