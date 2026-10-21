@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { getAllMasterLingkungan, formatNamaLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
 import { ensureDummyKksForLingkungan, getDummyGolonganForKk } from '@/lib/dummyData'
+import { fetchAllParishKksWithGolongan } from '@/lib/dafuService'
 import { isStandardUuid } from '@/lib/journalSync'
 import { KepalaKeluarga, JurnalTransaksi, GolonganKeluarga } from '@/lib/types'
 import { formatRupiah, MONTH_NAMES } from '@/lib/utils'
@@ -68,10 +69,25 @@ export default function ParokiBendaharaPage() {
       const masterList = getAllMasterLingkungan()
       setAllLingkungan(masterList)
 
-      // 1. Load All DAFU KKs per Lingkungan
+      // 1. Load All DAFU KKs per Lingkungan directly from Supabase Cloud
+      const parishKks = await fetchAllParishKksWithGolongan(supabase)
       const dafuMap: Record<string, KepalaKeluarga[]> = {}
       masterList.forEach(ling => {
-        dafuMap[ling.id] = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [], undefined, true)
+        const targetUuid = getLingkunganDbUuid(ling.id)
+        const targetNorm = ling.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const kksForLing = parishKks.filter(k =>
+          k.lingkunganId === ling.id ||
+          k.lingkunganId === targetUuid ||
+          k.lingkunganNama.toLowerCase().replace(/[^a-z0-9]/g, '') === targetNorm
+        ).map(p => ({
+          id: p.id,
+          lingkungan_id: p.lingkunganId,
+          nama_kk: p.nama_kk,
+          alamat: p.alamat || '',
+          is_biduk: p.is_biduk ?? true,
+          jumlah_anggota: p.jumlah_anggota || 1
+        }))
+        dafuMap[ling.id] = kksForLing
       })
       setDafuByLingkungan(dafuMap)
 

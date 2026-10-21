@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { getAllMasterLingkungan, formatNamaLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { ensureDummyKksForLingkungan, getDummyAnggotaForKk, getDummyGolonganForKk, santaClaraStats } from '@/lib/dummyData'
+import { fetchAllParishKksWithGolongan } from '@/lib/dafuService'
 import { KepalaKeluarga, AnggotaKeluarga, GolonganKeluarga } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -87,11 +88,25 @@ export default function ParokiSekretariatPage() {
       })
       setPengurusList(pList)
 
-      // 2. Load DAFU for all Lingkungan
+      // 2. Load DAFU for all Lingkungan directly from Supabase Cloud
+      const parishKks = await fetchAllParishKksWithGolongan(supabase)
       const dMap: Record<string, KepalaKeluarga[]> = {}
       masterList.forEach(ling => {
-        const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [], undefined, true)
-        dMap[ling.id] = kks
+        const targetUuid = getLingkunganDbUuid(ling.id)
+        const targetNorm = ling.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const kksForLing = parishKks.filter(k =>
+          k.lingkunganId === ling.id ||
+          k.lingkunganId === targetUuid ||
+          k.lingkunganNama.toLowerCase().replace(/[^a-z0-9]/g, '') === targetNorm
+        ).map(p => ({
+          id: p.id,
+          lingkungan_id: p.lingkunganId,
+          nama_kk: p.nama_kk,
+          alamat: p.alamat || '',
+          is_biduk: p.is_biduk ?? true,
+          jumlah_anggota: p.jumlah_anggota || 1
+        }))
+        dMap[ling.id] = kksForLing
       })
       setDafuDataMap(dMap)
     } catch (err) {

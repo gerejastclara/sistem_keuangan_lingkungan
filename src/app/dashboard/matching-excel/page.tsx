@@ -36,6 +36,8 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getAllMasterLingkungan, formatNamaLingkungan, getWilayahForLingkungan } from '@/lib/constants'
 import { ensureDummyKksForLingkungan, getDummyAnggotaForKk, getDummyGolonganForKk, santaClaraStats } from '@/lib/dummyData'
+import { createClient } from '@/utils/supabase/client'
+import { fetchAllParishKksWithGolongan, ParishKkItem } from '@/lib/dafuService'
 import { KepalaKeluarga } from '@/lib/types'
 
 interface ExcelRowParsed {
@@ -87,6 +89,7 @@ export default function MatchingDataExcelPage() {
   // State
   const [fileName, setFileName] = useState<string | null>(null)
   const [parsedRows, setParsedRows] = useState<ExcelRowParsed[]>([])
+  const [parishKks, setParishKks] = useState<ParishKkItem[]>([])
   const [matchingResults, setMatchingResults] = useState<MatchingResultItem[]>([])
   const [processing, setProcessing] = useState(false)
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'MATCH_MODIFIED' | 'EXCEL_NEW' | 'MATCH_IDENTIK' | 'DB_ONLY'>('ALL')
@@ -125,33 +128,29 @@ export default function MatchingDataExcelPage() {
     if (resolvedRole !== 'SEKRETARIS_PAROKI') {
       router.replace('/dashboard')
     }
+
+    const supabase = createClient()
+    fetchAllParishKksWithGolongan(supabase)
+      .then(setParishKks)
+      .catch(console.error)
   }, [router])
 
-  // 2. Fetch full official 2.884 KKs of Santa Clara (Data Lama / Database)
+  // 2. Fetch full official 2.884 KKs of Santa Clara from Supabase Cloud (Data Lama / Database)
   const officialParishDb = useMemo(() => {
-    const allKks: {
-      kk: KepalaKeluarga
-      lingkunganNama: string
-      golongan: string
-      jumlahJiwa: number
-    }[] = []
-
-    masterLingkunganList.forEach((ling) => {
-      const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [], undefined, true)
-      kks.forEach((kk) => {
-        const anggota = getDummyAnggotaForKk(kk)
-        const gol = getDummyGolonganForKk(kk)
-        allKks.push({
-          kk,
-          lingkunganNama: ling.nama_lingkungan,
-          golongan: gol.golongan,
-          jumlahJiwa: anggota && anggota.length > 0 ? anggota.length : kk.jumlah_anggota || 1,
-        })
-      })
-    })
-
-    return allKks
-  }, [masterLingkunganList])
+    return parishKks.map((p) => ({
+      kk: {
+        id: p.id,
+        lingkungan_id: p.lingkunganId,
+        nama_kk: p.nama_kk,
+        alamat: p.alamat || '',
+        is_biduk: p.is_biduk ?? true,
+        jumlah_anggota: p.jumlah_anggota || 1,
+      },
+      lingkunganNama: p.lingkunganNama,
+      golongan: p.golongan,
+      jumlahJiwa: p.jumlah_anggota || 1,
+    }))
+  }, [parishKks])
 
   // 3. Core Matching Engine (Compares parsed Excel against officialParishDb WITHOUT mutating data lama)
   const runMatchingAlgorithm = (rows: ExcelRowParsed[], sourceFileName: string) => {

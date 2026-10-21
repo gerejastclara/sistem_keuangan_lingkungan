@@ -39,14 +39,24 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { getAllMasterLingkungan, formatNamaLingkungan, getWilayahForLingkungan } from '@/lib/constants'
+import { getAllMasterLingkungan, formatNamaLingkungan, getWilayahForLingkungan, getLingkunganDbUuid } from '@/lib/constants'
 import { getDafuApprovals, fetchDafuApprovals, DafuApprovalItem } from '@/lib/dafuApproval'
-import { ensureDummyKksForLingkungan, getDummyGolonganForKk, getLingkunganStats, santaClaraStats } from '@/lib/dummyData'
+import { getLingkunganStats, santaClaraStats } from '@/lib/dummyData'
+import { createClient } from '@/utils/supabase/client'
+import {
+  fetchAllParishKksWithGolongan,
+  updateKkGolonganInDb,
+  ParishKkItem
+} from '@/lib/dafuService'
 
 export function SekretarisParokiDashboard() {
+  const supabase = useMemo(() => createClient(), [])
   const [approvals, setApprovals] = useState<DafuApprovalItem[]>([])
   const [searchLingkungan, setSearchLingkungan] = useState('')
   const [selectedLingkunganId, setSelectedLingkunganId] = useState<string>('all')
+  const [parishKks, setParishKks] = useState<ParishKkItem[]>([])
+  const [isLoadingKks, setIsLoadingKks] = useState<boolean>(true)
+  const [isUpdatingGolongan, setIsUpdatingGolongan] = useState<boolean>(false)
 
   const masterList = getAllMasterLingkungan()
 
@@ -70,108 +80,24 @@ export function SekretarisParokiDashboard() {
     } catch (e) {}
   }
 
-  // Update Status Golongan Modal State (Khusus Sekretaris Paroki)
-  const [isUpdateGolonganOpen, setIsUpdateGolonganOpen] = useState(false)
-  const [golonganKkSearch, setGolonganKkSearch] = useState('')
-  const [selectedKkForGolongan, setSelectedKkForGolongan] = useState<any | null>(null)
-  const [targetGolongan, setTargetGolongan] = useState<string>('Sejahtera')
-  const [golonganCatatan, setGolonganCatatan] = useState<string>('')
-  const [golonganUpdateSuccess, setGolonganUpdateSuccess] = useState<string | null>(null)
-
-  // Pre-load all 2.884 KKs for quick search & update (optimized: parse localStorage once)
-  const allParishKks = useMemo(() => {
-    let localGolonganStore: Record<string, any> = {}
+  const loadKksData = async (force: boolean = false) => {
     try {
-      const rawStore = localStorage.getItem('custom_golongan_all_store')
-      if (rawStore) localGolonganStore = JSON.parse(rawStore)
-    } catch (e) {}
-
-    const list: Array<{
-      id: string
-      nama_kk: string
-      alamat?: string
-      lingkunganId: string
-      lingkunganNama: string
-      golongan: string
-    }> = []
-
-    masterList.forEach((ling) => {
-      const kks = ensureDummyKksForLingkungan(ling.id, ling.nama_lingkungan, [], undefined, true)
-      kks.forEach((k) => {
-        let currentGol = localGolonganStore[k.id]?.golongan
-        if (!currentGol) {
-          const defaultG = getDummyGolonganForKk(k)
-          currentGol = defaultG.golongan
-        }
-
-        list.push({
-          id: k.id,
-          nama_kk: k.nama_kk,
-          alamat: k.alamat || undefined,
-          lingkunganId: ling.id,
-          lingkunganNama: ling.nama_lingkungan,
-          golongan: currentGol,
-        })
-      })
-    })
-
-    return list
-  }, [masterList])
-
-  const filteredKksForGolongan = useMemo(() => {
-    const q = golonganKkSearch.toLowerCase().trim()
-    if (!q) return allParishKks.slice(0, 8)
-    return allParishKks
-      .filter((k) => k.nama_kk.toLowerCase().includes(q) || k.lingkunganNama.toLowerCase().includes(q))
-      .slice(0, 15)
-  }, [allParishKks, golonganKkSearch])
-
-  const handleSaveGolonganUpdate = () => {
-    if (!selectedKkForGolongan) return
-    try {
-      const rawG = localStorage.getItem('custom_golongan_all_store')
-      const store = rawG ? JSON.parse(rawG) : {}
-      store[selectedKkForGolongan.id] = {
-        id: `gol-${Date.now()}`,
-        kk_id: selectedKkForGolongan.id,
-        lingkungan_id: selectedKkForGolongan.lingkunganId,
-        golongan: targetGolongan,
-        kriteria_catatan: golonganCatatan.trim() || 'Ditetapkan & Diperbarui oleh Sekretaris Paroki',
-        updated_by_role: 'SEKRETARIS_PAROKI',
-        updated_at: new Date().toISOString(),
-      }
-      localStorage.setItem('custom_golongan_all_store', JSON.stringify(store))
-      window.dispatchEvent(new Event('storage'))
-      window.dispatchEvent(new Event('dafuApprovalUpdated'))
-      setGolonganUpdateSuccess(`Status Golongan "${selectedKkForGolongan.nama_kk}" (${selectedKkForGolongan.lingkunganNama}) berhasil diperbarui menjadi "${targetGolongan}" oleh Sekretaris Paroki!`)
-      setTimeout(() => setGolonganUpdateSuccess(null), 4000)
-      setIsUpdateGolonganOpen(false)
-      setSelectedKkForGolongan(null)
+      const data = await fetchAllParishKksWithGolongan(supabase, force)
+      setParishKks(data)
     } catch (e) {
-      console.error(e)
+      console.error('Error loading parish KKs from Supabase:', e)
+    } finally {
+      setIsLoadingKks(false)
     }
   }
 
-  useEffect(() => {
-    loadApprovals()
-    const readStoredLingkungan = () => {
-      const val = localStorage.getItem('selected_lingkungan_id') || 'all'
-      setSelectedLingkunganId(val)
-    }
-    readStoredLingkungan()
-
-    window.addEventListener('dafuApprovalUpdated', loadApprovals)
-    window.addEventListener('lingkunganChanged', readStoredLingkungan)
-    window.addEventListener('storage', readStoredLingkungan)
-    return () => {
-      window.removeEventListener('dafuApprovalUpdated', loadApprovals)
-      window.removeEventListener('lingkunganChanged', readStoredLingkungan)
-      window.removeEventListener('storage', readStoredLingkungan)
-    }
-  }, [])
-
-  const pendingApprovals = useMemo(() => approvals.filter(a => a.status === 'PENDING'), [approvals])
-  const pendingCount = pendingApprovals.length
+  // Update Status Golongan Modal State (Khusus Sekretaris Paroki)
+  const [isUpdateGolonganOpen, setIsUpdateGolonganOpen] = useState(false)
+  const [golonganKkSearch, setGolonganKkSearch] = useState('')
+  const [selectedKkForGolongan, setSelectedKkForGolongan] = useState<ParishKkItem | null>(null)
+  const [targetGolongan, setTargetGolongan] = useState<string>('Sejahtera')
+  const [golonganCatatan, setGolonganCatatan] = useState<string>('')
+  const [golonganUpdateSuccess, setGolonganUpdateSuccess] = useState<string | null>(null)
 
   const isAllLingkungan = !selectedLingkunganId || selectedLingkunganId === 'all' || selectedLingkunganId === 'ALL'
 
@@ -179,10 +105,107 @@ export function SekretarisParokiDashboard() {
     if (isAllLingkungan) return null
     return masterList.find(l =>
       l.id === selectedLingkunganId ||
+      l.slug === selectedLingkunganId ||
       l.nama_lingkungan.toLowerCase().trim() === selectedLingkunganId.toLowerCase().trim() ||
       l.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '') === selectedLingkunganId.toLowerCase().replace(/[^a-z0-9]/g, '')
     ) || null
   }, [masterList, selectedLingkunganId, isAllLingkungan])
+
+  // Scoped KKs based on current selected Lingkungan (or all if none selected)
+  const scopedKks = useMemo(() => {
+    if (!currentSelectedLingkungan) return parishKks
+    const targetUuid = getLingkunganDbUuid(currentSelectedLingkungan.id)
+    const targetNorm = currentSelectedLingkungan.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+    return parishKks.filter(k => {
+      const kNorm = (k.lingkunganNama || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      return (
+        k.lingkunganId === currentSelectedLingkungan.id ||
+        (targetUuid && k.lingkunganId === targetUuid) ||
+        (targetNorm && kNorm && (targetNorm === kNorm || targetNorm.includes(kNorm) || kNorm.includes(targetNorm)))
+      )
+    })
+  }, [parishKks, currentSelectedLingkungan])
+
+  const filteredKksForGolongan = useMemo(() => {
+    const q = golonganKkSearch.toLowerCase().trim()
+    const pool = currentSelectedLingkungan ? scopedKks : parishKks
+    if (!q) return pool.slice(0, 8)
+    return pool
+      .filter((k) =>
+        k.nama_kk.toLowerCase().includes(q) ||
+        k.lingkunganNama.toLowerCase().includes(q) ||
+        (k.alamat || '').toLowerCase().includes(q)
+      )
+      .slice(0, 15)
+  }, [currentSelectedLingkungan, scopedKks, parishKks, golonganKkSearch])
+
+  const handleSaveGolonganUpdate = async () => {
+    if (!selectedKkForGolongan) return
+    setIsUpdatingGolongan(true)
+    try {
+      await updateKkGolonganInDb(
+        supabase,
+        selectedKkForGolongan.id,
+        selectedKkForGolongan.lingkunganId,
+        targetGolongan,
+        golonganCatatan,
+        'SEKRETARIS_PAROKI'
+      )
+
+      // Optimistically update local parishKks state
+      setParishKks(prev => prev.map(k => {
+        if (k.id === selectedKkForGolongan.id) {
+          return {
+            ...k,
+            golongan: targetGolongan,
+            kriteria_catatan: golonganCatatan.trim() || 'Ditetapkan & Diperbarui oleh Sekretaris Paroki'
+          }
+        }
+        return k
+      }))
+
+      setGolonganUpdateSuccess(`Status Golongan "${selectedKkForGolongan.nama_kk}" (${selectedKkForGolongan.lingkunganNama}) berhasil diperbarui menjadi "${targetGolongan}" oleh Sekretaris Paroki!`)
+      setTimeout(() => setGolonganUpdateSuccess(null), 4000)
+      setIsUpdateGolonganOpen(false)
+      setSelectedKkForGolongan(null)
+      setGolonganCatatan('')
+    } catch (e) {
+      console.error('Error updating golongan:', e)
+    } finally {
+      setIsUpdatingGolongan(false)
+    }
+  }
+
+  useEffect(() => {
+    loadApprovals()
+    loadKksData()
+
+    const readStoredLingkungan = () => {
+      const val = localStorage.getItem('selected_lingkungan_id') || 'all'
+      setSelectedLingkunganId(val)
+    }
+    readStoredLingkungan()
+
+    const handleSync = () => {
+      loadApprovals()
+      loadKksData(true)
+    }
+
+    window.addEventListener('dafuApprovalUpdated', handleSync)
+    window.addEventListener('dafuDataUpdated', handleSync)
+    window.addEventListener('lingkunganChanged', readStoredLingkungan)
+    window.addEventListener('storage', readStoredLingkungan)
+    return () => {
+      window.removeEventListener('dafuApprovalUpdated', handleSync)
+      window.removeEventListener('dafuDataUpdated', handleSync)
+      window.removeEventListener('lingkunganChanged', readStoredLingkungan)
+      window.removeEventListener('storage', readStoredLingkungan)
+    }
+  }, [supabase])
+
+  const pendingApprovals = useMemo(() => approvals.filter(a => a.status === 'PENDING'), [approvals])
+  const pendingCount = pendingApprovals.length
 
   // Filter master lingkungan by search & selectedLingkunganId from Navbar
   const filteredLingkungan = useMemo(() => {
@@ -211,16 +234,22 @@ export function SekretarisParokiDashboard() {
   const pendingApprovalsForScope = useMemo(() => scopedApprovals.filter(a => a.status === 'PENDING'), [scopedApprovals])
   const approvedApprovalsForScope = useMemo(() => scopedApprovals.filter(a => a.status === 'APPROVED'), [scopedApprovals])
 
-  // Scoped KKs and Jiwa
-  const scopedKks = useMemo(() => {
-    if (!currentSelectedLingkungan) return allParishKks
-    return allParishKks.filter(k => k.lingkunganId === currentSelectedLingkungan.id)
-  }, [allParishKks, currentSelectedLingkungan])
+  // Total KK display count with seamless fallback during initial load
+  const displayKkCount = useMemo(() => {
+    if (currentSelectedLingkungan) {
+      if (scopedKks.length > 0) return `${scopedKks.length} KK`
+      const stat = lingkunganUmatStats[currentSelectedLingkungan.id]
+      if (stat && stat.kkCount > 0) return `${stat.kkCount} KK`
+      return `${scopedKks.length} KK`
+    }
+    return `${parishKks.length > 0 ? parishKks.length.toLocaleString('id-ID') : '2.884'} KK`
+  }, [currentSelectedLingkungan, scopedKks, parishKks, lingkunganUmatStats])
 
   const scopedTotalJiwa = useMemo(() => {
     if (!currentSelectedLingkungan) return 9802
     const stat = lingkunganUmatStats[currentSelectedLingkungan.id]
-    return stat ? stat.jiwaCount : scopedKks.length * 3
+    if (stat && stat.jiwaCount > 0) return stat.jiwaCount
+    return scopedKks.length > 0 ? scopedKks.length * 3 : 0
   }, [currentSelectedLingkungan, lingkunganUmatStats, scopedKks])
 
   const scopedGolonganCounts = useMemo(() => {
@@ -228,11 +257,18 @@ export function SekretarisParokiDashboard() {
     let sejahtera = 0
     let prasejahtera = 0
     let rentan = 0
+
     scopedKks.forEach(k => {
-      if (k.golongan === 'Terduga Prasejahtera') prasejahtera++
-      else if (k.golongan === 'Rentan Tidak Mampu') rentan++
-      else sejahtera++
+      const g = (k.golongan || '').toLowerCase().trim()
+      if (g.includes('prasejahtera') || g.includes('pra sejahtera')) {
+        prasejahtera++
+      } else if (g.includes('rentan') || g.includes('tidak mampu')) {
+        rentan++
+      } else {
+        sejahtera++
+      }
     })
+
     const pct = (c: number) => total > 0 ? ((c / total) * 100).toFixed(1) : '0.0'
     return {
       total,
@@ -272,7 +308,7 @@ export function SekretarisParokiDashboard() {
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
               {currentSelectedLingkungan
-                ? `Pemantauan data umat, persebaran ${scopedKks.length} Kepala Keluarga, klasifikasi golongan DUPRAS, dan verifikasi approval DAFU khusus untuk ${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)} (Wilayah ${getWilayahForLingkungan(currentSelectedLingkungan.nama_lingkungan)}).`
+                ? `Pemantauan data umat, persebaran ${displayKkCount} Kepala Keluarga, klasifikasi golongan DUPRAS, dan verifikasi approval DAFU khusus untuk ${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)} (Wilayah ${getWilayahForLingkungan(currentSelectedLingkungan.nama_lingkungan)}).`
                 : 'Pemantauan terpusat data umat, persebaran Kepala Keluarga, klasifikasi golongan, dan verifikasi approval DAFU untuk seluruh 69 Lingkungan Paroki St. Clara.'}
             </p>
             {currentSelectedLingkungan && (
@@ -377,7 +413,7 @@ export function SekretarisParokiDashboard() {
             <Home className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-black text-slate-900">
-            {currentSelectedLingkungan ? `${scopedKks.length} KK` : '2.884 KK'}
+            {displayKkCount}
           </div>
           <p className="text-[11px] text-emerald-700 font-medium">
             {currentSelectedLingkungan ? `Terdata aktif di ${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)}` : 'Rata-rata 42 KK / lingkungan'}
@@ -425,8 +461,8 @@ export function SekretarisParokiDashboard() {
             </h3>
             <p className="text-xs text-slate-500">
               {currentSelectedLingkungan
-                ? `Klasifikasi kondisi sosial ekonomi ${scopedKks.length} keluarga di ${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)} berbasis pedoman DUPRAS KAJ.`
-                : 'Klasifikasi kondisi sosial ekonomi keluarga berbasis pedoman DUPRAS KAJ (Kewenangan penetapan & update: Sekretaris Paroki).'}
+                ? `Klasifikasi kondisi sosial ekonomi ${scopedGolonganCounts.total || displayKkCount} keluarga di ${formatNamaLingkungan(currentSelectedLingkungan.nama_lingkungan)} berbasis pedoman DUPRAS KAJ.`
+                : `Klasifikasi kondisi sosial ekonomi ${scopedGolonganCounts.total || displayKkCount} keluarga berbasis pedoman DUPRAS KAJ (Kewenangan penetapan & update: Sekretaris Paroki).`}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -699,11 +735,11 @@ export function SekretarisParokiDashboard() {
             <Button
               type="button"
               size="sm"
-              disabled={!selectedKkForGolongan}
+              disabled={!selectedKkForGolongan || isUpdatingGolongan}
               onClick={handleSaveGolonganUpdate}
               className="bg-slate-600 hover:bg-slate-700 text-white font-semibold text-xs rounded-xl shadow-2xs"
             >
-              Simpan Pembaruan Status Golongan
+              {isUpdatingGolongan ? 'Menyimpan ke Cloud...' : 'Simpan Pembaruan Status Golongan'}
             </Button>
           </DialogFooter>
         </DialogContent>
