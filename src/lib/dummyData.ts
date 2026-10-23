@@ -196,6 +196,9 @@ export function ensureDummyKksForLingkungan(
   return Array.from(combinedMap.values()).sort((a, b) => a.nama_kk.localeCompare(b.nama_kk))
 }
 
+export const isUuid = (id: string): boolean =>
+  typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+
 /**
  * Returns family members for a given KK.
  * Real data is loaded from Supabase; this handles approvals or fallback defaults.
@@ -209,7 +212,11 @@ export function getDummyAnggotaForKk(kk: KepalaKeluarga, customApprovals?: any[]
       const approvals = customApprovals && customApprovals.length > 0 ? customApprovals : getDafuApprovals()
       const foundAppr = approvals.find(a =>
         (a.status === 'APPROVED' || a.status === 'PENDING') &&
-        (a.kk_id === kk.id || `kk-appr-${a.id}` === kk.id || a.nama_kk.toLowerCase().trim() === kk.nama_kk.toLowerCase().trim())
+        (a.kk_id === kk.id ||
+         a.id === kk.id ||
+         `kk-appr-${a.id}` === kk.id ||
+         `kk-prop-${a.id}` === kk.id ||
+         (a.nama_kk && kk.nama_kk && a.nama_kk.toLowerCase().trim() === kk.nama_kk.toLowerCase().trim()))
       )
       if (foundAppr && Array.isArray(foundAppr.anggota_keluarga) && foundAppr.anggota_keluarga.length > 0) {
         return foundAppr.anggota_keluarga.map((m: any, idx: number) => ({
@@ -262,7 +269,11 @@ export function getDummyGolonganForKk(kk: KepalaKeluarga, customApprovals?: any[
       const approvals = customApprovals && customApprovals.length > 0 ? customApprovals : getDafuApprovals()
       const foundAppr = approvals.find(a =>
         (a.status === 'APPROVED' || a.status === 'PENDING') &&
-        (a.kk_id === kk.id || `kk-appr-${a.id}` === kk.id || a.nama_kk.toLowerCase().trim() === kk.nama_kk.toLowerCase().trim())
+        (a.kk_id === kk.id ||
+         a.id === kk.id ||
+         `kk-appr-${a.id}` === kk.id ||
+         `kk-prop-${a.id}` === kk.id ||
+         (a.nama_kk && kk.nama_kk && a.nama_kk.toLowerCase().trim() === kk.nama_kk.toLowerCase().trim()))
       )
       if (foundAppr && foundAppr.golongan) {
         return {

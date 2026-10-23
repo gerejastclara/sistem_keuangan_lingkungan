@@ -7,6 +7,7 @@ import {
   getWilayahForLingkungan
 } from './constants'
 import { getDafuApprovals, DafuApprovalItem } from './dafuApproval'
+import { isUuid } from './dummyData'
 
 export interface ParishKkItem {
   id: string
@@ -420,13 +421,14 @@ export async function fetchAnggotaMapFromDb(
   supabase: SupabaseClient,
   kkIds: string[]
 ): Promise<Record<string, AnggotaKeluarga[]>> {
-  if (!kkIds || kkIds.length === 0) return {}
+  const validIds = (kkIds || []).filter(isUuid)
+  if (validIds.length === 0) return {}
 
   const map: Record<string, AnggotaKeluarga[]> = {}
   const BATCH_SIZE = 100
 
-  for (let i = 0; i < kkIds.length; i += BATCH_SIZE) {
-    const batch = kkIds.slice(i, i + BATCH_SIZE)
+  for (let i = 0; i < validIds.length; i += BATCH_SIZE) {
+    const batch = validIds.slice(i, i + BATCH_SIZE)
     const { data, error } = await supabase
       .from('anggota_keluarga')
       .select('*')
@@ -447,13 +449,14 @@ export async function fetchGolonganMapFromDb(
   supabase: SupabaseClient,
   kkIds: string[]
 ): Promise<Record<string, GolonganKeluarga>> {
-  if (!kkIds || kkIds.length === 0) return {}
+  const validIds = (kkIds || []).filter(isUuid)
+  if (validIds.length === 0) return {}
 
   const map: Record<string, GolonganKeluarga> = {}
   const BATCH_SIZE = 100
 
-  for (let i = 0; i < kkIds.length; i += BATCH_SIZE) {
-    const batch = kkIds.slice(i, i + BATCH_SIZE)
+  for (let i = 0; i < validIds.length; i += BATCH_SIZE) {
+    const batch = validIds.slice(i, i + BATCH_SIZE)
     const { data, error } = await supabase
       .from('golongan_keluarga')
       .select('*')

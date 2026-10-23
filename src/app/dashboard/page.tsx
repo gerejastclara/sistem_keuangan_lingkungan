@@ -16,7 +16,8 @@ import {
 import {
   ensureDummyKksForLingkungan,
   getDummyAnggotaForKk,
-  getDummyGolonganForKk
+  getDummyGolonganForKk,
+  isUuid
 } from '@/lib/dummyData'
 import { formatRupiah, formatDateIndo } from '@/lib/utils'
 import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getWilayahForLingkungan, getLingkunganDbUuid } from '@/lib/constants'
@@ -525,6 +526,7 @@ export default function DashboardOverviewPage() {
 
   const loadAnggotaAndGolongan = async (kks: KepalaKeluarga[], lId: string, preloadedApprovals?: any[]) => {
     const kkIds = kks.map(k => k.id)
+    const validUuidKkIds = kkIds.filter(isUuid)
     const newAnggotaMap: Record<string, AnggotaKeluarga[]> = {}
     const newGolonganMap: Record<string, GolonganKeluarga> = {}
 
@@ -540,15 +542,17 @@ export default function DashboardOverviewPage() {
     let supabaseAnggota: AnggotaKeluarga[] = []
     let supabaseGolongan: GolonganKeluarga[] = []
 
-    if (kkIds.length > 0) {
+    if (validUuidKkIds.length > 0) {
       try {
-        const { data: aData } = await supabase.from('anggota_keluarga').select('*').in('kk_id', kkIds)
+        const { data: aData, error: aErr } = await supabase.from('anggota_keluarga').select('*').in('kk_id', validUuidKkIds)
         if (aData) supabaseAnggota = aData
+        if (aErr) console.warn('Supabase anggota fetch warning:', aErr)
       } catch (e) {}
 
       try {
-        const { data: gData } = await supabase.from('golongan_keluarga').select('*').in('kk_id', kkIds)
+        const { data: gData, error: gErr } = await supabase.from('golongan_keluarga').select('*').in('kk_id', validUuidKkIds)
         if (gData) supabaseGolongan = gData
+        if (gErr) console.warn('Supabase golongan fetch warning:', gErr)
       } catch (e) {}
     }
 

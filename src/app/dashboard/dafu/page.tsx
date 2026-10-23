@@ -18,7 +18,8 @@ import { MASTER_LINGKUNGAN_LIST, formatNamaLingkungan, getAllMasterLingkungan, f
 import {
   ensureDummyKksForLingkungan,
   getDummyAnggotaForKk,
-  getDummyGolonganForKk
+  getDummyGolonganForKk,
+  isUuid
 } from '@/lib/dummyData'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { getKriteriaGolonganList, KriteriaGolonganItem } from '@/lib/kriteriaGolonganData'
@@ -611,6 +612,7 @@ function DafuFormContent() {
 
     // Load Anggota & Golongan
     const kkIds = finalKks.map(k => k.id)
+    const validUuidKkIds = kkIds.filter(isUuid)
     const newAnggotaMap: Record<string, AnggotaKeluarga[]> = {}
     const newGolonganMap: Record<string, GolonganKeluarga> = {}
 
@@ -626,15 +628,17 @@ function DafuFormContent() {
     let supabaseAnggota: AnggotaKeluarga[] = []
     let supabaseGolongan: GolonganKeluarga[] = []
 
-    if (kkIds.length > 0) {
+    if (validUuidKkIds.length > 0) {
       try {
-        const { data: aData } = await supabase.from('anggota_keluarga').select('*').in('kk_id', kkIds)
+        const { data: aData, error: aErr } = await supabase.from('anggota_keluarga').select('*').in('kk_id', validUuidKkIds)
         if (aData) supabaseAnggota = aData
+        if (aErr) console.warn('Supabase dafu anggota fetch warning:', aErr)
       } catch (e) {}
 
       try {
-        const { data: gData } = await supabase.from('golongan_keluarga').select('*').in('kk_id', kkIds)
+        const { data: gData, error: gErr } = await supabase.from('golongan_keluarga').select('*').in('kk_id', validUuidKkIds)
         if (gData) supabaseGolongan = gData
+        if (gErr) console.warn('Supabase dafu golongan fetch warning:', gErr)
       } catch (e) {}
     }
 
@@ -1128,20 +1132,21 @@ function DafuFormContent() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-16">
+    <div className="space-y-6 w-full max-w-7xl mx-auto pb-16 px-2 sm:px-4">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-[#1B2130] tracking-tight font-serif">
-              {userRole === 'PAROKI' ? 'DAFU - Monitoring Data Umat & Keluarga' : 'DAFU - Formulir Input Data Umat & Keluarga'}
-            </h1>
-          </div>
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1B2130] tracking-tight font-serif whitespace-normal">
+            {userRole === 'PAROKI' ? 'DAFU - Monitoring Data Umat & Keluarga' : 'DAFU - Formulir Input Data Umat & Keluarga'}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Sistem Administrasi Data Umat &amp; Keluarga Lingkungan Santa Clara
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
           {/* Locked Lingkungan Indicator */}
-          <div className="bg-slate-100/90 border border-slate-300 text-slate-800 rounded-xl px-3.5 py-2 flex items-center gap-2 font-bold text-xs h-11 shrink-0 shadow-2xs">
+          <div className="bg-slate-100/90 border border-slate-300 text-slate-800 rounded-xl px-3.5 py-2 flex items-center gap-2 font-bold text-xs h-10 shrink-0 shadow-2xs">
             <Building className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="truncate">{formatNamaLingkungan(lingkunganName)}</span>
             <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">
@@ -1156,7 +1161,7 @@ function DafuFormContent() {
             <Button
               type="button"
               onClick={handleOpenEditPengurus}
-              className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl h-11 px-4 cursor-pointer shadow-xs"
+              className="bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl h-10 px-3.5 text-xs cursor-pointer shadow-xs"
               title="Khusus Sekretaris: Tentukan Susunan Ketua, Bendahara, dan Sekretaris Lingkungan"
             >
               <ShieldCheck className="w-4 h-4 mr-1.5" />
@@ -1167,7 +1172,7 @@ function DafuFormContent() {
           <Button
             type="button"
             onClick={() => setIsImportModalOpen(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-11 px-4 cursor-pointer shadow-xs shadow-emerald-600/20"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-10 px-3.5 text-xs cursor-pointer shadow-xs shadow-emerald-600/20"
             title="Import data umat resmi dari file Excel (.xlsx) atau CSV langsung ke Database Cloud"
           >
             <FileSpreadsheet className="w-4 h-4 mr-1.5" />
@@ -1175,7 +1180,7 @@ function DafuFormContent() {
           </Button>
 
           <Link href="/dashboard">
-            <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-xl h-11 cursor-pointer">
+            <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-xl h-10 px-3.5 text-xs cursor-pointer">
               <LayoutDashboard className="w-4 h-4 mr-1.5 text-slate-600" />
               Lihat di Dashboard
             </Button>

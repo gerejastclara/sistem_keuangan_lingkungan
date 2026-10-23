@@ -24,7 +24,7 @@ import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, ge
 import { getPengurusForLingkungan } from '@/lib/pengurusData'
 import { createClient } from '@/utils/supabase/client'
 import { KepalaKeluarga, AnggotaKeluarga } from '@/lib/types'
-import { ensureDummyKksForLingkungan, getDummyAnggotaForKk } from '@/lib/dummyData'
+import { ensureDummyKksForLingkungan, getDummyAnggotaForKk, isUuid } from '@/lib/dummyData'
 import { KOP_SURAT_FORMS, FormItemDef, FormCategory } from '@/lib/kopSuratForms'
 
 // Dotted Line field component matching official Indonesian church forms
@@ -172,14 +172,20 @@ export default function FormStandarPage() {
         let finalKks = ensureDummyKksForLingkungan(effId, effNama, dbKks || [])
         setKkList(finalKks)
 
-        const { data: dbAnggota } = await supabase
-          .from('anggota_keluarga')
-          .select('*')
-          .in('kk_id', finalKks.map((k) => k.id))
+        const validKkIds = finalKks.map((k) => k.id).filter(isUuid)
+        let dbAnggota: any[] = []
+        if (validKkIds.length > 0) {
+          const { data, error } = await supabase
+            .from('anggota_keluarga')
+            .select('*')
+            .in('kk_id', validKkIds)
+          if (data) dbAnggota = data
+          if (error) console.warn('Supabase form-standar fetch warning:', error)
+        }
 
         const aMap: Record<string, AnggotaKeluarga[]> = {}
         finalKks.forEach((k) => {
-          let mems = dbAnggota?.filter((a: any) => a.kk_id === k.id) || []
+          let mems = dbAnggota.filter((a: any) => a.kk_id === k.id)
           if (mems.length === 0) mems = getDummyAnggotaForKk(k)
           aMap[k.id] = mems
         })
