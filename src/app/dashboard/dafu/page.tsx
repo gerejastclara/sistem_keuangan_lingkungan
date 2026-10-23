@@ -55,9 +55,13 @@ import {
   UserCheck,
   Clock,
   Send,
-  FileSpreadsheet
+  FileSpreadsheet,
+  SlidersHorizontal,
+  AlertTriangle
 } from 'lucide-react'
 import { ImportExcelDafuModal } from '@/components/dafu/ImportExcelDafuModal'
+import { EditDafuApprovalModal } from '@/components/dafu/EditDafuApprovalModal'
+import { DafuComparisonModal } from '@/components/dafu/DafuComparisonModal'
 
 const ROLE_OPTIONS: PeranKeluarga[] = [
   'Kepala Keluarga',
@@ -131,6 +135,15 @@ function DafuFormContent() {
   const [anggotaMap, setAnggotaMap] = useState<Record<string, AnggotaKeluarga[]>>({})
   const [golonganMap, setGolonganMap] = useState<Record<string, GolonganKeluarga>>({})
   const [pendingApprovals, setPendingApprovals] = useState<DafuApprovalItem[]>([])
+  const [lingkunganApprovals, setLingkunganApprovals] = useState<DafuApprovalItem[]>([])
+  const [approvalTabFilter, setApprovalTabFilter] = useState<'ALL' | 'PENDING' | 'APPROVED'>('PENDING')
+  const [statusApprovalKkFilter, setStatusApprovalKkFilter] = useState<'ALL' | 'PENDING' | 'APPROVED'>('ALL')
+
+  // Modals for approval edit, delete, and comparison
+  const [editApprovalModalItem, setEditApprovalModalItem] = useState<DafuApprovalItem | null>(null)
+  const [deleteApprovalItem, setDeleteApprovalItem] = useState<DafuApprovalItem | null>(null)
+  const [comparisonModalItem, setComparisonModalItem] = useState<DafuApprovalItem | null>(null)
+  const [deletingApproval, setDeletingApproval] = useState(false)
 
   // Form State (Direct on-page, NOT a popup modal!)
   const [editingKk, setEditingKk] = useState<KepalaKeluarga | null>(null)
@@ -338,22 +351,59 @@ function DafuFormContent() {
     setTimeout(() => setPengurusSuccessMsg(null), 4000)
   }
 
-  const filteredKkList = kkList.filter(k => {
-    if (!k || k.id.startsWith('dummy-') || k.id.includes('dummy')) return false
-    const q = searchQuery.toLowerCase().trim()
-    const matchesSearch = !q || (
-      k.nama_kk.toLowerCase().includes(q) ||
-      (k.alamat && k.alamat.toLowerCase().includes(q))
-    )
-    const gol = golonganMap[k.id]?.golongan || 'Sejahtera'
-    const matchesGolongan =
-      filterGolongan === 'ALL' ||
-      gol === filterGolongan ||
-      (filterGolongan === 'Terduga Prasejahtera' && (gol === 'Terduga Prasejahtera' || gol === 'Terduga Pra Sejahtera')) ||
-      (filterGolongan === 'Terduga Pra Sejahtera' && (gol === 'Terduga Prasejahtera' || gol === 'Terduga Pra Sejahtera'))
+  const pendingKkNameSet = useMemo(() => {
+    const s = new Set<string>()
+    lingkunganApprovals
+      .filter(a => a.status === 'PENDING')
+      .forEach(a => {
+        if (a.kk_id) s.add(a.kk_id)
+        if (a.nama_kk) s.add(a.nama_kk.toLowerCase().trim())
+      })
+    return s
+  }, [lingkunganApprovals])
 
-    return matchesSearch && matchesGolongan
-  })
+  const approvedKkMap = useMemo(() => {
+    const m = new Map<string, DafuApprovalItem>()
+    lingkunganApprovals
+      .filter(a => a.status === 'APPROVED')
+      .forEach(a => {
+        if (a.kk_id) m.set(a.kk_id, a)
+        if (a.nama_kk) m.set(a.nama_kk.toLowerCase().trim(), a)
+      })
+    return m
+  }, [lingkunganApprovals])
+
+  const approvedApprovals = useMemo(() => {
+    return lingkunganApprovals.filter(a => a.status === 'APPROVED')
+  }, [lingkunganApprovals])
+
+  const filteredKkList = useMemo(() => {
+    return kkList.filter(k => {
+      if (!k || k.id.startsWith('dummy-') || k.id.includes('dummy')) return false
+      const q = searchQuery.toLowerCase().trim()
+      const matchesSearch = !q || (
+        k.nama_kk.toLowerCase().includes(q) ||
+        (k.alamat && k.alamat.toLowerCase().includes(q))
+      )
+      const gol = golonganMap[k.id]?.golongan || 'Sejahtera'
+      const matchesGolongan =
+        filterGolongan === 'ALL' ||
+        gol === filterGolongan ||
+        (filterGolongan === 'Terduga Prasejahtera' && (gol === 'Terduga Prasejahtera' || gol === 'Terduga Pra Sejahtera')) ||
+        (filterGolongan === 'Terduga Pra Sejahtera' && (gol === 'Terduga Prasejahtera' || gol === 'Terduga Pra Sejahtera'))
+
+      const kNorm = k.nama_kk.toLowerCase().trim()
+      const isPending = pendingKkNameSet.has(k.id) || pendingKkNameSet.has(kNorm)
+      const isApproved = approvedKkMap.has(k.id) || approvedKkMap.has(kNorm)
+
+      const matchesStatusApproval =
+        statusApprovalKkFilter === 'ALL' ||
+        (statusApprovalKkFilter === 'PENDING' && isPending) ||
+        (statusApprovalKkFilter === 'APPROVED' && isApproved)
+
+      return matchesSearch && matchesGolongan && matchesStatusApproval
+    })
+  }, [kkList, searchQuery, filterGolongan, golonganMap, statusApprovalKkFilter, pendingKkNameSet, approvedKkMap])
 
   useEffect(() => {
     async function loadData(showSpinner: boolean = true) {
@@ -456,8 +506,7 @@ function DafuFormContent() {
         if (targetLingkunganId) {
           const targetUuid = getLingkunganDbUuid(targetLingkunganId)
           const lNorm = (lName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-          const pending = (latestApprovals || []).filter(a => {
-            if (a.status !== 'PENDING') return false
+          const matchedList = (latestApprovals || []).filter(a => {
             const aUuid = getLingkunganDbUuid(a.lingkungan_id)
             const aNorm = (a.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
             return (
@@ -467,7 +516,8 @@ function DafuFormContent() {
               (lNorm && aNorm && (lNorm === aNorm || lNorm.includes(aNorm) || aNorm.includes(lNorm)))
             )
           })
-          setPendingApprovals(pending)
+          setLingkunganApprovals(matchedList)
+          setPendingApprovals(matchedList.filter(a => a.status === 'PENDING'))
 
           await loadKks(targetLingkunganId, lName, latestApprovals)
         }
@@ -749,8 +799,7 @@ function DafuFormContent() {
         const latestApprovals = await fetchDafuApprovals()
         const targetUuid = getLingkunganDbUuid(lingkunganId)
         const lNorm = (lingkunganName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-        const pending = (latestApprovals || []).filter(a => {
-          if (a.status !== 'PENDING') return false
+        const matched = (latestApprovals || []).filter(a => {
           const aUuid = getLingkunganDbUuid(a.lingkungan_id)
           const aNorm = (a.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
           return (
@@ -760,7 +809,8 @@ function DafuFormContent() {
             (lNorm && aNorm && (lNorm === aNorm || lNorm.includes(aNorm) || aNorm.includes(lNorm)))
           )
         })
-        setPendingApprovals(pending)
+        setLingkunganApprovals(matched)
+        setPendingApprovals(matched.filter(a => a.status === 'PENDING'))
       } catch (e) {}
 
       setSubmitting(false)
@@ -1018,6 +1068,46 @@ function DafuFormContent() {
       window.dispatchEvent(new Event('storage'))
     }
   }
+
+  const handleConfirmDeleteApproval = async () => {
+    if (!deleteApprovalItem) return
+    setDeletingApproval(true)
+    try {
+      await removeDafuApproval(deleteApprovalItem.id, deleteApprovalItem.nama_kk)
+      setSuccessMessage(`Pengajuan data keluarga "${deleteApprovalItem.nama_kk}" berhasil dihapus.`)
+      setDeleteApprovalItem(null)
+      const latest = await fetchDafuApprovals()
+      const targetUuid = getLingkunganDbUuid(lingkunganId || '')
+      const lNorm = (lingkunganName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const matched = (latest || []).filter(a => {
+        const aUuid = getLingkunganDbUuid(a.lingkungan_id)
+        const aNorm = (a.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+        return (
+          lingkunganId === 'all' ||
+          a.lingkungan_id === lingkunganId ||
+          (targetUuid && aUuid && targetUuid === aUuid) ||
+          (lNorm && aNorm && (lNorm === aNorm || lNorm.includes(aNorm) || aNorm.includes(lNorm)))
+        )
+      })
+      setLingkunganApprovals(matched)
+      setPendingApprovals(matched.filter(a => a.status === 'PENDING'))
+      setTimeout(() => setSuccessMessage(null), 4000)
+    } catch (e) {
+      console.error('Error deleting approval:', e)
+    } finally {
+      setDeletingApproval(false)
+    }
+  }
+
+  const displayedApprovals = useMemo(() => {
+    if (approvalTabFilter === 'PENDING') {
+      return lingkunganApprovals.filter(a => a.status === 'PENDING')
+    }
+    if (approvalTabFilter === 'APPROVED') {
+      return lingkunganApprovals.filter(a => a.status === 'APPROVED')
+    }
+    return lingkunganApprovals
+  }, [lingkunganApprovals, approvalTabFilter])
 
   const canEdit = userRole === 'SEKRETARIS' || userRole === 'SEKRETARIS_PAROKI'
 
@@ -1511,78 +1601,238 @@ function DafuFormContent() {
       </Card>
       )}
 
-      {/* DAFTAR PENGAJUAN MENUNGGU PERSETUJUAN PAROKI (JIKA ADA) */}
-      {pendingApprovals.length > 0 && (
+      {/* DAFTAR PENGAJUAN UMAT / DAFU (DALAM PENGAJUAN & SUDAH DISETUJUI) */}
+      {lingkunganApprovals.length > 0 && (
         <Card className="bg-white border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-          <CardHeader className="bg-slate-50/70 border-b border-slate-100 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <CardHeader className="bg-slate-50/70 border-b border-slate-100 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Clock className="w-4 h-4 text-slate-500" />
                 <CardTitle className="text-sm font-bold text-slate-800">
-                  Daftar Pengajuan Menunggu Persetujuan Paroki ({pendingApprovals.length})
+                  Daftar Pengajuan Data Umat Baru &amp; Perubahan KK
                 </CardTitle>
-                <span className="text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-full">
-                  Menunggu Approval Paroki
-                </span>
+                {pendingApprovals.length > 0 && (
+                  <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                    {pendingApprovals.length} Dalam Pengajuan
+                  </span>
+                )}
+                {approvedApprovals.length > 0 && (
+                  <span className="text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                    {approvedApprovals.length} Sudah Disetujui
+                  </span>
+                )}
               </div>
-              <CardDescription className="text-xs text-slate-500 mt-0.5">
-                Pengajuan data keluarga berikut telah terkirim ke Sekretaris Paroki untuk diverifikasi &amp; ditetapkan golongannya sebelum resmi masuk ke DAFU.
+              <CardDescription className="text-xs text-slate-500 mt-1">
+                Pantau pengajuan data keluarga dan riwayat persetujuan atau penyesuaian oleh Sekretaris Paroki.
               </CardDescription>
             </div>
-            {(userRole === 'SEKRETARIS_PAROKI' || userRole === 'PAROKI') && (
-              <Link href="/dashboard/approval">
-                <Button size="sm" className="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-xl h-8 cursor-pointer">
-                  Buka Modul Approval Paroki →
-                </Button>
-              </Link>
-            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Option Click Filter Tabs */}
+              <div className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setApprovalTabFilter('PENDING')}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                    approvalTabFilter === 'PENDING'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Dalam Pengajuan ({pendingApprovals.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setApprovalTabFilter('APPROVED')}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                    approvalTabFilter === 'APPROVED'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Sudah Disetujui ({approvedApprovals.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setApprovalTabFilter('ALL')}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    approvalTabFilter === 'ALL'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Semua ({lingkunganApprovals.length})
+                </button>
+              </div>
+
+              {(userRole === 'SEKRETARIS_PAROKI' || userRole === 'PAROKI') && (
+                <Link href="/dashboard/approval">
+                  <Button size="sm" className="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-xl h-8 cursor-pointer">
+                    Buka Modul Approval Paroki →
+                  </Button>
+                </Link>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-50 text-slate-700 font-bold text-xs border-b border-slate-200">
-                <TableRow>
-                  <TableHead className="w-12 text-center">No</TableHead>
-                  <TableHead>Nama Kepala Keluarga &amp; Alamat</TableHead>
-                  <TableHead>Tipe</TableHead>
-                  <TableHead>Usulan Golongan</TableHead>
-                  <TableHead>Catatan Kriteria / Kondisi</TableHead>
-                  <TableHead>Anggota</TableHead>
-                  <TableHead className="text-right">Waktu Pengajuan</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y divide-slate-100 text-xs">
-                {pendingApprovals.map((item, idx) => (
-                  <TableRow key={item.id} className="hover:bg-slate-50 transition">
-                    <TableCell className="text-center font-bold text-slate-600">{idx + 1}</TableCell>
-                    <TableCell>
-                      <div className="font-bold text-slate-900">{item.nama_kk}</div>
-                      <div className="text-[11px] text-slate-500">{item.alamat || 'Alamat belum diisi'}</div>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        item.action_type === 'TAMBAH_KK' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
-                      }`}>
-                        {item.action_type === 'TAMBAH_KK' ? '+ Tambah KK' : '✎ Ubah KK'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-semibold text-slate-800 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs">
-                        {item.golongan}
-                      </span>
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate text-slate-600 italic">
-                      &ldquo;{item.kriteria_catatan || '-'}&rdquo;
-                    </TableCell>
-                    <TableCell className="font-semibold text-slate-700">
-                      {item.anggota_keluarga?.length || 1} Jiwa
-                    </TableCell>
-                    <TableCell className="text-right text-slate-500 text-[11px]">
-                      {new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </TableCell>
+            {displayedApprovals.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 space-y-1">
+                <p className="text-xs">Tidak ada data pengajuan pada filter ini.</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-slate-50 text-slate-700 font-bold text-xs border-b border-slate-200">
+                  <TableRow>
+                    <TableHead className="w-12 text-center">No</TableHead>
+                    <TableHead>Nama Kepala Keluarga &amp; Alamat</TableHead>
+                    <TableHead>Tipe</TableHead>
+                    <TableHead>Status &amp; Golongan</TableHead>
+                    <TableHead>Catatan Kriteria / Paroki</TableHead>
+                    <TableHead>Anggota</TableHead>
+                    <TableHead>Waktu</TableHead>
+                    <TableHead className="text-center w-36">Aksi</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100 text-xs">
+                  {displayedApprovals.map((item, idx) => {
+                    const isItemPending = item.status === 'PENDING'
+                    const isItemApproved = item.status === 'APPROVED'
+                    const wasEditedByParoki = isItemApproved && (item.is_edited_by_paroki || item.data_sebelum_edit)
+
+                    return (
+                      <TableRow key={item.id} className="hover:bg-slate-50/80 transition">
+                        <TableCell className="text-center font-bold text-slate-600">{idx + 1}</TableCell>
+                        <TableCell>
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <span>{item.nama_kk}</span>
+                            {item.is_biduk ? (
+                              <span className="text-[9px] px-1.5 py-0.2 rounded font-medium bg-slate-100 text-slate-600 border border-slate-200">BIDUK</span>
+                            ) : (
+                              <span className="text-[9px] px-1.5 py-0.2 rounded font-medium bg-slate-50 text-slate-400 border border-slate-200">Non-BIDUK</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-500">{item.alamat || 'Alamat belum diisi'}</div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            item.action_type === 'TAMBAH_KK' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                          }`}>
+                            {item.action_type === 'TAMBAH_KK' ? '+ Tambah KK' : '✎ Ubah KK'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {isItemPending ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                <Clock className="w-3 h-3 text-amber-600" />
+                                Dalam Pengajuan
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                Disetujui Paroki
+                              </span>
+                            )}
+                            <div>
+                              <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                                {item.golongan}
+                              </span>
+                            </div>
+                            {wasEditedByParoki && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                Diedit Paroki
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs text-slate-600 leading-snug">
+                          {item.kriteria_catatan && (
+                            <div className="italic text-[11px] truncate">
+                              &ldquo;{item.kriteria_catatan}&rdquo;
+                            </div>
+                          )}
+                          {item.catatan_paroki && (
+                            <div className="mt-1 text-[10px] text-slate-700 bg-slate-100 p-1.5 rounded border border-slate-200/80">
+                              <strong>Paroki:</strong> {item.catatan_paroki}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-semibold text-slate-700 whitespace-nowrap">
+                          {item.anggota_keluarga?.length || 1} Jiwa
+                        </TableCell>
+                        <TableCell className="text-slate-500 text-[11px] whitespace-nowrap">
+                          <div>{new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                          {item.reviewed_at && (
+                            <div className="text-[10px] text-slate-400">
+                              Disetujui: {new Date(item.reviewed_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {isItemPending ? (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditApprovalModalItem(item)}
+                                className="h-7 px-2.5 text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-white border-slate-300 rounded-lg hover:bg-slate-100 flex items-center gap-1 shadow-2xs cursor-pointer"
+                                title="Edit Usulan Pengajuan Ini"
+                              >
+                                <SlidersHorizontal className="w-3 h-3 text-slate-600" />
+                                <span>Edit</span>
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDeleteApprovalItem(item)}
+                                className="h-7 px-2 text-[11px] font-semibold text-rose-600 hover:text-rose-700 bg-white border-rose-200 rounded-lg hover:bg-rose-50 flex items-center gap-1 shadow-2xs cursor-pointer"
+                                title="Hapus / Batalkan Pengajuan Ini"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>Hapus</span>
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center">
+                              {wasEditedByParoki ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setComparisonModalItem(item)}
+                                  className="h-7 px-2.5 text-[11px] font-bold text-amber-900 bg-amber-50 hover:bg-amber-100/80 border-amber-300 rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer"
+                                  title="Lihat Perubahan Sebelum & Sesudah Edit oleh Sekretaris Paroki"
+                                >
+                                  <Sparkles className="w-3 h-3 text-amber-600" />
+                                  <span>Sebelum vs Sesudah</span>
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setComparisonModalItem(item)}
+                                  className="h-7 px-2.5 text-[11px] text-slate-600 hover:text-slate-900 rounded-lg cursor-pointer"
+                                >
+                                  Detail Approval
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       )}
@@ -1610,10 +1860,10 @@ function DafuFormContent() {
           </Link>
         </CardHeader>
 
-        {/* Search Bar & Golongan Filter */}
-        <div className="p-3 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
-            <div className="relative w-full sm:w-80">
+        {/* Search Bar, Golongan Filter & Option Click Status Approval */}
+        <div className="p-3 bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
+            <div className="relative w-full sm:w-72">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 value={searchQuery}
@@ -1622,7 +1872,7 @@ function DafuFormContent() {
                 className="pl-9 bg-white border-slate-200 text-xs h-9 rounded-xl focus:ring-emerald-500"
               />
             </div>
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:w-44">
               <Select value={filterGolongan} onValueChange={(val) => setFilterGolongan(val as any)}>
                 <SelectTrigger className="bg-white border-slate-200 text-slate-800 rounded-xl text-xs h-9">
                   <SelectValue placeholder="Semua Golongan" />
@@ -1637,6 +1887,45 @@ function DafuFormContent() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Option Click Status Filter (Requirement 3) */}
+            <div className="inline-flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setStatusApprovalKkFilter('ALL')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  statusApprovalKkFilter === 'ALL'
+                    ? 'bg-slate-900 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Semua KK
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusApprovalKkFilter('PENDING')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
+                  statusApprovalKkFilter === 'PENDING'
+                    ? 'bg-amber-600 text-white shadow-2xs'
+                    : 'text-amber-800 hover:bg-amber-50'
+                }`}
+              >
+                <Clock className="w-3 h-3" />
+                <span>Dalam Pengajuan ({pendingApprovals.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusApprovalKkFilter('APPROVED')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
+                  statusApprovalKkFilter === 'APPROVED'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'text-emerald-800 hover:bg-emerald-50'
+                }`}
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Sudah Disetujui ({approvedApprovals.length})</span>
+              </button>
             </div>
           </div>
           <div className="text-xs text-slate-500 font-medium whitespace-nowrap">
@@ -1684,6 +1973,9 @@ function DafuFormContent() {
                   const members = anggotaMap[kk.id] || []
                   const gol = (golonganMap[kk.id]?.golongan || 'Sejahtera') as KategoriGolongan
                   const isExpanded = expandedKkIds.has(kk.id)
+                  const kNorm = kk.nama_kk.toLowerCase().trim()
+                  const isKkPending = pendingKkNameSet.has(kk.id) || pendingKkNameSet.has(kNorm)
+                  const approvedItem = approvedKkMap.get(kk.id) || approvedKkMap.get(kNorm)
 
                   return (
                     <React.Fragment key={kk.id}>
@@ -1706,11 +1998,37 @@ function DafuFormContent() {
                         <TableCell className="text-center font-mono text-slate-500 text-xs w-12">{idx + 1}</TableCell>
                         <TableCell>
                           <div className="cursor-pointer select-none" onClick={() => toggleExpandKk(kk.id)}>
-                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <div className="font-bold text-slate-900 flex flex-wrap items-center gap-1.5">
                               <span>{kk.nama_kk}</span>
                               <span className="text-[10px] font-semibold text-slate-400">
                                 ({members.length} Jiwa)
                               </span>
+                              {isKkPending && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5 text-amber-600" />
+                                  Dalam Pengajuan
+                                </span>
+                              )}
+                              {approvedItem && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                                  Disetujui Paroki
+                                </span>
+                              )}
+                              {approvedItem && (approvedItem.is_edited_by_paroki || approvedItem.data_sebelum_edit) && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setComparisonModalItem(approvedItem)
+                                  }}
+                                  className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                                  title="Klik untuk melihat sebelum dan sesudah edit oleh Paroki"
+                                >
+                                  <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                                  <span>Diedit Paroki (Lihat Perubahan)</span>
+                                </button>
+                              )}
                             </div>
                             <div className="text-[11px] text-slate-500 mt-0.5">{kk.alamat || '-'}</div>
                           </div>
@@ -2065,6 +2383,79 @@ function DafuFormContent() {
           }
         }}
       />
+
+      {/* Edit Pending Approval Modal for Sekretaris Lingkungan (Requirement 2) */}
+      <EditDafuApprovalModal
+        item={editApprovalModalItem}
+        open={!!editApprovalModalItem}
+        onClose={() => setEditApprovalModalItem(null)}
+        onSuccess={async (msg) => {
+          setSuccessMessage(msg)
+          setEditApprovalModalItem(null)
+          const latest = await fetchDafuApprovals()
+          const targetUuid = getLingkunganDbUuid(lingkunganId || '')
+          const lNorm = (lingkunganName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+          const matched = (latest || []).filter(a => {
+            const aUuid = getLingkunganDbUuid(a.lingkungan_id)
+            const aNorm = (a.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+            return (
+              lingkunganId === 'all' ||
+              a.lingkungan_id === lingkunganId ||
+              (targetUuid && aUuid && targetUuid === aUuid) ||
+              (lNorm && aNorm && (lNorm === aNorm || lNorm.includes(aNorm) || aNorm.includes(lNorm)))
+            )
+          })
+          setLingkunganApprovals(matched)
+          setPendingApprovals(matched.filter(a => a.status === 'PENDING'))
+          setTimeout(() => setSuccessMessage(null), 4000)
+        }}
+        userRole="SEKRETARIS_LINGKUNGAN"
+      />
+
+      {/* Comparison Modal (Sebelum vs Sesudah Edit) (Requirement 1) */}
+      <DafuComparisonModal
+        item={comparisonModalItem}
+        open={!!comparisonModalItem}
+        onClose={() => setComparisonModalItem(null)}
+      />
+
+      {/* Dialog Konfirmasi Hapus Pengajuan Umat (Requirement 2) */}
+      <Dialog open={!!deleteApprovalItem} onOpenChange={(o) => !o && setDeleteApprovalItem(null)}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-600" />
+              Hapus Pengajuan Data Umat
+            </DialogTitle>
+            <p className="text-xs text-slate-500 mt-1">
+              Apakah Anda yakin ingin menghapus atau membatalkan usulan pengajuan keluarga{' '}
+              <strong>{deleteApprovalItem?.nama_kk}</strong>? Pengajuan ini akan dihapus dari antrean persetujuan Paroki.
+            </p>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteApprovalItem(null)}
+              disabled={deletingApproval}
+              className="text-xs font-semibold text-slate-700 border-slate-300 rounded-xl cursor-pointer"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleConfirmDeleteApproval}
+              disabled={deletingApproval}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl cursor-pointer"
+            >
+              {deletingApproval ? 'Menghapus...' : 'Ya, Hapus Pengajuan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

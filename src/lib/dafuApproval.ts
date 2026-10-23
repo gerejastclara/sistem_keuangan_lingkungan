@@ -13,6 +13,15 @@ export interface DafuMemberItem {
   keterangan?: string
 }
 
+export interface DafuDataSnapshot {
+  nama_kk: string
+  alamat?: string | null
+  is_biduk: boolean
+  golongan: KategoriGolongan
+  kriteria_catatan?: string | null
+  anggota_keluarga: DafuMemberItem[]
+}
+
 export interface DafuApprovalItem {
   id: string
   lingkungan_id: string
@@ -32,6 +41,8 @@ export interface DafuApprovalItem {
   created_at: string
   reviewed_at?: string | null
   is_read?: boolean
+  data_sebelum_edit?: DafuDataSnapshot | null
+  is_edited_by_paroki?: boolean
 }
 
 const STORAGE_KEY = 'dafu_approvals_store'
@@ -39,6 +50,18 @@ const STORAGE_KEY = 'dafu_approvals_store'
 const INITIAL_APPROVAL_SEED: DafuApprovalItem[] = []
 
 function mapDbRowToApprovalItem(item: any): DafuApprovalItem {
+  let dataSebelumEdit: DafuDataSnapshot | null = item.data_sebelum_edit || null
+  let catatanParoki = item.catatan_paroki ? String(item.catatan_paroki) : null
+
+  // If dataSebelumEdit is embedded in catatan_paroki
+  if (!dataSebelumEdit && catatanParoki && catatanParoki.includes('[DATA_SEBELUM_EDIT]:')) {
+    try {
+      const parts = catatanParoki.split('[DATA_SEBELUM_EDIT]:')
+      catatanParoki = parts[0].trim() || null
+      dataSebelumEdit = JSON.parse(parts[1])
+    } catch (e) {}
+  }
+
   return {
     id: String(item.id),
     lingkungan_id: String(item.lingkungan_id || ''),
@@ -52,7 +75,9 @@ function mapDbRowToApprovalItem(item: any): DafuApprovalItem {
     kriteria_catatan: item.kriteria_catatan ? String(item.kriteria_catatan) : null,
     anggota_keluarga: Array.isArray(item.anggota_keluarga) ? item.anggota_keluarga : [],
     status: (item.status || 'PENDING') as any,
-    catatan_paroki: item.catatan_paroki ? String(item.catatan_paroki) : null,
+    catatan_paroki: catatanParoki,
+    data_sebelum_edit: dataSebelumEdit,
+    is_edited_by_paroki: Boolean(dataSebelumEdit || item.is_edited_by_paroki),
     submitted_by: String(item.submitted_by || 'Sekretaris Lingkungan'),
     reviewed_by: item.reviewed_by ? String(item.reviewed_by) : null,
     created_at: item.created_at || new Date().toISOString(),
@@ -213,6 +238,295 @@ export async function createDafuApproval(payload: {
 }
 
 /**
+ * Helper to sync an approved DAFU item into localStorage stores and Supabase database tables.
+ */
+async function syncApprovedItemToStoresAndDb(
+  item: DafuApprovalItem,
+  finalGolongan?: KategoriGolongan,
+  finalCatatan?: string
+): Promise<void> {
+  const supabase = createClient()
+  const kkId = item.kk_id || `kk-appr-${item.id}`
+  const targetGol = finalGolongan || item.golongan
+  const targetCatatan = finalCatatan !== undefined ? finalCatatan : item.kriteria_catatan
+
+  // 1. Sync to browser localStorage caches
+  try {
+    if (typeof window !== 'undefined') {
+      const newKkObj = {
+        id: kkId,
+        lingkungan_id: item.lingkungan_id,
+        nama_kk: item.nama_kk,
+        alamat: item.alamat || '',
+        is_biduk: item.is_biduk,
+        jumlah_anggota: Array.isArray(item.anggota_keluarga) && item.anggota_keluarga.length > 0 ? item.anggota_keluarga.length : 1
+      }
+
+      // custom_kks_all_store
+      const rawAll = localStorage.getItem('custom_kks_all_store')
+      let allKks: any[] = rawAll ? JSON.parse(rawAll) : []
+      allKks = allKks.filter(k => k.id !== kkId && k.id !== item.kk_id)
+      if (item.action_type !== 'HAPUS_KK') {
+        allKks.push(newKkObj)
+      }
+      localStorage.setItem('custom_kks_all_store', JSON.stringify(allKks))
+
+      // custom_kks_[lingkungan_id]
+      const rawLing = localStorage.getItem(`custom_kks_${item.lingkungan_id}`)
+      let lingKks: any[] = rawLing ? JSON.parse(rawLing) : []
+      lingKks = lingKks.filter(k => k.id !== kkId && k.id !== item.kk_id)
+      if (item.action_type !== 'HAPUS_KK') {
+        lingKks.push(newKkObj)
+      }
+      localStorage.setItem(`custom_kks_${item.lingkungan_id}`, JSON.stringify(lingKks))
+
+      // custom_anggota_all_store
+      if (Array.isArray(item.anggota_keluarga) && item.anggota_keluarga.length > 0) {
+        const rawAng = localStorage.getItem('custom_anggota_all_store')
+        const angStore = rawAng ? JSON.parse(rawAng) : {}
+        angStore[kkId] = item.anggota_keluarga.map((m, idx) => ({
+          id: m.id || `mem-${kkId}-${idx}`,
+          kk_id: kkId,
+          nama: m.nama,
+          peran: m.peran,
+          is_kaj: m.is_kaj,
+          keterangan: m.keterangan || undefined
+        }))
+        localStorage.setItem('custom_anggota_all_store', JSON.stringify(angStore))
+      }
+
+      // custom_golongan_all_store
+      const rawGol = localStorage.getItem('custom_golongan_all_store')
+      const golStore = rawGol ? JSON.parse(rawGol) : {}
+      golStore[kkId] = {
+        id: `gol-${kkId}`,
+        kk_id: kkId,
+        lingkungan_id: item.lingkungan_id,
+        golongan: targetGol,
+        kriteria_catatan: targetCatatan,
+        updated_by_role: 'SEKRETARIS_PAROKI',
+        updated_at: new Date().toISOString()
+      }
+      localStorage.setItem('custom_golongan_all_store', JSON.stringify(golStore))
+
+      window.dispatchEvent(new Event('dafuDataUpdated'))
+    }
+  } catch (e) {
+    console.warn('Error syncing approved DAFU stores:', e)
+  }
+
+  // 2. Sync to Supabase PostgreSQL database tables
+  try {
+    if (item.action_type !== 'HAPUS_KK') {
+      const dbUuid = getLingkunganDbUuid(item.lingkungan_id) || item.lingkungan_id
+      const dbKkId = item.kk_id || toDeterministicUuid('kk', `appr-${item.id}`)
+
+      await supabase.from('kepala_keluarga').upsert({
+        id: dbKkId,
+        lingkungan_id: dbUuid,
+        nama_kk: item.nama_kk,
+        alamat: item.alamat || null,
+        is_biduk: item.is_biduk
+      }, { onConflict: 'id' })
+
+      if (Array.isArray(item.anggota_keluarga) && item.anggota_keluarga.length > 0) {
+        const mems = item.anggota_keluarga.map((m, idx) => ({
+          id: m.id || toDeterministicUuid('mem', `${dbKkId}:${idx}`),
+          kk_id: dbKkId,
+          nama: m.nama,
+          peran: m.peran,
+          is_kaj: m.is_kaj,
+          keterangan: m.keterangan || null
+        }))
+        await supabase.from('anggota_keluarga').upsert(mems, { onConflict: 'id' })
+      }
+
+      await supabase.from('golongan_keluarga').upsert({
+        kk_id: dbKkId,
+        lingkungan_id: dbUuid,
+        golongan: targetGol,
+        kriteria_catatan: targetCatatan,
+        updated_by_role: 'SEKRETARIS_PAROKI',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'kk_id' })
+    } else if (item.action_type === 'HAPUS_KK' && item.kk_id) {
+      await supabase.from('anggota_keluarga').delete().eq('kk_id', item.kk_id)
+      await supabase.from('golongan_keluarga').delete().eq('kk_id', item.kk_id)
+      await supabase.from('kepala_keluarga').delete().eq('id', item.kk_id)
+    }
+  } catch (e) {
+    console.warn('Error syncing approved DAFU item to database:', e)
+  }
+}
+
+/**
+ * Updates a pending approval item (used by Sekretaris Lingkungan to edit pending submissions).
+ */
+export async function updateDafuApproval(
+  id: string,
+  updates: {
+    nama_kk?: string
+    alamat?: string | null
+    is_biduk?: boolean
+    golongan?: KategoriGolongan
+    kriteria_catatan?: string | null
+    anggota_keluarga?: DafuMemberItem[]
+  }
+): Promise<boolean> {
+  const supabase = createClient()
+  try {
+    const { error } = await supabase
+      .from('dafu_approvals')
+      .update(updates)
+      .eq('id', id)
+    if (error) {
+      console.warn('Supabase updateDafuApproval warning:', error.message)
+    }
+  } catch (e) {
+    console.warn('Exception updating dafu approval in Supabase:', e)
+  }
+
+  const current = getDafuApprovals()
+  const updated = current.map(item => {
+    if (item.id === id) {
+      return {
+        ...item,
+        ...updates
+      }
+    }
+    return item
+  })
+  saveDafuApprovals(updated)
+  return true
+}
+
+/**
+ * Updates approval item with edits made by Sekretaris Paroki and marks it APPROVED.
+ * Automatically saves data_sebelum_edit and is_edited_by_paroki for transparent audit.
+ */
+export async function editAndApproveDafuItem(
+  id: string,
+  edited: {
+    nama_kk: string
+    alamat?: string | null
+    is_biduk: boolean
+    golongan: KategoriGolongan
+    kriteria_catatan?: string | null
+    anggota_keluarga: DafuMemberItem[]
+    catatan_paroki?: string | null
+  },
+  reviewedBy: string = 'Sekretaris Paroki'
+): Promise<boolean> {
+  const current = getDafuApprovals()
+  const existing = current.find(i => i.id === id)
+
+  let dataSebelumEdit: DafuDataSnapshot | null = null
+  let isEdited = false
+
+  if (existing) {
+    const nameDiff = existing.nama_kk !== edited.nama_kk
+    const alamatDiff = (existing.alamat || '') !== (edited.alamat || '')
+    const bidukDiff = existing.is_biduk !== edited.is_biduk
+    const golDiff = existing.golongan !== edited.golongan
+    const catatanDiff = (existing.kriteria_catatan || '') !== (edited.kriteria_catatan || '')
+    const membersDiff = JSON.stringify(existing.anggota_keluarga || []) !== JSON.stringify(edited.anggota_keluarga || [])
+
+    if (nameDiff || alamatDiff || bidukDiff || golDiff || catatanDiff || membersDiff) {
+      isEdited = true
+      // Preserve prior original snapshot if it was already edited before, otherwise snapshot existing
+      dataSebelumEdit = existing.data_sebelum_edit || {
+        nama_kk: existing.nama_kk,
+        alamat: existing.alamat || null,
+        is_biduk: existing.is_biduk,
+        golongan: existing.golongan,
+        kriteria_catatan: existing.kriteria_catatan || null,
+        anggota_keluarga: existing.anggota_keluarga || []
+      }
+    } else if (existing.data_sebelum_edit) {
+      dataSebelumEdit = existing.data_sebelum_edit
+      isEdited = true
+    }
+  }
+
+  const supabase = createClient()
+  const reviewedAt = new Date().toISOString()
+
+  let finalCatatanParoki = edited.catatan_paroki ? edited.catatan_paroki.trim() : null
+  if (isEdited && dataSebelumEdit) {
+    const prefix = finalCatatanParoki ? `${finalCatatanParoki}\n` : ''
+    finalCatatanParoki = `${prefix}[DATA_SEBELUM_EDIT]:${JSON.stringify(dataSebelumEdit)}`
+  }
+
+  const updatePayload: Record<string, any> = {
+    nama_kk: edited.nama_kk,
+    alamat: edited.alamat || null,
+    is_biduk: edited.is_biduk,
+    golongan: edited.golongan,
+    kriteria_catatan: edited.kriteria_catatan || null,
+    anggota_keluarga: edited.anggota_keluarga,
+    status: 'APPROVED',
+    catatan_paroki: finalCatatanParoki,
+    reviewed_by: reviewedBy,
+    reviewed_at: reviewedAt,
+    is_read: true
+  }
+
+  if (dataSebelumEdit) {
+    updatePayload.data_sebelum_edit = dataSebelumEdit
+    updatePayload.is_edited_by_paroki = true
+  }
+
+  try {
+    const { error } = await supabase
+      .from('dafu_approvals')
+      .update(updatePayload)
+      .eq('id', id)
+
+    if (error) {
+      console.warn('Supabase update approval with data_sebelum_edit notice:', error.message)
+      // Retry without newly added columns in case DB hasn't run the migration yet
+      delete updatePayload.data_sebelum_edit
+      delete updatePayload.is_edited_by_paroki
+      await supabase.from('dafu_approvals').update(updatePayload).eq('id', id)
+    }
+  } catch (err) {
+    console.warn('Supabase update dafu approval exception:', err)
+  }
+
+  // Update local cache
+  const updated = current.map(item => {
+    if (item.id === id) {
+      return {
+        ...item,
+        nama_kk: edited.nama_kk,
+        alamat: edited.alamat || null,
+        is_biduk: edited.is_biduk,
+        golongan: edited.golongan,
+        kriteria_catatan: edited.kriteria_catatan || null,
+        anggota_keluarga: edited.anggota_keluarga,
+        status: 'APPROVED' as const,
+        catatan_paroki: edited.catatan_paroki ? edited.catatan_paroki.trim() : null,
+        data_sebelum_edit: dataSebelumEdit,
+        is_edited_by_paroki: isEdited,
+        reviewed_by: reviewedBy,
+        reviewed_at: reviewedAt,
+        is_read: true
+      }
+    }
+    return item
+  })
+  saveDafuApprovals(updated)
+
+  // Sync to active KK / anggota / golongan stores & Supabase tables
+  const approvedItem = updated.find(i => i.id === id)
+  if (approvedItem) {
+    await syncApprovedItemToStoresAndDb(approvedItem, edited.golongan, edited.kriteria_catatan || undefined)
+  }
+
+  return true
+}
+
+/**
  * Updates approval item to 'APPROVED' directly in Supabase database table `dafu_approvals`.
  */
 export async function approveDafuItem(
@@ -221,6 +535,25 @@ export async function approveDafuItem(
   adjustedGolongan?: KategoriGolongan,
   adjustedCatatan?: string
 ): Promise<boolean> {
+  const current = getDafuApprovals()
+  const existing = current.find(i => i.id === id)
+
+  if (existing) {
+    return editAndApproveDafuItem(
+      id,
+      {
+        nama_kk: existing.nama_kk,
+        alamat: existing.alamat || null,
+        is_biduk: existing.is_biduk,
+        golongan: adjustedGolongan || existing.golongan,
+        kriteria_catatan: adjustedCatatan !== undefined ? adjustedCatatan : existing.kriteria_catatan,
+        anggota_keluarga: existing.anggota_keluarga || [],
+        catatan_paroki: existing.catatan_paroki || null
+      },
+      reviewedBy
+    )
+  }
+
   const supabase = createClient()
   const updatePayload: Record<string, any> = {
     status: 'APPROVED',
@@ -232,148 +565,8 @@ export async function approveDafuItem(
   if (adjustedCatatan !== undefined) updatePayload.kriteria_catatan = adjustedCatatan
 
   try {
-    const { error } = await supabase
-      .from('dafu_approvals')
-      .update(updatePayload)
-      .eq('id', id)
-
-    if (error) {
-      console.warn('Supabase update approval error:', error.message)
-    }
-  } catch (err) {
-    console.warn('Supabase update exception:', err)
-  }
-
-  // Also update local cache
-  const current = getDafuApprovals()
-  let found = false
-  const updated = current.map(item => {
-    if (item.id === id) {
-      found = true
-      return {
-        ...item,
-        status: 'APPROVED' as const,
-        golongan: adjustedGolongan || item.golongan,
-        kriteria_catatan: adjustedCatatan !== undefined ? adjustedCatatan : item.kriteria_catatan,
-        reviewed_by: reviewedBy,
-        reviewed_at: updatePayload.reviewed_at,
-        is_read: true
-      }
-    }
-    return item
-  })
-
-  if (found) {
-    saveDafuApprovals(updated)
-
-    // Sync to active KK / anggota / golongan stores and notify listeners
-    try {
-      const approvedItem = updated.find(i => i.id === id)
-      if (approvedItem && typeof window !== 'undefined') {
-        const kkId = approvedItem.kk_id || `kk-appr-${approvedItem.id}`
-        const newKkObj = {
-          id: kkId,
-          lingkungan_id: approvedItem.lingkungan_id,
-          nama_kk: approvedItem.nama_kk,
-          alamat: approvedItem.alamat || '',
-          is_biduk: approvedItem.is_biduk,
-          jumlah_anggota: Array.isArray(approvedItem.anggota_keluarga) && approvedItem.anggota_keluarga.length > 0 ? approvedItem.anggota_keluarga.length : 1
-        }
-
-        // 1. custom_kks_all_store
-        const rawAll = localStorage.getItem('custom_kks_all_store')
-        let allKks: any[] = rawAll ? JSON.parse(rawAll) : []
-        allKks = allKks.filter(k => k.id !== kkId && k.id !== approvedItem.kk_id)
-        if (approvedItem.action_type !== 'HAPUS_KK') {
-          allKks.push(newKkObj)
-        }
-        localStorage.setItem('custom_kks_all_store', JSON.stringify(allKks))
-
-        // 2. custom_kks_[lingkungan_id]
-        const rawLing = localStorage.getItem(`custom_kks_${approvedItem.lingkungan_id}`)
-        let lingKks: any[] = rawLing ? JSON.parse(rawLing) : []
-        lingKks = lingKks.filter(k => k.id !== kkId && k.id !== approvedItem.kk_id)
-        if (approvedItem.action_type !== 'HAPUS_KK') {
-          lingKks.push(newKkObj)
-        }
-        localStorage.setItem(`custom_kks_${approvedItem.lingkungan_id}`, JSON.stringify(lingKks))
-
-        // 3. custom_anggota_all_store
-        if (Array.isArray(approvedItem.anggota_keluarga) && approvedItem.anggota_keluarga.length > 0) {
-          const rawAng = localStorage.getItem('custom_anggota_all_store')
-          const angStore = rawAng ? JSON.parse(rawAng) : {}
-          angStore[kkId] = approvedItem.anggota_keluarga.map((m, idx) => ({
-            id: m.id || `mem-${kkId}-${idx}`,
-            kk_id: kkId,
-            nama: m.nama,
-            peran: m.peran,
-            is_kaj: m.is_kaj,
-            keterangan: m.keterangan || undefined
-          }))
-          localStorage.setItem('custom_anggota_all_store', JSON.stringify(angStore))
-        }
-
-        // 4. custom_golongan_all_store
-        const rawGol = localStorage.getItem('custom_golongan_all_store')
-        const golStore = rawGol ? JSON.parse(rawGol) : {}
-        golStore[kkId] = {
-          id: `gol-${kkId}`,
-          kk_id: kkId,
-          lingkungan_id: approvedItem.lingkungan_id,
-          golongan: adjustedGolongan || approvedItem.golongan,
-          kriteria_catatan: adjustedCatatan !== undefined ? adjustedCatatan : approvedItem.kriteria_catatan,
-          updated_by_role: 'SEKRETARIS_PAROKI',
-          updated_at: new Date().toISOString()
-        }
-        localStorage.setItem('custom_golongan_all_store', JSON.stringify(golStore))
-
-        window.dispatchEvent(new Event('dafuDataUpdated'))
-      }
-    } catch (e) {
-      console.warn('Error syncing approved DAFU stores:', e)
-    }
-  }
-
-  // Sync approved item to Supabase kepala_keluarga, anggota_keluarga, and golongan_keluarga tables
-  try {
-    const item = updated.find(i => i.id === id)
-    if (item && item.action_type !== 'HAPUS_KK') {
-      const dbUuid = getLingkunganDbUuid(item.lingkungan_id) || item.lingkungan_id
-      const kkId = item.kk_id || toDeterministicUuid('kk', `appr-${item.id}`)
-      await supabase.from('kepala_keluarga').upsert({
-        id: kkId,
-        lingkungan_id: dbUuid,
-        nama_kk: item.nama_kk,
-        alamat: item.alamat || null,
-        is_biduk: item.is_biduk
-      }, { onConflict: 'id' })
-
-      if (Array.isArray(item.anggota_keluarga) && item.anggota_keluarga.length > 0) {
-        const mems = item.anggota_keluarga.map((m, idx) => ({
-          id: m.id || toDeterministicUuid('mem', `${kkId}:${idx}`),
-          kk_id: kkId,
-          nama: m.nama,
-          peran: m.peran,
-          is_kaj: m.is_kaj,
-          keterangan: m.keterangan || null
-        }))
-        await supabase.from('anggota_keluarga').upsert(mems, { onConflict: 'id' })
-      }
-
-      await supabase.from('golongan_keluarga').upsert({
-        kk_id: kkId,
-        lingkungan_id: dbUuid,
-        golongan: adjustedGolongan || item.golongan,
-        kriteria_catatan: adjustedCatatan !== undefined ? adjustedCatatan : item.kriteria_catatan,
-        updated_by_role: 'SEKRETARIS_PAROKI',
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'kk_id' })
-    } else if (item && item.action_type === 'HAPUS_KK' && item.kk_id) {
-      await supabase.from('anggota_keluarga').delete().eq('kk_id', item.kk_id)
-      await supabase.from('golongan_keluarga').delete().eq('kk_id', item.kk_id)
-      await supabase.from('kepala_keluarga').delete().eq('id', item.kk_id)
-    }
-  } catch (e) {}
+    await supabase.from('dafu_approvals').update(updatePayload).eq('id', id)
+  } catch (err) {}
 
   return true
 }
@@ -455,7 +648,7 @@ export function getPendingApprovalCount(): number {
  * Permanently removes an approval record from Supabase table `dafu_approvals`
  * and local cache by approval id, kk_id, or family name.
  */
-export async function removeDafuApproval(identifier: string, namaKk?: string): Promise<boolean> {
+export async function removeDafuApproval(identifier: string, namaKk?: string | null): Promise<boolean> {
   const supabase = createClient()
   const cleanId = (identifier || '').trim()
   const cleanName = (namaKk || '').trim()
