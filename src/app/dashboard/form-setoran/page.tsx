@@ -676,36 +676,36 @@ export default function FormSetoranPage() {
 
               <div className="print-signatures flex justify-between items-start text-xs sm:text-sm font-bold text-center px-4 sm:px-8">
                 {/* 1. Sekretariat Paroki */}
-                <div className="flex flex-col items-center w-48 sm:w-56">
+                <div className="flex flex-col items-center flex-1 max-w-[200px] px-2">
                   <div className="mb-12 print-sign-gap text-center font-bold">Diterima Oleh :</div>
                   <div className="w-full text-center font-normal text-xs mb-1">
                     (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)
                   </div>
-                  <div className="border-b border-black border-dashed w-full"></div>
+                  <div className="border-b border-black border-dashed w-36 max-w-[150px] mx-auto"></div>
                   <div className="mt-1 font-normal text-xs text-center">Sekretariat Paroki</div>
                 </div>
                 
                 {/* 2. Ketua Lingkungan */}
-                <div className="flex flex-col items-center w-48 sm:w-56">
+                <div className="flex flex-col items-center flex-1 max-w-[200px] px-2">
                   <div className="mb-12 print-sign-gap text-center font-bold">Disetujui oleh:</div>
                   <div className="w-full text-center font-normal text-xs mb-1 whitespace-nowrap">
                     {pengurus?.ketua_nama && pengurus.ketua_nama !== 'Susunan pengurus belum ditentukan'
                       ? `(${pengurus.ketua_nama})`
                       : '(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)'}
                   </div>
-                  <div className="border-b border-black border-dashed w-full"></div>
+                  <div className="border-b border-black border-dashed w-36 max-w-[150px] mx-auto"></div>
                   <div className="mt-1 font-normal text-xs text-center">Ketua Lingkungan</div>
                 </div>
 
                 {/* 3. Bendahara Lingkungan */}
-                <div className="flex flex-col items-center w-48 sm:w-56">
+                <div className="flex flex-col items-center flex-1 max-w-[200px] px-2">
                   <div className="mb-12 print-sign-gap text-center font-bold">Disetor Oleh :</div>
                   <div className="w-full text-center font-normal text-xs mb-1 whitespace-nowrap">
                     {pengurus?.bendahara_nama && pengurus.bendahara_nama !== 'Susunan pengurus belum ditentukan'
                       ? `(${pengurus.bendahara_nama})`
                       : '(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)'}
                   </div>
-                  <div className="border-b border-black border-dashed w-full"></div>
+                  <div className="border-b border-black border-dashed w-36 max-w-[150px] mx-auto"></div>
                   <div className="mt-1 font-normal text-xs text-center">Bendahara Lingkungan</div>
                 </div>
               </div>
