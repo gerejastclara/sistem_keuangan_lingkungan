@@ -1341,11 +1341,11 @@ export default function DashboardOverviewPage() {
                     onClick={() => setApprovalTabFilter('PENDING')}
                     className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
                       approvalTabFilter === 'PENDING'
-                        ? 'bg-amber-600 text-white shadow-2xs'
-                        : 'text-amber-800 hover:bg-amber-50'
+                        ? 'bg-slate-200 text-slate-800 border border-slate-300 font-bold shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-200/60'
                     }`}
                   >
-                    <Clock className="w-3 h-3" />
+                    <Clock className="w-3 h-3 text-slate-500" />
                     <span>Dalam Pengajuan ({pendingApprovalsCount})</span>
                   </button>
                   <button
@@ -1426,8 +1426,8 @@ export default function DashboardOverviewPage() {
                           <TableCell>
                             <div className="flex flex-col gap-1 items-start">
                               {isPending ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
-                                  <Clock className="w-2.5 h-2.5 text-amber-600" />
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full">
+                                  <Clock className="w-2.5 h-2.5 text-slate-500" />
                                   Dalam Pengajuan
                                 </span>
                               ) : (
@@ -1450,8 +1450,10 @@ export default function DashboardOverviewPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              item.action_type === 'TAMBAH_KK' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${
+                              item.action_type === 'TAMBAH_KK'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 font-bold'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
                             }`}>
                               {item.action_type === 'TAMBAH_KK' ? '+ Tambah KK' : '✎ Ubah KK'}
                             </span>
@@ -1546,11 +1548,11 @@ export default function DashboardOverviewPage() {
                   onClick={() => setStatusApprovalKkFilter('PENDING')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
                     statusApprovalKkFilter === 'PENDING'
-                      ? 'bg-amber-600 text-white shadow-2xs'
-                      : 'text-amber-800 hover:bg-amber-50'
+                      ? 'bg-slate-200 text-slate-800 border border-slate-300 font-bold shadow-2xs'
+                      : 'text-slate-600 hover:bg-slate-200/60'
                   }`}
                 >
-                  <Clock className="w-3 h-3" />
+                  <Clock className="w-3 h-3 text-slate-500" />
                   <span>Dalam Pengajuan ({pendingApprovalsCount})</span>
                 </button>
                 <button
@@ -1673,8 +1675,8 @@ export default function DashboardOverviewPage() {
                               <div className="flex flex-wrap items-center gap-1.5">
                                 <span className="font-bold text-slate-900">{kk.nama_kk}</span>
                                 {isKkPending && (
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
-                                    <Clock className="w-2.5 h-2.5 text-amber-600" />
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
+                                    <Clock className="w-2.5 h-2.5 text-slate-500" />
                                     Dalam Pengajuan
                                   </span>
                                 )}
