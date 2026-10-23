@@ -434,7 +434,7 @@ export default function DashboardOverviewPage() {
             setPendingApprovals(pending)
 
           // Load Anggota & Golongan first, then commit finalKks together so stats don't flash 0
-          await loadAnggotaAndGolongan(finalKks, targetLingkunganId)
+          await loadAnggotaAndGolongan(finalKks, targetLingkunganId, latestApprovals)
           setKkList(finalKks)
 
           // Load Profil & Pengurus Lingkungan directly from Supabase (sole source of truth)
@@ -523,7 +523,7 @@ export default function DashboardOverviewPage() {
     }
   }, [])
 
-  const loadAnggotaAndGolongan = async (kks: KepalaKeluarga[], lId: string) => {
+  const loadAnggotaAndGolongan = async (kks: KepalaKeluarga[], lId: string, preloadedApprovals?: any[]) => {
     const kkIds = kks.map(k => k.id)
     const newAnggotaMap: Record<string, AnggotaKeluarga[]> = {}
     const newGolonganMap: Record<string, GolonganKeluarga> = {}
@@ -555,12 +555,12 @@ export default function DashboardOverviewPage() {
     kks.forEach(kk => {
       let members = supabaseAnggota.filter(a => a.kk_id === kk.id)
       if (members.length === 0 && localAnggotaStore[kk.id]) members = localAnggotaStore[kk.id]
-      if (members.length === 0) members = getDummyAnggotaForKk(kk)
+      if (members.length === 0) members = getDummyAnggotaForKk(kk, preloadedApprovals)
       newAnggotaMap[kk.id] = members
 
       let gol = supabaseGolongan.find(g => g.kk_id === kk.id)
       if (!gol && localGolonganStore[kk.id]) gol = localGolonganStore[kk.id]
-      if (!gol) gol = getDummyGolonganForKk(kk)
+      if (!gol) gol = getDummyGolonganForKk(kk, preloadedApprovals)
       newGolonganMap[kk.id] = gol
     })
 
@@ -628,6 +628,10 @@ export default function DashboardOverviewPage() {
       .forEach((a) => {
         if (a.nama_kk) set.add(a.nama_kk.toLowerCase().trim())
         if (a.kk_id) set.add(a.kk_id)
+        if (a.id) {
+          set.add(a.id)
+          set.add(`kk-appr-${a.id}`)
+        }
       })
     return set
   }, [lingkunganApprovals])
@@ -639,6 +643,10 @@ export default function DashboardOverviewPage() {
       .forEach((a) => {
         if (a.nama_kk) map.set(a.nama_kk.toLowerCase().trim(), a)
         if (a.kk_id) map.set(a.kk_id, a)
+        if (a.id) {
+          map.set(a.id, a)
+          map.set(`kk-appr-${a.id}`, a)
+        }
       })
     return map
   }, [lingkunganApprovals])
@@ -688,7 +696,7 @@ export default function DashboardOverviewPage() {
     const matchesApprovalFilter =
       statusApprovalKkFilter === 'ALL' ||
       (statusApprovalKkFilter === 'PENDING' && isPending) ||
-      (statusApprovalKkFilter === 'APPROVED' && (isApproved || !isPending))
+      (statusApprovalKkFilter === 'APPROVED' && isApproved)
 
     return matchesSearch && matchesGolongan && matchesKaj && matchesApprovalFilter
   })

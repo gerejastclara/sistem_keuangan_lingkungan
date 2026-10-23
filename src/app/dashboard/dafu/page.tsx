@@ -358,6 +358,10 @@ function DafuFormContent() {
       .forEach(a => {
         if (a.kk_id) s.add(a.kk_id)
         if (a.nama_kk) s.add(a.nama_kk.toLowerCase().trim())
+        if (a.id) {
+          s.add(a.id)
+          s.add(`kk-appr-${a.id}`)
+        }
       })
     return s
   }, [lingkunganApprovals])
@@ -369,6 +373,10 @@ function DafuFormContent() {
       .forEach(a => {
         if (a.kk_id) m.set(a.kk_id, a)
         if (a.nama_kk) m.set(a.nama_kk.toLowerCase().trim(), a)
+        if (a.id) {
+          m.set(a.id, a)
+          m.set(`kk-appr-${a.id}`, a)
+        }
       })
     return m
   }, [lingkunganApprovals])
@@ -633,12 +641,12 @@ function DafuFormContent() {
     finalKks.forEach(kk => {
       let members = supabaseAnggota.filter(a => a.kk_id === kk.id)
       if (members.length === 0 && localAnggotaStore[kk.id]) members = localAnggotaStore[kk.id]
-      if (members.length === 0) members = getDummyAnggotaForKk(kk)
+      if (members.length === 0) members = getDummyAnggotaForKk(kk, preloadedApprovals)
       newAnggotaMap[kk.id] = members
 
       let gol = supabaseGolongan.find(g => g.kk_id === kk.id)
       if (!gol && localGolonganStore[kk.id]) gol = localGolonganStore[kk.id]
-      if (!gol) gol = getDummyGolonganForKk(kk)
+      if (!gol) gol = getDummyGolonganForKk(kk, preloadedApprovals)
       newGolonganMap[kk.id] = gol
     })
 

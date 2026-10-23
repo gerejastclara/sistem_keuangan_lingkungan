@@ -148,7 +148,11 @@ export function ensureDummyKksForLingkungan(
     const targetNorm = (namaLingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
 
     approvals.forEach(appr => {
-      if (appr.status !== 'APPROVED') return
+      // Include APPROVED items, as well as PENDING items with TAMBAH_KK (new families submitted by Lingkungan awaiting Paroki approval)
+      const isApproved = appr.status === 'APPROVED'
+      const isPendingNewKk = appr.status === 'PENDING' && appr.action_type === 'TAMBAH_KK'
+      if (!isApproved && !isPendingNewKk) return
+
       const apprUuid = getLingkunganDbUuid(appr.lingkungan_id)
       const apprNorm = (appr.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
       const matchesLingkungan =
@@ -168,13 +172,13 @@ export function ensureDummyKksForLingkungan(
         return
       }
 
-      if (appr.action_type === 'HAPUS_KK') {
+      if (isApproved && appr.action_type === 'HAPUS_KK') {
         combinedMap.delete(kkId)
         if (appr.kk_id) combinedMap.delete(appr.kk_id)
         return
       }
 
-      const approvedKk: KepalaKeluarga = {
+      const mergedKk: KepalaKeluarga = {
         id: kkId,
         lingkungan_id: targetUuid || lingkunganId,
         nama_kk: appr.nama_kk,
@@ -183,7 +187,7 @@ export function ensureDummyKksForLingkungan(
         jumlah_anggota: Array.isArray(appr.anggota_keluarga) && appr.anggota_keluarga.length > 0 ? appr.anggota_keluarga.length : 1
       }
 
-      combinedMap.set(kkId, approvedKk)
+      combinedMap.set(kkId, mergedKk)
     })
   } catch (e) {
     console.warn('Notice merging approved DAFU items:', e)
@@ -196,19 +200,19 @@ export function ensureDummyKksForLingkungan(
  * Returns family members for a given KK.
  * Real data is loaded from Supabase; this handles approvals or fallback defaults.
  */
-export function getDummyAnggotaForKk(kk: KepalaKeluarga): AnggotaKeluarga[] {
+export function getDummyAnggotaForKk(kk: KepalaKeluarga, customApprovals?: any[]): AnggotaKeluarga[] {
   if (!kk) return []
 
-  // Check if this is an approved DAFU approval
-  if (typeof window !== 'undefined') {
+  // Check if this is an approved or pending DAFU approval
+  if (typeof window !== 'undefined' || customApprovals) {
     try {
-      const approvals = getDafuApprovals()
+      const approvals = customApprovals && customApprovals.length > 0 ? customApprovals : getDafuApprovals()
       const foundAppr = approvals.find(a =>
-        a.status === 'APPROVED' &&
+        (a.status === 'APPROVED' || a.status === 'PENDING') &&
         (a.kk_id === kk.id || `kk-appr-${a.id}` === kk.id || a.nama_kk.toLowerCase().trim() === kk.nama_kk.toLowerCase().trim())
       )
       if (foundAppr && Array.isArray(foundAppr.anggota_keluarga) && foundAppr.anggota_keluarga.length > 0) {
-        return foundAppr.anggota_keluarga.map((m, idx) => ({
+        return foundAppr.anggota_keluarga.map((m: any, idx: number) => ({
           id: m.id || `mem-${kk.id}-${idx}`,
           kk_id: kk.id,
           nama: m.nama,
@@ -239,7 +243,7 @@ export const getRealAnggotaForKk = getDummyAnggotaForKk
  * Returns economic status (Golongan) for the family.
  * Real data is loaded from Supabase; this handles approvals or fallback defaults.
  */
-export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
+export function getDummyGolonganForKk(kk: KepalaKeluarga, customApprovals?: any[]): GolonganKeluarga {
   if (!kk) {
     return {
       id: 'default-gol',
@@ -252,12 +256,12 @@ export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
     }
   }
 
-  // Check if this is an approved DAFU approval
-  if (typeof window !== 'undefined') {
+  // Check if this is an approved or pending DAFU approval
+  if (typeof window !== 'undefined' || customApprovals) {
     try {
-      const approvals = getDafuApprovals()
+      const approvals = customApprovals && customApprovals.length > 0 ? customApprovals : getDafuApprovals()
       const foundAppr = approvals.find(a =>
-        a.status === 'APPROVED' &&
+        (a.status === 'APPROVED' || a.status === 'PENDING') &&
         (a.kk_id === kk.id || `kk-appr-${a.id}` === kk.id || a.nama_kk.toLowerCase().trim() === kk.nama_kk.toLowerCase().trim())
       )
       if (foundAppr && foundAppr.golongan) {
@@ -266,8 +270,8 @@ export function getDummyGolonganForKk(kk: KepalaKeluarga): GolonganKeluarga {
           kk_id: kk.id,
           lingkungan_id: kk.lingkungan_id,
           golongan: foundAppr.golongan,
-          kriteria_catatan: foundAppr.kriteria_catatan || 'Ditetapkan Sekretaris Paroki',
-          updated_by_role: 'SEKRETARIS_PAROKI',
+          kriteria_catatan: foundAppr.kriteria_catatan || (foundAppr.status === 'PENDING' ? 'Usulan dalam pengajuan' : 'Ditetapkan Sekretaris Paroki'),
+          updated_by_role: foundAppr.status === 'PENDING' ? 'SEKRETARIS' : 'SEKRETARIS_PAROKI',
           updated_at: foundAppr.reviewed_at || foundAppr.created_at
         }
       }
