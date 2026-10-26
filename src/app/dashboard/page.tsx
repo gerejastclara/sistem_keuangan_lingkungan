@@ -2046,25 +2046,25 @@ export default function DashboardOverviewPage() {
         </div>
       </div>
 
-      {/* ALERT KEAKTIFAN TRANSAKSI BENDAHARA LINGKUNGAN (Soft Amber / Slate - NO NEON) */}
+      {/* ALERT KEAKTIFAN TRANSAKSI BENDAHARA LINGKUNGAN (Soft Grey Theme) */}
       {userRole !== 'PAROKI' && (
         daysSinceLastTx === null ? (
-          <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#F8F9FA] border border-slate-200 text-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
             <div className="flex items-start gap-3.5">
-              <div className="p-2.5 bg-amber-100/90 text-amber-800 rounded-xl shrink-0 mt-0.5">
-                <Clock className="w-5 h-5 text-amber-800" />
+              <div className="p-2.5 bg-slate-200/80 text-slate-700 rounded-xl shrink-0 mt-0.5">
+                <Clock className="w-5 h-5 text-slate-700" />
               </div>
               <div className="space-y-0.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h4 className="text-xs sm:text-sm font-bold text-amber-950 font-serif">
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900 font-serif">
                     Pemberitahuan: Belum Ada Transaksi Tercatat
                   </h4>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900 border border-amber-300/60">
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-300">
                     Perlu Input Mutasi Kas
                   </span>
                 </div>
-                <p className="text-xs text-amber-900/80 max-w-2xl leading-relaxed">
-                  Lingkungan <strong>{formatNamaLingkungan(lingkunganName)}</strong> belum memiliki riwayat transaksi penerimaan maupun pengeluaran kas. Silakan mulai membukukan iuran umat, kolekte, atau mutasi operasional lingkungan Anda.
+                <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
+                  Lingkungan <strong className="text-slate-800">{formatNamaLingkungan(lingkunganName)}</strong> belum memiliki riwayat transaksi penerimaan maupun pengeluaran kas. Silakan mulai membukukan iuran umat, kolekte, atau mutasi operasional lingkungan Anda.
                 </p>
               </div>
             </div>
@@ -2080,22 +2080,22 @@ export default function DashboardOverviewPage() {
             </Link>
           </div>
         ) : daysSinceLastTx >= 7 ? (
-          <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#F8F9FA] border border-slate-200 text-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
             <div className="flex items-start gap-3.5">
-              <div className="p-2.5 bg-amber-100/90 text-amber-800 rounded-xl shrink-0 mt-0.5">
-                <AlertTriangle className="w-5 h-5 text-amber-800" />
+              <div className="p-2.5 bg-slate-200/80 text-slate-700 rounded-xl shrink-0 mt-0.5">
+                <AlertTriangle className="w-5 h-5 text-slate-700" />
               </div>
               <div className="space-y-0.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h4 className="text-xs sm:text-sm font-bold text-amber-950 font-serif">
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900 font-serif">
                     Peringatan: Belum Ada Transaksi Baru Selama {daysSinceLastTx} Hari
                   </h4>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900 border border-amber-300/60">
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-300">
                     Tidak Aktif {daysSinceLastTx} Hari
                   </span>
                 </div>
-                <p className="text-xs text-amber-900/80 max-w-2xl leading-relaxed">
-                  Transaksi kas terakhir tercatat pada tanggal <strong>{latestTransactionDate ? formatDateIndo(latestTransactionDate) : '-'}</strong> ({daysSinceLastTx} hari yang lalu). Harap periksa dan catat mutasi kas atau setoran terbaru agar pembukuan tetap tertib dan mutakhir.
+                <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
+                  Transaksi kas terakhir tercatat pada tanggal <strong className="text-slate-800">{latestTransactionDate ? formatDateIndo(latestTransactionDate) : '-'}</strong> ({daysSinceLastTx} hari yang lalu). Harap periksa dan catat mutasi kas atau setoran terbaru agar pembukuan tetap tertib dan mutakhir.
                 </p>
               </div>
             </div>
