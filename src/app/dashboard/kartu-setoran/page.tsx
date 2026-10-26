@@ -24,7 +24,10 @@ import {
   Sparkles,
   Info,
   User,
-  Building2
+  Building2,
+  RotateCcw,
+  Users,
+  X
 } from 'lucide-react'
 
 const JENIS_KARTU_OPTIONS = [
@@ -105,6 +108,8 @@ export default function KartuSetoranPage() {
   const [umatStatusOverrides, setUmatStatusOverrides] = useState<Record<string, 'AKTIF' | 'PINDAH' | 'KELUAR'>>({})
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [showAllStatus, setShowAllStatus] = useState(false)
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false)
 
   // Filter State
   const [kartuOptions, setKartuOptions] = useState<Array<{ code: string; name: string; labelShort: string }>>(JENIS_KARTU_OPTIONS)
@@ -481,7 +486,9 @@ export default function KartuSetoranPage() {
     }
   })
 
+  const allPindahKeluarList: Array<{ kk: KepalaKeluarga; status: 'PINDAH' | 'KELUAR'; paidMonthsCount: number; isLunas: boolean }> = []
   const displayedKkList: DisplayKkItem[] = []
+
   Array.from(allCombinedKksMap.values()).forEach(k => {
     const cleanId = (k.id || '').toLowerCase().trim()
     const cleanName = (k.nama_kk || '').toLowerCase().trim()
@@ -504,10 +511,22 @@ export default function KartuSetoranPage() {
     const paidMonthsCount = Object.keys(months).length
     const isLunas = paidMonthsCount >= 12
 
+    if (status !== 'AKTIF') {
+      allPindahKeluarList.push({
+        kk: k,
+        status,
+        paidMonthsCount,
+        isLunas
+      })
+    }
+
     // Syarat tampil:
-    // Umat aktif selalu tampil.
-    // Umat pindah/keluar tampil JIKA setorannya di tengah (paidMonthsCount > 0 && < 12) atau sudah lunas (paidMonthsCount >= 12)
-    if (status === 'AKTIF' || paidMonthsCount > 0) {
+    // 1. Umat aktif selalu tampil.
+    // 2. Umat pindah/keluar tampil jika setorannya di tengah (>0 dan <12) atau lunas (>=12)
+    // 3. ATAU jika toggle showAllStatus aktif
+    // 4. ATAU jika nama sedang dicari di kotak pencarian
+    const isSearchingThis = searchQuery.trim().length > 0 && k.nama_kk.toLowerCase().includes(searchQuery.toLowerCase().trim())
+    if (status === 'AKTIF' || paidMonthsCount > 0 || showAllStatus || isSearchingThis) {
       displayedKkList.push({
         ...k,
         statusUmat: status,
@@ -519,8 +538,73 @@ export default function KartuSetoranPage() {
 
   displayedKkList.sort((a, b) => a.nama_kk.localeCompare(b.nama_kk))
 
-  const handleSetUmatStatus = (kkId: string, namaKk: string, newStatus: 'AKTIF' | 'PINDAH' | 'KELUAR') => {
+  const handleRestoreUmat = (kkId: string, namaKk: string) => {
     if (!lingkunganId) return
+    const cleanId = (kkId || '').trim()
+    const cleanName = (namaKk || '').toLowerCase().trim()
+    const dbUuid = getLingkunganDbUuid(lingkunganId)
+
+    // 1. Hapus override status
+    const updated = { ...umatStatusOverrides }
+    delete updated[cleanId]
+    delete updated[cleanName]
+    delete updated[kkId]
+    delete updated[namaKk]
+    setUmatStatusOverrides(updated)
+
+    try {
+      localStorage.setItem(`kartu_setoran_umat_status_${lingkunganId}`, JSON.stringify(updated))
+      if (dbUuid) {
+        localStorage.setItem(`kartu_setoran_umat_status_${dbUuid}`, JSON.stringify(updated))
+      }
+    } catch (e) {}
+
+    // 2. Hapus dari deletedKkSet jika sebelumnya terhapus
+    const newDeleted = new Set(deletedKkSet)
+    newDeleted.delete(cleanId)
+    newDeleted.delete(cleanId.toLowerCase())
+    newDeleted.delete(cleanName)
+    setDeletedKkSet(newDeleted)
+
+    try {
+      const pruneList = (key: string) => {
+        const raw = localStorage.getItem(key)
+        if (raw) {
+          const list: string[] = JSON.parse(raw)
+          const filtered = list.filter(item => {
+            const s = String(item).toLowerCase().trim()
+            return s !== cleanId.toLowerCase() && s !== cleanName
+          })
+          localStorage.setItem(key, JSON.stringify(filtered))
+        }
+      }
+      pruneList('custom_kks_deleted_store')
+      pruneList(`custom_kks_deleted_${lingkunganId}`)
+      if (dbUuid) pruneList(`custom_kks_deleted_${dbUuid}`)
+    } catch (e) {}
+  }
+
+  const handleRestoreAllUmat = () => {
+    if (!lingkunganId) return
+    const dbUuid = getLingkunganDbUuid(lingkunganId)
+    setUmatStatusOverrides({})
+    setDeletedKkSet(new Set())
+    try {
+      localStorage.removeItem(`kartu_setoran_umat_status_${lingkunganId}`)
+      if (dbUuid) localStorage.removeItem(`kartu_setoran_umat_status_${dbUuid}`)
+      localStorage.removeItem('custom_kks_deleted_store')
+      localStorage.removeItem(`custom_kks_deleted_${lingkunganId}`)
+      if (dbUuid) localStorage.removeItem(`custom_kks_deleted_${dbUuid}`)
+    } catch (e) {}
+  }
+
+  const handleSetUmatStatus = (kkId: string, namaKk: string, newStatus: 'AKTIF' | 'PINDAH' | 'KELUAR') => {
+    if (newStatus === 'AKTIF') {
+      handleRestoreUmat(kkId, namaKk)
+      return
+    }
+    if (!lingkunganId) return
+    const dbUuid = getLingkunganDbUuid(lingkunganId)
     const updated = {
       ...umatStatusOverrides,
       [kkId]: newStatus,
@@ -529,6 +613,9 @@ export default function KartuSetoranPage() {
     setUmatStatusOverrides(updated)
     try {
       localStorage.setItem(`kartu_setoran_umat_status_${lingkunganId}`, JSON.stringify(updated))
+      if (dbUuid) {
+        localStorage.setItem(`kartu_setoran_umat_status_${dbUuid}`, JSON.stringify(updated))
+      }
     } catch (e) {}
   }
 
@@ -725,17 +812,41 @@ export default function KartuSetoranPage() {
           </div>
         ) : (
           <div className="p-5 space-y-4">
-            {/* Search Input for KK */}
+            {/* Search Input for KK & Status Filter Controls */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="relative w-full sm:w-72">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari nama Kepala Keluarga..."
-                  className="pl-9 bg-slate-50 border-slate-200 text-xs rounded-xl h-9 text-slate-900"
-                />
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari nama Kepala Keluarga..."
+                    className="pl-9 bg-slate-50 border-slate-200 text-xs rounded-xl h-9 text-slate-900"
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-100/80 hover:bg-slate-100 border border-slate-200/90 px-2.5 py-1.5 rounded-xl cursor-pointer select-none transition">
+                  <input
+                    type="checkbox"
+                    checked={showAllStatus}
+                    onChange={(e) => setShowAllStatus(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-slate-300 text-slate-800 cursor-pointer"
+                  />
+                  <span>Tampilkan Umat Pindah / Keluar</span>
+                </label>
+
+                {allPindahKeluarList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsManageModalOpen(true)}
+                    className="px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                  >
+                    <span>📌</span>
+                    <span>Kelola / Pulihkan Umat ({allPindahKeluarList.length})</span>
+                  </button>
+                )}
               </div>
+
               <div className="text-xs text-slate-500 font-medium flex items-center gap-2">
                 <Info className="w-3.5 h-3.5 text-slate-400" />
                 <span>Data setoran terakumulasi otomatis dari modul Jurnal Transaksi</span>
@@ -800,11 +911,15 @@ export default function KartuSetoranPage() {
                             </div>
 
                             {/* Dropdown status kecil untuk bendahara */}
-                            <div className="opacity-0 group-hover:opacity-100 transition shrink-0">
+                            <div className={`transition shrink-0 ${kk.statusUmat && kk.statusUmat !== 'AKTIF' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                               <select
                                 value={kk.statusUmat || 'AKTIF'}
                                 onChange={(e) => handleSetUmatStatus(kk.id, kk.nama_kk, e.target.value as any)}
-                                className="text-[10px] bg-slate-100 border border-slate-200 rounded px-1 py-0.5 text-slate-600 focus:outline-none cursor-pointer"
+                                className={`text-[10px] rounded px-1.5 py-0.5 border cursor-pointer font-medium transition ${
+                                  kk.statusUmat && kk.statusUmat !== 'AKTIF'
+                                    ? 'bg-amber-50 text-amber-900 border-amber-300 font-bold'
+                                    : 'bg-slate-100 border-slate-200 text-slate-600'
+                                }`}
                                 title="Ubah status umat: Aktif, Pindah, atau Keluar"
                               >
                                 <option value="AKTIF">Aktif</option>
@@ -918,6 +1033,100 @@ export default function KartuSetoranPage() {
           </div>
         )}
       </div>
+
+      {/* Modal Kelola / Pulihkan Umat Pindah / Keluar */}
+      {isManageModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Kelola Umat Pindah / Keluar</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Daftar umat yang statusnya ditandai Pindah atau Keluar di lingkungan {lingkunganName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsManageModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-2.5 flex-1">
+              {allPindahKeluarList.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-400">
+                  Semua umat di lingkungan ini berstatus Aktif.
+                </div>
+              ) : (
+                allPindahKeluarList.map((item) => (
+                  <div
+                    key={item.kk.id}
+                    className="p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50/70 transition flex items-center justify-between gap-3"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-xs text-slate-900">{item.kk.nama_kk}</span>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                          item.status === 'KELUAR'
+                            ? 'bg-rose-50 text-rose-800 border-rose-200'
+                            : 'bg-amber-50 text-amber-800 border-amber-200'
+                        }`}>
+                          {item.status === 'KELUAR' ? 'Keluar' : 'Pindah'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        {item.paidMonthsCount > 0
+                          ? `Tercatat setoran ${item.paidMonthsCount} bulan (${item.isLunas ? 'Lunas 12 bulan' : 'Setoran di tengah tahun'})`
+                          : 'Belum ada setoran tercatat di tahun ini'}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreUmat(item.kk.id, item.kk.nama_kk)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 shadow-2xs cursor-pointer shrink-0"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Kembalikan ke Aktif</span>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+              {allPindahKeluarList.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Apakah Anda yakin ingin mengembalikan SEMUA umat ini menjadi Aktif kembali?')) {
+                      handleRestoreAllUmat()
+                    }
+                  }}
+                  className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                >
+                  Kembalikan Semua ke Aktif
+                </button>
+              ) : <div />}
+
+              <button
+                type="button"
+                onClick={() => setIsManageModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
