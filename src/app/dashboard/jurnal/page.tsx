@@ -61,6 +61,8 @@ export default function JurnalPage() {
   const kasBankOptions = coaList
     .filter((c) => c.kategori === 'KAS' || c.id === '1100' || c.id === '1200' || c.id === '1300' || c.id === '1400')
     .map((c) => ({ code: c.id, name: c.nama_akun }))
+
+  const allSortedCoasList = [...coaList].sort((a, b) => a.id.localeCompare(b.id))
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
   const [saldoAwalBank, setSaldoAwalBank] = useState<number>(0)
 
@@ -865,7 +867,7 @@ export default function JurnalPage() {
                 type="button"
                 onClick={() => {
                   setStep1Mode('LAINNYA')
-                  setStep1Arus('MASUK')
+                  if (!step1Arus) setStep1Arus('MASUK')
                   setShowAllCoas(true)
                   setStep2Jenis('')
                   setStep2ManualJenis('')
@@ -884,31 +886,31 @@ export default function JurnalPage() {
             {step1Mode === 'LAINNYA' && (
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 animate-fadeIn">
                 <div className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                  <span>Arah Aliran Kas / Bank:</span>
-                  <span className="text-[11px] text-slate-500 font-normal">Pilih kas bertambah atau berkurang (akan menyesuaikan otomatis dengan COA yang dipilih)</span>
+                  <span>Arah Aliran Transaksi:</span>
+                  <span className="text-[11px] text-slate-500 font-normal">Pilih apakah uang masuk atau uang keluar</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setStep1Arus('MASUK')}
-                    className={`py-2 px-3 rounded-lg text-xs font-semibold transition border cursor-pointer ${
+                    className={`py-2 px-3 rounded-lg text-xs transition border cursor-pointer ${
                       step1Arus === 'MASUK'
                         ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 font-medium'
                     }`}
                   >
-                    + Kas Masuk (Penerimaan)
+                    + Uang Masuk (Pemasukan)
                   </button>
                   <button
                     type="button"
                     onClick={() => setStep1Arus('KELUAR')}
-                    className={`py-2 px-3 rounded-lg text-xs font-semibold transition border cursor-pointer ${
+                    className={`py-2 px-3 rounded-lg text-xs transition border cursor-pointer ${
                       step1Arus === 'KELUAR'
                         ? 'bg-rose-50 text-rose-800 border-rose-300 shadow-2xs font-bold'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 font-medium'
                     }`}
                   >
-                    - Kas Keluar (Pengeluaran)
+                    - Uang Keluar (Pengeluaran)
                   </button>
                 </div>
               </div>
@@ -999,13 +1001,6 @@ export default function JurnalPage() {
                 value={step2Jenis}
                 onValueChange={(val) => {
                   setStep2Jenis(val || '')
-                  if (step1Mode === 'LAINNYA') {
-                    if (val && val.startsWith('4')) {
-                      setStep1Arus('MASUK')
-                    } else if (val && val.startsWith('5')) {
-                      setStep1Arus('KELUAR')
-                    }
-                  }
                   if (val !== '4900' && val !== '5900') {
                     setStep2ManualJenis('')
                   }
@@ -1027,49 +1022,16 @@ export default function JurnalPage() {
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-72">
                   {step1Mode === 'LAINNYA' || showAllCoas ? (
-                    <>
-                      <div className="px-2 py-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border-y border-emerald-100 my-1">
-                        Akun Penerimaan / Uang Masuk (COA 4xxx)
-                      </div>
-                      {penerimaanOptions.map((item) => (
-                        <SelectItem key={item.code} value={item.code}>
-                          <div className="flex items-center gap-2 py-0.5">
-                            <span className="font-mono text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.5 rounded shrink-0">
-                              {item.code}
-                            </span>
-                            <span className="font-medium">{item.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-
-                      <div className="px-2 py-1 text-[10px] font-bold text-rose-800 bg-rose-50 border-y border-rose-100 my-1">
-                        Akun Pengeluaran / Uang Keluar (COA 5xxx)
-                      </div>
-                      {pengeluaranOptions.map((item) => (
-                        <SelectItem key={item.code} value={item.code}>
-                          <div className="flex items-center gap-2 py-0.5">
-                            <span className="font-mono text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 px-1.5 py-0.5 rounded shrink-0">
-                              {item.code}
-                            </span>
-                            <span className="font-medium">{item.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-
-                      <div className="px-2 py-1 text-[10px] font-bold text-slate-800 bg-slate-100 border-y border-slate-200 my-1">
-                        Kas & Talangan (COA 1xxx)
-                      </div>
-                      {kasBankOptions.map((item) => (
-                        <SelectItem key={item.code} value={item.code}>
-                          <div className="flex items-center gap-2 py-0.5">
-                            <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 px-1.5 py-0.5 rounded shrink-0">
-                              {item.code}
-                            </span>
-                            <span className="font-medium">{item.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </>
+                    allSortedCoasList.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        <div className="flex items-center gap-2 py-0.5">
+                          <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 px-1.5 py-0.5 rounded shrink-0">
+                            {item.id}
+                          </span>
+                          <span className="font-medium">{item.nama_akun}</span>
+                        </div>
+                      </SelectItem>
+                    ))
                   ) : step1Arus === 'MASUK' ? (
                     penerimaanOptions.map((item) => (
                       <SelectItem key={item.code} value={item.code}>
