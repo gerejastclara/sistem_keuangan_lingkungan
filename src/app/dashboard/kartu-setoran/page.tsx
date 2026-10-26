@@ -345,6 +345,11 @@ export default function KartuSetoranPage() {
     
     // Tentukan ID KK yang sebenarnya:
     let effectiveKkId = j.kk_id
+    if (effectiveKkId === 'kk-padre-pio-1-1856' || (j.kepala_keluarga?.nama_kk && j.kepala_keluarga.nama_kk.toLowerCase().includes('jemiyo'))) {
+      const foundJemiyo = kkList.find(k => k.nama_kk.toLowerCase().includes('jemiyo')) || allDbKks.find(k => k.nama_kk.toLowerCase().includes('jemiyo'))
+      if (foundJemiyo) effectiveKkId = foundJemiyo.id
+    }
+
     if (!effectiveKkId || effectiveKkId === 'umum') {
       if (j.kepala_keluarga?.id && j.kepala_keluarga.id !== 'umum') {
         effectiveKkId = j.kepala_keluarga.id
@@ -475,7 +480,19 @@ export default function KartuSetoranPage() {
   setoranMap.forEach((_, kkId) => {
     if (kkId !== 'umum' && !allCombinedKksMap.has(kkId)) {
       const jMatch = yearJournals.find(j => j.kk_id === kkId || j.kepala_keluarga?.id === kkId)
-      const nama = jMatch?.kepala_keluarga?.nama_kk || kkId
+      let nama = jMatch?.kepala_keluarga?.nama_kk
+      if (!nama || nama === kkId || nama.startsWith('kk-')) {
+        const foundInDb = allDbKks.find(k => k.id === kkId) || kkList.find(k => k.id === kkId)
+        if (foundInDb && foundInDb.nama_kk && !foundInDb.nama_kk.startsWith('kk-')) {
+          nama = foundInDb.nama_kk
+        } else if (kkId === 'kk-padre-pio-1-1856' || kkId.includes('1856')) {
+          nama = 'Agustinus Jemiyo'
+        } else if (kkId.startsWith('kk-')) {
+          const cleanNameFromId = kkId.replace(/^kk-[a-z0-9]+-[0-9]+-?/i, '').replace(/^kk-/, '').replace(/-/g, ' ')
+          nama = cleanNameFromId.charAt(0).toUpperCase() + cleanNameFromId.slice(1)
+        }
+      }
+      nama = nama || kkId
       allCombinedKksMap.set(kkId, {
         id: kkId,
         lingkungan_id: lingkunganId || '',
@@ -483,6 +500,13 @@ export default function KartuSetoranPage() {
         alamat: 'Pindah / Keluar',
         is_biduk: true
       })
+    }
+  })
+
+  // Pastikan nama_kk tidak berwujud kode ID seperti kk-padre-pio-1-1856
+  allCombinedKksMap.forEach((k) => {
+    if (k.nama_kk === 'kk-padre-pio-1-1856' || k.id === 'kk-padre-pio-1-1856') {
+      k.nama_kk = 'Agustinus Jemiyo'
     }
   })
 
@@ -839,7 +863,7 @@ export default function KartuSetoranPage() {
                   <button
                     type="button"
                     onClick={() => setIsManageModalOpen(true)}
-                    className="px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                    className="px-2.5 py-1.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                   >
                     <span>📌</span>
                     <span>Kelola / Pulihkan Umat ({allPindahKeluarList.length})</span>
@@ -890,11 +914,7 @@ export default function KartuSetoranPage() {
                               <span>{kk.nama_kk}</span>
                               {kk.statusUmat && kk.statusUmat !== 'AKTIF' && (
                                 <span
-                                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border inline-flex items-center gap-1 shrink-0 ${
-                                    kk.isLunas
-                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                      : 'bg-amber-50 text-amber-800 border-amber-300'
-                                  }`}
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-300 bg-slate-100 text-slate-800 inline-flex items-center gap-1 shrink-0"
                                   title={
                                     kk.isLunas
                                       ? `Umat ${kk.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}, sudah membayar lunas 12 bulan`
@@ -915,10 +935,10 @@ export default function KartuSetoranPage() {
                               <select
                                 value={kk.statusUmat || 'AKTIF'}
                                 onChange={(e) => handleSetUmatStatus(kk.id, kk.nama_kk, e.target.value as any)}
-                                className={`text-[10px] rounded px-1.5 py-0.5 border cursor-pointer font-medium transition ${
+                                className={`text-[10px] rounded px-1.5 py-0.5 border cursor-pointer font-semibold transition ${
                                   kk.statusUmat && kk.statusUmat !== 'AKTIF'
-                                    ? 'bg-amber-50 text-amber-900 border-amber-300 font-bold'
-                                    : 'bg-slate-100 border-slate-200 text-slate-600'
+                                    ? 'bg-slate-100 border-slate-300 text-slate-900 shadow-2xs'
+                                    : 'bg-slate-50 border-slate-200 text-slate-600'
                                 }`}
                                 title="Ubah status umat: Aktif, Pindah, atau Keluar"
                               >
@@ -1040,7 +1060,7 @@ export default function KartuSetoranPage() {
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
             <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
+                <div className="p-2 rounded-xl bg-slate-200 text-slate-800">
                   <Users className="w-4 h-4" />
                 </div>
                 <div>
@@ -1073,11 +1093,7 @@ export default function KartuSetoranPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-xs text-slate-900">{item.kk.nama_kk}</span>
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
-                          item.status === 'KELUAR'
-                            ? 'bg-rose-50 text-rose-800 border-rose-200'
-                            : 'bg-amber-50 text-amber-800 border-amber-200'
-                        }`}>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md border bg-slate-100 text-slate-800 border-slate-300">
                           {item.status === 'KELUAR' ? 'Keluar' : 'Pindah'}
                         </span>
                       </div>
@@ -1091,7 +1107,7 @@ export default function KartuSetoranPage() {
                     <button
                       type="button"
                       onClick={() => handleRestoreUmat(item.kk.id, item.kk.nama_kk)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 shadow-2xs cursor-pointer shrink-0"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white transition flex items-center gap-1.5 shadow-2xs cursor-pointer shrink-0"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       <span>Kembalikan ke Aktif</span>
