@@ -96,6 +96,8 @@ export default function DashboardOverviewPage() {
   const [saldoAwal, setSaldoAwal] = useState(0)
   const [totalNilaiAset, setTotalNilaiAset] = useState(0)
   const [recentTransactions, setRecentTransactions] = useState<JurnalTransaksi[]>([])
+  const [latestTransactionDate, setLatestTransactionDate] = useState<string | null>(null)
+  const [daysSinceLastTx, setDaysSinceLastTx] = useState<number | null>(null)
 
   // Family & Umat State (for Sekretaris & Paroki overview)
   const [kkList, setKkList] = useState<KepalaKeluarga[]>([])
@@ -485,6 +487,31 @@ export default function DashboardOverviewPage() {
             setTotalKasMasuk(masuk)
             setTotalKasKeluar(keluar)
             setRecentTransactions(combinedJournals.slice(0, 5))
+
+            // Calculate latest regular transaction & inactivity days
+            const regularTxs = combinedJournals.filter(
+              j => j.no_bukti !== '[SA/1100]' && !(j.keterangan || '').includes('[SALDO_AWAL]')
+            )
+
+            if (regularTxs.length > 0) {
+              const sorted = [...regularTxs].sort((a, b) => {
+                const dateA = new Date(a.tanggal || a.created_at).getTime()
+                const dateB = new Date(b.tanggal || b.created_at).getTime()
+                return dateB - dateA
+              })
+              const latest = sorted[0].tanggal || sorted[0].created_at || null
+              setLatestTransactionDate(latest)
+              if (latest) {
+                const diffMs = Date.now() - new Date(latest).getTime()
+                const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
+                setDaysSinceLastTx(diffDays)
+              } else {
+                setDaysSinceLastTx(null)
+              }
+            } else {
+              setLatestTransactionDate(null)
+              setDaysSinceLastTx(null)
+            }
 
             const { data: asetList } = await supabase
               .from('aset')
@@ -2018,6 +2045,73 @@ export default function DashboardOverviewPage() {
 
         </div>
       </div>
+
+      {/* ALERT KEAKTIFAN TRANSAKSI BENDAHARA LINGKUNGAN (Soft Amber / Slate - NO NEON) */}
+      {userRole !== 'PAROKI' && (
+        daysSinceLastTx === null ? (
+          <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 bg-amber-100/90 text-amber-800 rounded-xl shrink-0 mt-0.5">
+                <Clock className="w-5 h-5 text-amber-800" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-bold text-amber-950 font-serif">
+                    Pemberitahuan: Belum Ada Transaksi Tercatat
+                  </h4>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900 border border-amber-300/60">
+                    Perlu Input Mutasi Kas
+                  </span>
+                </div>
+                <p className="text-xs text-amber-900/80 max-w-2xl leading-relaxed">
+                  Lingkungan <strong>{formatNamaLingkungan(lingkunganName)}</strong> belum memiliki riwayat transaksi penerimaan maupun pengeluaran kas. Silakan mulai membukukan iuran umat, kolekte, atau mutasi operasional lingkungan Anda.
+                </p>
+              </div>
+            </div>
+
+            <Link href="/dashboard/jurnal" className="shrink-0">
+              <Button
+                size="sm"
+                className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl px-4 py-2 cursor-pointer shadow-xs transition flex items-center gap-1.5"
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                <span>Input Transaksi Pertama →</span>
+              </Button>
+            </Link>
+          </div>
+        ) : daysSinceLastTx >= 7 ? (
+          <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 bg-amber-100/90 text-amber-800 rounded-xl shrink-0 mt-0.5">
+                <AlertTriangle className="w-5 h-5 text-amber-800" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-bold text-amber-950 font-serif">
+                    Peringatan: Belum Ada Transaksi Baru Selama {daysSinceLastTx} Hari
+                  </h4>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900 border border-amber-300/60">
+                    Tidak Aktif {daysSinceLastTx} Hari
+                  </span>
+                </div>
+                <p className="text-xs text-amber-900/80 max-w-2xl leading-relaxed">
+                  Transaksi kas terakhir tercatat pada tanggal <strong>{latestTransactionDate ? formatDateIndo(latestTransactionDate) : '-'}</strong> ({daysSinceLastTx} hari yang lalu). Harap periksa dan catat mutasi kas atau setoran terbaru agar pembukuan tetap tertib dan mutakhir.
+                </p>
+              </div>
+            </div>
+
+            <Link href="/dashboard/jurnal" className="shrink-0">
+              <Button
+                size="sm"
+                className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl px-4 py-2 cursor-pointer shadow-xs transition flex items-center gap-1.5"
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                <span>Catat Transaksi Sekarang →</span>
+              </Button>
+            </Link>
+          </div>
+        ) : null
+      )}
 
       {/* STRUKTUR PENGURUS LINGKUNGAN */}
       {renderPengurusCard(userRole === 'PAROKI')}
