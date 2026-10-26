@@ -281,9 +281,6 @@ export default function JurnalPage() {
               const parsed = JSON.parse(cached)
               j.kepala_keluarga = { id: parsed.id, nama_kk: parsed.nama_kk, lingkungan_id: j.lingkungan_id } as any
             } catch (e) {}
-          } else if (j.no_bukti === 'BBM/004/09/2026' || j.id === '39480d56-45b3-4118-a4f8-420bbcad4d0b') {
-            const found = kkList.find(k => k.nama_kk.toLowerCase().includes('jemiyo')) || { id: 'kk-padre-pio-1-1856', nama_kk: 'Agustinus Jemiyo' }
-            j.kepala_keluarga = { id: found.id, nama_kk: found.nama_kk, lingkungan_id: j.lingkungan_id } as any
           } else if (j.keterangan) {
             const kkMatch = j.keterangan.match(/\[KK:\s*([^\]]+)\]/i)
             if (kkMatch) {

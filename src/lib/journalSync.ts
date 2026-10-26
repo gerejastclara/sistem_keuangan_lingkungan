@@ -21,9 +21,13 @@ export function purgeAllObsoleteLocalStorageCache() {
           k === 'custom_journals_all_store' ||
           k.startsWith('custom_kks_') ||
           k === 'custom_kks_all_store' ||
+          k.startsWith('custom_anggota_') ||
+          k.startsWith('custom_golongan_') ||
           k.startsWith('profil_manual_') ||
           k.startsWith('pengurus_manual_') ||
-          k.startsWith('tx_kk_'))
+          k.startsWith('tx_kk_') ||
+          k.startsWith('kartu_setoran_') ||
+          k.startsWith('dafu_approvals_store'))
       ) {
         keysToRemove.push(k)
       }

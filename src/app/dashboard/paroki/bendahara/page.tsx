@@ -151,9 +151,6 @@ export default function ParokiBendaharaPage() {
                 j.kepala_keluarga = { id: parsed.id, nama_kk: parsed.nama_kk, lingkungan_id: j.lingkungan_id } as any
                 if (!j.kk_id && parsed.id) j.kk_id = parsed.id
               } catch (e) {}
-            } else if (j.no_bukti === 'BBM/004/09/2026' || j.id === '39480d56-45b3-4118-a4f8-420bbcad4d0b') {
-              j.kepala_keluarga = { id: 'kk-padre-pio-1-1856', nama_kk: 'Agustinus Jemiyo', lingkungan_id: j.lingkungan_id } as any
-              j.kk_id = 'kk-padre-pio-1-1856'
             } else if (j.keterangan) {
               const kkMatch = j.keterangan.match(/\[KK:\s*([^\]]+)\]/i)
               if (kkMatch) {
