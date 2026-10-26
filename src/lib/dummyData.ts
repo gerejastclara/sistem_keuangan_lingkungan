@@ -21,7 +21,7 @@ if (typeof window !== 'undefined') {
     const keysToPurge = ['custom_kks_all_store', 'custom_anggota_all_store', 'custom_golongan_all_store']
     keysToPurge.forEach(k => {
       const raw = localStorage.getItem(k)
-      if (raw && (raw.includes('dummy-') || raw.includes('Anastasia Gunawan') || raw.includes('Petrus Sugeng') || raw.toLowerCase().includes('"dimas"') || raw.toLowerCase().includes('"nama_kk":"dimas"'))) {
+      if (raw && (raw.includes('dummy-') || raw.includes('Anastasia Gunawan') || raw.includes('Petrus Sugeng') || raw.toLowerCase().includes('"dimas"') || raw.toLowerCase().includes('"nama_kk":"dimas"') || raw.toLowerCase().includes('test12') || raw.toLowerCase().includes('test 12'))) {
         localStorage.removeItem(k)
       }
     })
@@ -29,7 +29,7 @@ if (typeof window !== 'undefined') {
       const key = localStorage.key(i)
       if (key && (key.startsWith('custom_kks_') || key.startsWith('custom_anggota_') || key.startsWith('custom_golongan_'))) {
         const val = localStorage.getItem(key)
-        if (val && (val.includes('dummy-') || val.includes('Anastasia Gunawan') || val.includes('Petrus Sugeng') || val.toLowerCase().includes('"dimas"') || val.toLowerCase().includes('"nama_kk":"dimas"'))) {
+        if (val && (val.includes('dummy-') || val.includes('Anastasia Gunawan') || val.includes('Petrus Sugeng') || val.toLowerCase().includes('"dimas"') || val.toLowerCase().includes('"nama_kk":"dimas"') || val.toLowerCase().includes('test12') || val.toLowerCase().includes('test 12'))) {
           localStorage.removeItem(key)
         }
       }
@@ -44,7 +44,9 @@ if (typeof window !== 'undefined') {
           const filtered = parsed.filter(a =>
             a.id !== '35fb2279-43d5-424d-b349-d95313d9901e' &&
             a.id !== 'ca43092a-537d-4604-b5ad-dbfb35de5c91' &&
-            a.id !== '7ac5b273-c7a4-4176-a7d4-2658a8b892a1'
+            a.id !== '7ac5b273-c7a4-4176-a7d4-2658a8b892a1' &&
+            !(a.nama_kk || '').toLowerCase().includes('test12') &&
+            !(a.nama_kk || '').toLowerCase().includes('test 12')
           )
           localStorage.setItem('dafu_approvals_store', JSON.stringify(filtered))
         }
@@ -132,6 +134,8 @@ export function ensureDummyKksForLingkungan(
         !k.id.includes('dummy') &&
         !k.id.startsWith('kk-prop-') &&
         k.nama_kk.toLowerCase().trim() !== 'dimas' &&
+        !k.nama_kk.toLowerCase().includes('test12') &&
+        !k.nama_kk.toLowerCase().includes('test 12') &&
         !isDeleted(k.id, k.nama_kk)
       ) {
         combinedMap.set(k.id, k)

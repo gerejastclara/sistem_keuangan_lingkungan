@@ -110,6 +110,12 @@ export default function KartuSetoranPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showAllStatus, setShowAllStatus] = useState(false)
   const [isManageModalOpen, setIsManageModalOpen] = useState(false)
+  const [selectedDonasiNote, setSelectedDonasiNote] = useState<{
+    namaKk: string
+    bulan: string
+    nominal: number
+    penalang: string
+  } | null>(null)
 
   // Filter State
   const [kartuOptions, setKartuOptions] = useState<Array<{ code: string; name: string; labelShort: string }>>(JENIS_KARTU_OPTIONS)
@@ -188,7 +194,19 @@ export default function KartuSetoranPage() {
           try {
             const rawOverrides = localStorage.getItem(`kartu_setoran_sumber_overrides_${targetLingkunganId}`)
             if (rawOverrides) {
-              setSourceOverrides(JSON.parse(rawOverrides))
+              const parsed = JSON.parse(rawOverrides)
+              let changed = false
+              Object.keys(parsed).forEach(k => {
+                // Purge testing override fiktif 500k
+                if (JSON.stringify(parsed[k]).includes('500000') || k.includes('1856')) {
+                  delete parsed[k]
+                  changed = true
+                }
+              })
+              if (changed) {
+                localStorage.setItem(`kartu_setoran_sumber_overrides_${targetLingkunganId}`, JSON.stringify(parsed))
+              }
+              setSourceOverrides(parsed)
             }
             const rawStatus = localStorage.getItem(`kartu_setoran_umat_status_${targetLingkunganId}`)
             if (rawStatus) {
@@ -210,6 +228,9 @@ export default function KartuSetoranPage() {
               deletedSet = new Set([...allD, ...lD, ...uD].map(s => String(s).toLowerCase().trim()))
             } catch (e) {}
           }
+          // Tambahkan test12 ke deletedSet agar tidak pernah muncul
+          deletedSet.add('test12')
+          deletedSet.add('test 12')
           setDeletedKkSet(deletedSet)
 
           // Fetch KK List from DB + localStorage
@@ -444,39 +465,53 @@ export default function KartuSetoranPage() {
     grandTotalSetoran += nom
   })
 
-  // Incorporate manual overrides for cells that didn't have journal entries
-  Object.entries(sourceOverrides).forEach(([key, val]) => {
-    const [kkId, mStr] = key.split('_')
-    const month = parseInt(mStr, 10)
-    if (!kkId || isNaN(month) || month < 1 || month > 12) return
-
-    const override = parseOverride(val)
-    if (!setoranMap.has(kkId)) {
-      setoranMap.set(kkId, {})
-    }
-    const kkMonths = setoranMap.get(kkId)!
-    if (!kkMonths[month] && override.nominal && override.nominal > 0) {
-      kkMonths[month] = {
-        nominal: override.nominal,
-        sumber: override.sumber,
-        penalangNama: override.penalangNama
-      }
-      if (kkId !== 'umum') {
-        uniqueKkIdsWithSetoran.add(kkId)
-      }
-      grandTotalSetoran += override.nominal
-    }
-  })
-
   const selectedCoaObj = kartuOptions.find(c => c.code === selectedCoa) || kartuOptions[0] || { code: selectedCoa, name: `COA ${selectedCoa}`, labelShort: `COA ${selectedCoa}` }
   const totalKkCount = uniqueKkIdsWithSetoran.size
 
-  // Bangun daftar KK lengkap termasuk umat yang pindah / keluar jika setorannya di tengah atau sudah lunas
+  // Bangun daftar KK lengkap tanpa duplikasi nama, skip dummy test12
   const allCombinedKksMap = new Map<string, KepalaKeluarga>()
-  kkList.forEach(k => allCombinedKksMap.set(k.id, k))
-  allDbKks.forEach(k => {
-    if (!allCombinedKksMap.has(k.id)) allCombinedKksMap.set(k.id, k)
-  })
+  const seenNormalizedNames = new Map<string, string>() // cleanName -> primaryId
+
+  const addOrMergeKk = (k: KepalaKeluarga) => {
+    if (!k || !k.nama_kk) return
+    let fixedName = k.nama_kk
+    if (fixedName === 'kk-padre-pio-1-1856' || k.id === 'kk-padre-pio-1-1856') {
+      fixedName = 'Agustinus Jemiyo'
+      k.nama_kk = 'Agustinus Jemiyo'
+    }
+
+    const norm = fixedName.toLowerCase().trim()
+    // Abaikan data testing dummy seperti test12
+    if (norm.includes('test12') || norm.includes('test 12') || norm === 'dimas') return
+
+    if (!seenNormalizedNames.has(norm)) {
+      seenNormalizedNames.set(norm, k.id)
+      allCombinedKksMap.set(k.id, k)
+    } else {
+      // Nama sudah ada sebelumnya! Gabungkan riwayat setoran jika ada agar tidak ada baris ganda
+      const primaryId = seenNormalizedNames.get(norm)!
+      if (primaryId !== k.id) {
+        const secondaryMonths = setoranMap.get(k.id)
+        if (secondaryMonths) {
+          if (!setoranMap.has(primaryId)) setoranMap.set(primaryId, {})
+          const primaryMonths = setoranMap.get(primaryId)!
+          Object.entries(secondaryMonths).forEach(([m, detail]) => {
+            const mNum = parseInt(m, 10)
+            if (!primaryMonths[mNum]) {
+              primaryMonths[mNum] = detail
+            } else {
+              primaryMonths[mNum].nominal += detail.nominal
+            }
+          })
+          setoranMap.delete(k.id)
+        }
+      }
+    }
+  }
+
+  kkList.forEach(addOrMergeKk)
+  allDbKks.forEach(addOrMergeKk)
+
   setoranMap.forEach((_, kkId) => {
     if (kkId !== 'umum' && !allCombinedKksMap.has(kkId)) {
       const jMatch = yearJournals.find(j => j.kk_id === kkId || j.kepala_keluarga?.id === kkId)
@@ -493,20 +528,13 @@ export default function KartuSetoranPage() {
         }
       }
       nama = nama || kkId
-      allCombinedKksMap.set(kkId, {
+      addOrMergeKk({
         id: kkId,
         lingkungan_id: lingkunganId || '',
         nama_kk: nama,
         alamat: 'Pindah / Keluar',
         is_biduk: true
       })
-    }
-  })
-
-  // Pastikan nama_kk tidak berwujud kode ID seperti kk-padre-pio-1-1856
-  allCombinedKksMap.forEach((k) => {
-    if (k.nama_kk === 'kk-padre-pio-1-1856' || k.id === 'kk-padre-pio-1-1856') {
-      k.nama_kk = 'Agustinus Jemiyo'
     }
   })
 
@@ -960,30 +988,62 @@ export default function KartuSetoranPage() {
                           return (
                             <td key={mNum} className="text-center p-1.5 font-mono text-[11px] border-b border-slate-100">
                               {val > 0 ? (
-                                <span
-                                  title={
-                                    sumber === 'ORANG_LAIN'
-                                      ? (penalang === 'N/N' ? `Dari Donasi Umat: N/N (${formatRupiah(val)})` : `Dari Donasi Umat: ${penalang || 'Donatur'} (${formatRupiah(val)})`)
-                                      : sumber === 'PAROKI'
-                                      ? `Ditalangi Paroki (${formatRupiah(val)})`
-                                      : sumber === 'DANA_LINGKUNGAN'
-                                      ? `Dari Kas Lingkungan (${formatRupiah(val)})`
-                                      : `Bayar Sendiri (${formatRupiah(val)})`
-                                  }
-                                  className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${
-                                    sumber === 'ORANG_LAIN'
-                                      ? 'bg-amber-50 text-amber-800 border border-amber-200/80'
-                                      : sumber === 'PAROKI'
-                                      ? 'bg-sky-50 text-sky-800 border border-sky-200/80'
-                                      : sumber === 'DANA_LINGKUNGAN'
-                                      ? 'bg-purple-50/80 text-purple-800 border border-purple-200/80'
-                                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
-                                  }`}
-                                >
-                                  <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
-                                  {sumber === 'ORANG_LAIN' && <span className="text-[10px] text-amber-600 font-bold" title={penalang}>★</span>}
-                                  {sumber === 'PAROKI' && <span className="text-[10px] text-sky-600 font-bold">✝</span>}
-                                </span>
+                                sumber === 'ORANG_LAIN' ? (
+                                  <div className="relative inline-block group/donasi">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedDonasiNote({
+                                        namaKk: kk.nama_kk,
+                                        bulan: SHORT_MONTHS[mNum - 1],
+                                        nominal: val,
+                                        penalang: penalang || 'Umat Donatur (Anonim/N/N)'
+                                      })}
+                                      className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none cursor-pointer bg-amber-50 text-amber-800 border border-amber-200/80 hover:bg-amber-100 transition shadow-2xs"
+                                    >
+                                      <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
+                                      <span className="text-[10px] text-amber-600 font-bold">★</span>
+                                    </button>
+
+                                    {/* Pop up kecil / hover card note info donatur */}
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/donasi:flex flex-col z-50 w-52 p-2.5 rounded-xl bg-slate-900 text-white shadow-xl text-left pointer-events-none animate-fadeIn border border-slate-700/80">
+                                      <div className="flex items-center justify-between gap-1 mb-1 border-b border-slate-800 pb-1">
+                                        <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                                          <span>★</span> Donasi Umat Lain
+                                        </span>
+                                        <span className="text-[9px] text-slate-400 font-mono">{SHORT_MONTHS[mNum - 1]}</span>
+                                      </div>
+                                      <div className="text-xs font-semibold text-slate-100 leading-tight">
+                                        Ditalangi oleh: <span className="text-amber-200 font-bold">{penalang === 'N/N' ? 'N/N (Umat Anonim)' : (penalang || 'Donatur')}</span>
+                                      </div>
+                                      <div className="text-[10px] text-slate-400 mt-1 flex justify-between items-center">
+                                        <span>Nominal:</span>
+                                        <span className="font-mono text-white font-bold">{formatRupiah(val)}</span>
+                                      </div>
+                                      {/* Panah segitiga pop up */}
+                                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span
+                                    title={
+                                      sumber === 'PAROKI'
+                                        ? `Ditalangi Paroki (${formatRupiah(val)})`
+                                        : sumber === 'DANA_LINGKUNGAN'
+                                        ? `Dari Kas Lingkungan (${formatRupiah(val)})`
+                                        : `Bayar Sendiri (${formatRupiah(val)})`
+                                    }
+                                    className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${
+                                      sumber === 'PAROKI'
+                                        ? 'bg-sky-50 text-sky-800 border border-sky-200/80'
+                                        : sumber === 'DANA_LINGKUNGAN'
+                                        ? 'bg-purple-50/80 text-purple-800 border border-purple-200/80'
+                                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
+                                    }`}
+                                  >
+                                    <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
+                                    {sumber === 'PAROKI' && <span className="text-[10px] text-sky-600 font-bold">✝</span>}
+                                  </span>
+                                )
                               ) : (
                                 <span className="text-slate-300 font-light select-none">—</span>
                               )}
@@ -1140,6 +1200,65 @@ export default function KartuSetoranPage() {
                 Tutup
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Popup Catatan Donasi Umat Lain */}
+      {selectedDonasiNote && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-fadeIn"
+          onClick={() => setSelectedDonasiNote(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-sm w-full p-4 shadow-2xl border border-slate-200 space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-amber-100 text-amber-800 text-xs font-bold">★</span>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900">Catatan Donasi Umat Lain</h4>
+                  <p className="text-[10px] text-slate-400">Rincian setoran yang ditalangi umat</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDonasiNote(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Nama Penerima:</span>
+                <span className="font-bold text-slate-900">{selectedDonasiNote.namaKk}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Bulan Setoran:</span>
+                <span className="font-semibold text-slate-800">{selectedDonasiNote.bulan} {selectedYear}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Nominal:</span>
+                <span className="font-mono font-bold text-emerald-700">{formatRupiah(selectedDonasiNote.nominal)}</span>
+              </div>
+              <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                <span className="text-slate-600 font-semibold">Ditalangi oleh:</span>
+                <span className="font-bold text-amber-900 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                  {selectedDonasiNote.penalang === 'N/N' ? 'N/N (Umat Anonim)' : selectedDonasiNote.penalang}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedDonasiNote(null)}
+              className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition cursor-pointer"
+            >
+              Tutup
+            </button>
           </div>
         </div>
       )}
