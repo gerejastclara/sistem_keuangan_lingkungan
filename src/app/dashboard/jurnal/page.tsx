@@ -895,8 +895,8 @@ export default function JurnalPage() {
                     onClick={() => setStep1Arus('MASUK')}
                     className={`py-2 px-3 rounded-lg text-xs transition border cursor-pointer ${
                       step1Arus === 'MASUK'
-                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 font-medium'
+                        ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                        : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 font-medium'
                     }`}
                   >
                     + Uang Masuk (Pemasukan)
@@ -906,8 +906,8 @@ export default function JurnalPage() {
                     onClick={() => setStep1Arus('KELUAR')}
                     className={`py-2 px-3 rounded-lg text-xs transition border cursor-pointer ${
                       step1Arus === 'KELUAR'
-                        ? 'bg-rose-50 text-rose-800 border-rose-300 shadow-2xs font-bold'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 font-medium'
+                        ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                        : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 font-medium'
                     }`}
                   >
                     - Uang Keluar (Pengeluaran)
