@@ -40,10 +40,10 @@ function DottedField({
   className?: string
 }) {
   return (
-    <div className={`flex items-baseline gap-1 text-[11px] leading-relaxed text-black ${className}`}>
+    <div className={`flex items-baseline gap-1 text-[10px] sm:text-[11px] print:text-[9.5px] leading-tight print:leading-none text-black ${className}`}>
       <span className="shrink-0">{label}</span>
       <span className="shrink-0">:</span>
-      <div className="flex-1 relative flex items-baseline overflow-hidden border-b border-dotted border-black min-h-[17px] mx-1">
+      <div className="flex-1 relative flex items-baseline overflow-hidden border-b border-dotted border-black min-h-[16px] print:min-h-[13px] mx-1">
         <span className="font-semibold text-black px-1 z-10 bg-white whitespace-pre-wrap">
           {value || ''}
         </span>
@@ -69,10 +69,10 @@ function UnderlineField({
   className?: string
 }) {
   return (
-    <div className={`flex items-baseline gap-1.5 text-[11px] leading-relaxed text-black ${className}`}>
+    <div className={`flex items-baseline gap-1.5 text-[10px] sm:text-[11px] print:text-[9.5px] leading-tight print:leading-none text-black ${className}`}>
       <span className="shrink-0 font-medium">{label}</span>
       <span className="shrink-0">:</span>
-      <div className="flex-1 relative flex items-baseline overflow-hidden border-b border-black min-h-[17px] mx-1">
+      <div className="flex-1 relative flex items-baseline overflow-hidden border-b border-black min-h-[16px] print:min-h-[13px] mx-1">
         <span className="font-semibold text-black px-1 z-10 bg-white whitespace-pre-wrap">
           {value || ''}
         </span>
@@ -88,6 +88,7 @@ export default function FormStandarPage() {
   // Lingkungan & Profile State
   const [lingkunganId, setLingkunganId] = useState<string>('')
   const [lingkunganName, setLingkunganName] = useState<string>('')
+  const [profilDb, setProfilDb] = useState<any>(null)
   const [kkList, setKkList] = useState<KepalaKeluarga[]>([])
   const [anggotaMap, setAnggotaMap] = useState<Record<string, AnggotaKeluarga[]>>({})
 
@@ -160,9 +161,18 @@ export default function FormStandarPage() {
       setLingkunganId(effId)
       setLingkunganName(effNama)
 
-      // Load KK and members for autofill
+      // Load Profil Lingkungan (untuk nama Ketua resmi) & KK/Anggota
       try {
         const dbUuid = getLingkunganDbUuid(effId)
+
+        // Ambil profil pengurus resmi dari Supabase (Bernadette Aprilia Viola, dll.)
+        const { data: pDb } = await supabase
+          .from('profil_lingkungan')
+          .select('*')
+          .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${effId}`)
+          .maybeSingle()
+        if (pDb) setProfilDb(pDb)
+
         const { data: dbKks } = await supabase
           .from('kepala_keluarga')
           .select('*')
@@ -205,12 +215,20 @@ export default function FormStandarPage() {
       window.removeEventListener('storage', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
     }
-  }, [])
+  }, [supabase])
 
-  // Pengurus Info
+  // Pengurus Info (menggunakan profilDb dari Supabase)
   const pengurus = useMemo(() => {
-    return getPengurusForLingkungan(lingkunganId || 'default', lingkunganName)
-  }, [lingkunganId, lingkunganName])
+    return getPengurusForLingkungan(lingkunganId || 'default', lingkunganName, profilDb)
+  }, [lingkunganId, lingkunganName, profilDb])
+
+  // Helper agar jika nama ketua belum diisi, tampil garis titik-titik rapi (bukan tulisan "belum ditentukan")
+  const formatKetuaSignature = (nama?: string | null) => {
+    if (!nama || nama.includes('belum ditentukan') || nama.includes('Susunan pengurus') || nama.trim() === '-') {
+      return '..................................................'
+    }
+    return nama
+  }
 
   // Flat members list for applicant selector
   const allMembers = useMemo(() => {
@@ -322,9 +340,22 @@ export default function FormStandarPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
-      {/* CSS KHUSUS PRINT A4 BERSIH TANPA MARGIN / SHADOW */}
+      {/* CSS KHUSUS PRINT A4 1 HALAMAN PAS & RAPI TANPA TERPOTONG */}
       <style jsx global>{`
+        @page {
+          size: A4 portrait;
+          margin: 5mm 7mm 5mm 7mm;
+        }
         @media print {
+          html, body {
+            width: 100% !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           body * {
             visibility: hidden;
           }
@@ -332,16 +363,29 @@ export default function FormStandarPage() {
             visibility: visible;
           }
           #print-document-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 15px;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
             box-shadow: none !important;
             border: none !important;
+            background: #ffffff !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+            page-break-before: avoid !important;
+            break-before: avoid !important;
+            font-size: 10px !important;
+            line-height: 1.25 !important;
           }
           .no-print {
+            display: none !important;
+          }
+          header, nav, aside, footer {
             display: none !important;
           }
         }
@@ -670,17 +714,17 @@ export default function FormStandarPage() {
         <div className="lg:col-span-7">
           <div
             id="print-document-area"
-            className="bg-white rounded-none sm:rounded-lg border border-slate-300 shadow-md p-6 sm:p-10 text-black font-sans min-h-[900px]"
+            className="bg-white rounded-none sm:rounded-lg border border-slate-300 shadow-md p-4 sm:p-8 print:p-0 print:border-none print:shadow-none print:min-h-0 text-black font-sans min-h-[900px]"
           >
             {/* 1. KOP SURAT RESMI GEREJA SANTA CLARA (SAMA PERSIS DENGAN DOKUMEN ASLI) */}
-            <div className="pb-1">
+            <div className="pb-1 print:pb-0.5">
               <div className="flex items-start justify-between gap-3">
                 {/* Logo Paroki Santa Clara */}
-                <div className="shrink-0 w-24 h-24 flex items-center justify-center pt-1">
+                <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center pt-0.5">
                   <img
                     src="/logo-kop-paroki.png"
                     alt="Logo Santa Clara"
-                    className="max-h-24 max-w-24 object-contain"
+                    className="max-h-16 max-w-16 sm:max-h-20 sm:max-w-20 object-contain"
                     onError={(e) => {
                       ;(e.currentTarget as HTMLImageElement).src = '/logo-st-clara.jpg'
                     }}
@@ -688,38 +732,38 @@ export default function FormStandarPage() {
                 </div>
 
                 {/* Header Text Tengah */}
-                <div className="flex-1 pt-1">
+                <div className="flex-1 pt-0.5">
                   {selectedFormId === 'FORM02' || kopType === 'KATEKESE' ? (
                     <div>
-                      <div className="text-base sm:text-lg font-sans font-bold tracking-[0.3em] uppercase text-black">
+                      <div className="text-base sm:text-lg print:text-sm font-sans font-bold tracking-[0.3em] uppercase text-black">
                         S E K S I
                       </div>
                       <div className="border-b-2 border-black my-0.5 w-full"></div>
-                      <div className="text-base sm:text-lg font-sans font-bold tracking-[0.3em] uppercase text-black">
+                      <div className="text-base sm:text-lg print:text-sm font-sans font-bold tracking-[0.3em] uppercase text-black">
                         K A T E K E S E
                       </div>
-                      <div className="text-[10px] sm:text-[11px] text-black font-sans leading-tight pt-1">
+                      <div className="text-[10px] sm:text-[11px] print:text-[8.5px] text-black font-sans leading-tight pt-0.5">
                         Pastoran &amp; Sekretariat &nbsp;&nbsp;: &nbsp;Jl. Lingkar Utara RT 03 RW 06 Kel. Harapan Baru Bekasi Utara
                       </div>
-                      <div className="text-[10px] sm:text-[11px] text-black font-sans leading-tight">
+                      <div className="text-[10px] sm:text-[11px] print:text-[8.5px] text-black font-sans leading-tight">
                         Narahubung &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;Whatsapp : Sekretariat 0819-1188-9980 / Katekese : 0851-8310-4061
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <div className="text-base sm:text-lg font-serif font-bold text-black leading-tight">
+                      <div className="text-base sm:text-lg print:text-sm font-serif font-bold text-black leading-tight">
                         Pengurus Gereja dan Dana Papa
                       </div>
                       <div className="border-b border-black my-0.5 w-full"></div>
-                      <div className="text-base sm:text-lg font-serif font-bold text-black leading-tight">
+                      <div className="text-base sm:text-lg print:text-sm font-serif font-bold text-black leading-tight">
                         {kopType === 'LINGKUNGAN'
                           ? `Dewan Pengurus ${formatNamaLingkungan(lingkunganName).toUpperCase()}`
                           : 'Pengurus Dewan Paroki'}
                       </div>
-                      <div className="text-[10px] sm:text-[11px] text-black font-sans leading-tight pt-1">
+                      <div className="text-[10px] sm:text-[11px] print:text-[8.5px] text-black font-sans leading-tight pt-0.5">
                         Pastoran &amp; Sekretariat &nbsp;&nbsp;: &nbsp;Jl. Lingkar Utara RT 03 RW 06 Kel. Harapan Baru Bekasi Utara
                       </div>
-                      <div className="text-[10px] sm:text-[11px] text-black font-sans leading-tight">
+                      <div className="text-[10px] sm:text-[11px] print:text-[8.5px] text-black font-sans leading-tight">
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Telp. 021-8870327, e-mail : parokisantaklara@gmail.com
                       </div>
                     </div>
@@ -727,60 +771,60 @@ export default function FormStandarPage() {
                 </div>
 
                 {/* SANTA CLARA Biru Tebal di sebelah kanan persis seperti dokumen asli */}
-                <div className="shrink-0 text-right pt-2 pl-2">
-                  <span className="text-2xl sm:text-3xl font-serif font-black tracking-wider text-[#0000EE] uppercase">
+                <div className="shrink-0 text-right pt-1 pl-2">
+                  <span className="text-xl sm:text-2xl print:text-xl font-serif font-black tracking-wider text-[#0000EE] uppercase">
                     SANTA CLARA
                   </span>
                 </div>
               </div>
 
               {/* Garis Ganda Pembatas Kop Surat */}
-              <div className="border-t-2 border-b border-black h-1.5 my-2"></div>
+              <div className="border-t-2 border-b border-black h-1 my-1.5 print:my-1"></div>
             </div>
 
             {/* 2. BODY FORMULIR DALAM BINGKAI PERSEGI HITAM (SAMA PERSIS DOKUMEN ASLI) */}
-            <div className="border border-black p-4 sm:p-5 space-y-3 text-black">
+            <div className="border border-black p-3 sm:p-4 print:p-2.5 space-y-2 print:space-y-1.5 text-black">
               {/* KHUSUS FORM 02: PENDAFTARAN CALON KATEKUMEN (SAMA PERSIS DOKUMEN ASLI) */}
               {selectedFormId === 'FORM02' ? (
-                <div className="space-y-3 text-[11px]">
+                <div className="space-y-2 print:space-y-1 text-[10.5px] print:text-[9px]">
                   {/* Top Header Row with Title Box & No. Berkas Box */}
-                  <div className="flex items-stretch gap-2 pb-1">
-                    <div className="flex-1 border border-black p-2.5 text-center flex items-center justify-center">
-                      <div className="font-bold text-sm sm:text-base uppercase tracking-wide">
+                  <div className="flex items-stretch gap-2 pb-0.5">
+                    <div className="flex-1 border border-black p-2 print:p-1.5 text-center flex items-center justify-center">
+                      <div className="font-bold text-sm sm:text-base print:text-[12px] uppercase tracking-wide">
                         FORMULIR PENDAFTARAN CALON KATEKUMEN
                       </div>
                     </div>
-                    <div className="w-24 sm:w-28 border border-black p-1.5 text-center flex flex-col justify-center shrink-0">
-                      <div className="font-bold text-xs leading-tight">No.</div>
-                      <div className="font-bold text-xs leading-tight">Berkas</div>
-                      <div className="font-mono text-[10px] font-semibold text-slate-800 pt-0.5">
+                    <div className="w-24 sm:w-28 print:w-24 border border-black p-1 text-center flex flex-col justify-center shrink-0">
+                      <div className="font-bold text-xs print:text-[10px] leading-tight">No.</div>
+                      <div className="font-bold text-xs print:text-[10px] leading-tight">Berkas</div>
+                      <div className="font-mono text-[10px] print:text-[9px] font-semibold text-slate-800 pt-0.5">
                         {formValues.no_berkas || '..................'}
                       </div>
                     </div>
                   </div>
 
-                  {/* 4-Column Checklist Table matching Image 1 */}
-                  <div className="space-y-1">
-                    <div className="font-serif italic font-bold text-[11px]">
+                  {/* 4-Column Checklist Table */}
+                  <div className="space-y-0.5">
+                    <div className="font-serif italic font-bold text-[10px] print:text-[8.5px]">
                       Silakan centang pada pilihan yang sesuai:
                     </div>
                     <div className="border border-black overflow-hidden">
-                      <table className="w-full text-[10px] border-collapse">
+                      <table className="w-full text-[9.5px] print:text-[8px] border-collapse">
                         <thead>
                           <tr className="border-b border-black bg-slate-50 text-center font-bold">
-                            <th className="border-r border-black p-1.5 w-1/4">Usia</th>
-                            <th className="border-r border-black p-1.5 w-1/4">Status Perkawinan</th>
-                            <th className="border-r border-black p-1.5 w-1/4">Agama Sebelumnya</th>
-                            <th className="p-1.5 w-1/4">Domisili Asal</th>
+                            <th className="border-r border-black p-1 w-1/4">Usia</th>
+                            <th className="border-r border-black p-1 w-1/4">Status Perkawinan</th>
+                            <th className="border-r border-black p-1 w-1/4">Agama Sebelumnya</th>
+                            <th className="p-1 w-1/4">Domisili Asal</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr className="align-top">
                             {/* Usia */}
-                            <td className="border-r border-black p-2 space-y-1">
+                            <td className="border-r border-black p-1.5 space-y-0.5">
                               {['7 – 10 Tahun', '11 – 14 Tahun', '15 – 17 Tahun', '18 – 59 Tahun', '60 Tahun ke atas'].map((u) => (
-                                <div key={u} className="flex items-center gap-1.5">
-                                  <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold">
+                                <div key={u} className="flex items-center gap-1">
+                                  <span className="w-3 h-3 border border-black inline-flex items-center justify-center text-[9px] font-bold">
                                     {formValues.usia_kategori === u ? '✓' : ''}
                                   </span>
                                   <span>{u}</span>
@@ -789,10 +833,10 @@ export default function FormStandarPage() {
                             </td>
 
                             {/* Status Perkawinan */}
-                            <td className="border-r border-black p-2 space-y-1">
+                            <td className="border-r border-black p-1.5 space-y-0.5">
                               {['Lajang', 'Menikah', 'Cerai Hidup', 'Cerai Mati'].map((s) => (
-                                <div key={s} className="flex items-center gap-1.5">
-                                  <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold">
+                                <div key={s} className="flex items-center gap-1">
+                                  <span className="w-3 h-3 border border-black inline-flex items-center justify-center text-[9px] font-bold">
                                     {formValues.status_perkawinan === s ? '✓' : ''}
                                   </span>
                                   <span>{s}</span>
@@ -801,15 +845,15 @@ export default function FormStandarPage() {
                             </td>
 
                             {/* Agama Sebelumnya */}
-                            <td className="border-r border-black p-2 space-y-3">
-                              <div className="flex items-center gap-1.5">
-                                <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold">
+                            <td className="border-r border-black p-1.5 space-y-1.5">
+                              <div className="flex items-center gap-1">
+                                <span className="w-3 h-3 border border-black inline-flex items-center justify-center text-[9px] font-bold">
                                   {formValues.agama_sebelumnya === 'Kristen Protestan' ? '✓' : ''}
                                 </span>
                                 <span>Kristen Protestan</span>
                               </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold">
+                              <div className="flex items-center gap-1">
+                                <span className="w-3 h-3 border border-black inline-flex items-center justify-center text-[9px] font-bold">
                                   {formValues.agama_sebelumnya !== 'Kristen Protestan' ? '✓' : ''}
                                 </span>
                                 <span>Selain Kristen Protestan</span>
@@ -817,15 +861,15 @@ export default function FormStandarPage() {
                             </td>
 
                             {/* Domisili Asal */}
-                            <td className="p-2 space-y-3">
-                              <div className="flex items-start gap-1.5">
-                                <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                            <td className="p-1.5 space-y-1.5">
+                              <div className="flex items-start gap-1">
+                                <span className="w-3 h-3 border border-black inline-flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5">
                                   {formValues.domisili_asal?.includes('Santa Clara') ? '✓' : ''}
                                 </span>
                                 <span className="leading-tight">Paroki Bekasi Utara – Gereja Santa Clara</span>
                               </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="w-3.5 h-3.5 border border-black inline-flex items-center justify-center text-[10px] font-bold">
+                              <div className="flex items-center gap-1">
+                                <span className="w-3 h-3 border border-black inline-flex items-center justify-center text-[9px] font-bold">
                                   {formValues.domisili_asal === 'Luar Paroki' ? '✓' : ''}
                                 </span>
                                 <span>Luar Paroki</span>
@@ -837,19 +881,19 @@ export default function FormStandarPage() {
                     </div>
                   </div>
 
-                  {/* CATATAN Box matching Image 1 */}
-                  <div className="border border-black p-2.5 text-[10px] leading-relaxed space-y-1">
+                  {/* CATATAN Box */}
+                  <div className="border border-black p-1.5 print:p-1 text-[9px] print:text-[7.5px] leading-tight space-y-0.5">
                     <div className="font-bold">CATATAN</div>
-                    <ul className="list-disc list-inside pl-1 space-y-0.5">
-                      <li>Bagi calon katekumen usia 7 – 10 tahun akan menerima Sakramen Baptis; usia 11 – 14 tahun akan menerima Sakramen Baptis dan Komuni Pertama</li>
-                      <li>Bagi yang sudah menikah dan perkawinannya belum diteguhkan secara Katolik, silakan mengisi formulir Pemberesan Perkawinan.</li>
+                    <ul className="list-disc list-inside pl-0.5 space-y-0">
+                      <li>Bagi calon katekumen usia 7 – 10 tahun menerima Sakramen Baptis; usia 11 – 14 tahun menerima Sakramen Baptis &amp; Komuni Pertama</li>
+                      <li>Bagi yang sudah menikah dan belum diteguhkan secara Katolik, silakan mengisi formulir Pemberesan Perkawinan.</li>
                       <li>Mohon diisi dengan tulisan yang jelas dan jujur.</li>
                     </ul>
                   </div>
 
                   {/* DATA KATEKUMEN */}
-                  <div className="space-y-1 pt-1">
-                    <div className="font-bold text-xs">DATA KATEKUMEN</div>
+                  <div className="space-y-0.5 pt-0.5 print:pt-0">
+                    <div className="font-bold text-[10.5px] print:text-[9px]">DATA KATEKUMEN</div>
                     <UnderlineField label="1. Nama Lengkap" value={formValues.nama_calon} />
                     <div className="grid grid-cols-12 gap-2">
                       <div className="col-span-8">
@@ -870,8 +914,8 @@ export default function FormStandarPage() {
                     <UnderlineField label="6. Agama sebelumnya" value={formValues.agama_asal_detail || formValues.agama_sebelumnya} />
 
                     {/* Sub-section Protestant */}
-                    <div className="pl-4 space-y-1 pt-0.5">
-                      <div className="font-medium text-[10px]">o Bagi yang dari Kristen Protestan</div>
+                    <div className="pl-3 space-y-0.5 pt-0.5">
+                      <div className="font-medium text-[9px] print:text-[8px]">o Bagi yang dari Kristen Protestan</div>
                       <UnderlineField label="▪ Nama Gereja tempat dibaptis" value={formValues.nama_gereja_protestan} />
                       <div className="grid grid-cols-12 gap-2">
                         <div className="col-span-6">
@@ -885,8 +929,8 @@ export default function FormStandarPage() {
                   </div>
 
                   {/* DATA PERKAWINAN */}
-                  <div className="space-y-1 pt-1 border-t border-black">
-                    <div className="font-bold text-xs">DATA PERKAWINAN – Coret yang tidak sesuai</div>
+                  <div className="space-y-0.5 pt-0.5 print:pt-0 border-t border-black">
+                    <div className="font-bold text-[10.5px] print:text-[9px]">DATA PERKAWINAN – Coret yang tidak sesuai</div>
                     <UnderlineField label="7. Status Perkawinan" value={formValues.status_perkawinan} />
                     <div className="grid grid-cols-12 gap-2">
                       <div className="col-span-6">
@@ -899,8 +943,8 @@ export default function FormStandarPage() {
                   </div>
 
                   {/* DATA DOMISILI KATEKUMEN */}
-                  <div className="space-y-1 pt-1 border-t border-black">
-                    <div className="font-bold text-xs">DATA DOMISILI KATEKUMEN</div>
+                  <div className="space-y-0.5 pt-0.5 print:pt-0 border-t border-black">
+                    <div className="font-bold text-[10.5px] print:text-[9px]">DATA DOMISILI KATEKUMEN</div>
                     <UnderlineField label="14. Alamat lengkap" value={formValues.alamat} />
                     <div className="grid grid-cols-12 gap-2">
                       <div className="col-span-6">
@@ -921,8 +965,8 @@ export default function FormStandarPage() {
                   </div>
 
                   {/* DATA ORANG TUA KANDUNG */}
-                  <div className="space-y-1 pt-1 border-t border-black">
-                    <div className="font-bold text-xs">DATA ORANG TUA KANDUNG</div>
+                  <div className="space-y-0.5 pt-0.5 print:pt-0 border-t border-black">
+                    <div className="font-bold text-[10.5px] print:text-[9px]">DATA ORANG TUA KANDUNG</div>
                     <div className="grid grid-cols-12 gap-2">
                       <div className="col-span-8">
                         <UnderlineField label="19. Nama Lengkap Ayah" value={formValues.nama_ayah} />
@@ -942,20 +986,20 @@ export default function FormStandarPage() {
                   </div>
 
                   {/* ALASAN MASUK KATOLIK */}
-                  <div className="space-y-1 pt-1 border-t border-black">
-                    <div className="font-bold text-xs">ALASAN MASUK KATOLIK :</div>
-                    <div className="border border-black p-2 min-h-[50px] whitespace-pre-wrap leading-relaxed">
+                  <div className="space-y-0.5 pt-0.5 print:pt-0 border-t border-black">
+                    <div className="font-bold text-[10.5px] print:text-[9px]">ALASAN MASUK KATOLIK :</div>
+                    <div className="border border-black p-1.5 print:p-1 min-h-[35px] print:min-h-[22px] whitespace-pre-wrap leading-tight text-[10px] print:text-[9px]">
                       {formValues.alasan_masuk || ''}
                     </div>
                   </div>
 
                   {/* TANDA TANGAN PENDAFTAR & KETUA LINGKUNGAN */}
-                  <div className="pt-2">
-                    <div className="text-right italic text-[10px] pb-1">
+                  <div className="pt-1.5 print:pt-1">
+                    <div className="text-right italic text-[9.5px] print:text-[8px] pb-0.5">
                       {currentDateFormatted}
                     </div>
-                    <div className="grid grid-cols-2 gap-6 text-center text-[10px]">
-                      <div className="space-y-14">
+                    <div className="grid grid-cols-2 gap-6 text-center text-[9.5px] print:text-[8.5px]">
+                      <div className="space-y-7 print:space-y-5">
                         <div>
                           Tanda tangan dan nama jelas<br />
                           <strong>Pendaftar</strong>
@@ -965,22 +1009,22 @@ export default function FormStandarPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-14">
+                      <div className="space-y-7 print:space-y-5">
                         <div>
                           Mengetahui,<br />
                           <strong>Ketua Lingkungan {formatNamaLingkungan(lingkunganName)}</strong>
                         </div>
                         <div className="font-bold underline">
-                          ( {pengurus.ketua_nama || '...........................................'} )
+                          ( {formatKetuaSignature(pengurus.ketua_nama)} )
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* DOKUMEN YANG DILAMPIRKAN CHECKLIST */}
-                  <div className="pt-2 border-t border-black text-[9px] space-y-1">
-                    <div className="font-bold text-[10px]">Dokumen yang dilampirkan (dicentang oleh sekretariat Paroki) :</div>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  <div className="pt-1 border-t border-black text-[8.5px] print:text-[7.5px] space-y-0.5">
+                    <div className="font-bold text-[9px] print:text-[8px]">Dokumen yang dilampirkan (dicentang oleh sekretariat Paroki) :</div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
                       <div>[ &nbsp; ] Fotokopi Akta Kelahiran</div>
                       <div>[ &nbsp; ] Fotokopi surat baptis dari Gereja asal (khusus Kristen)</div>
                       <div>[ &nbsp; ] Fotokopi KTP</div>
@@ -993,47 +1037,55 @@ export default function FormStandarPage() {
                 </div>
               ) : (
                 /* FORM 01 & FORMULIR LAINNYA */
-                <div className="space-y-3 text-[11px]">
+                <div className="space-y-2 print:space-y-1 text-[10.5px] print:text-[9.5px]">
                   {/* Form Title & Official Code */}
-                  <div className="text-center space-y-0.5 pb-1">
-                    <div className="font-serif italic font-bold text-base sm:text-lg leading-tight">
+                  <div className="text-center space-y-0.5 pb-0.5 print:pb-0">
+                    <div className="font-serif italic font-bold text-sm sm:text-base print:text-[11.5px] leading-tight">
                       {currentFormDef.title}
                     </div>
-                    <div className="font-sans font-bold text-xs sm:text-sm tracking-tight">
+                    <div className="font-sans font-bold text-[10px] sm:text-xs print:text-[8.5px] tracking-tight">
                       {currentFormDef.code} --- Paroki : Bekasi Utara – St. Clara
                     </div>
                   </div>
 
                   {/* FORM 01: SAKRAMEN BAPTIS BAYI / ANAK */}
                   {selectedFormId === 'FORM01' && (
-                    <div className="space-y-3 text-[11px]">
-                      {/* Syarat & Lampiran Box */}
-                      <div className="border border-black p-2.5 text-[10px] leading-relaxed space-y-1">
-                        <div><strong>Syarat :</strong></div>
-                        <ul className="list-disc list-inside pl-1 space-y-0.5">
-                          <li>Anak berusia maksimal 7 tahun.</li>
-                          <li>Kedua orang tua dan wali baptis wajib mengikuti rekoleksi persiapan pada waktu yang ditentukan.</li>
-                        </ul>
-                        <div className="pt-0.5"><strong>Syarat wali baptis :</strong></div>
-                        <ul className="list-disc list-inside pl-1 space-y-0.5">
-                          <li>Seorang katolik yang berusia dewasa dan telah menerima Sakramen Inisiasi (Baptis, Komuni dan Penguatan)</li>
-                          <li>Bukan ayah/ibu/kakek/nenek calon Baptis</li>
-                        </ul>
-                        <div className="pt-0.5"><strong>Hal yang perlu dilampirkan :</strong></div>
-                        <ul className="list-disc list-inside pl-1 space-y-0.5">
-                          <li>Fotocopy akte kelahiran/surat tanda lahir</li>
-                          <li>Fotocopy KK Gereja</li>
-                          <li>Fotocopy akte perkawinan agama</li>
-                          <li>Fotocopy akte perkawinan sipil</li>
-                          <li>Fotocopy surat baptis wali baptis <em>(dipilih sesuai gender/jenis kelamin anak)</em>; Jika di surat baptis belum tercatatkan Sakramen Penguatan maka dilampirkan juga fotocopy sertifikat penerimaan Sakramen Penguatan</li>
-                          <li>Surat Pengantar Pastor Paroki, jika dari luar Paroki ........................................</li>
-                          <li>Surat Pernyataan Memberi Izin Anak Untuk Dibaptis <em>(apabila salah satu orang tua bukan Katolik)</em></li>
-                        </ul>
+                    <div className="space-y-2 print:space-y-1 text-[10.5px] print:text-[9.5px]">
+                      {/* Syarat & Lampiran Box - 2 Kolom Rapi Agar Muat 1 Lembar A4 */}
+                      <div className="border border-black p-2 print:p-1.5 text-[9.5px] print:text-[8px] leading-tight print:leading-tight">
+                        <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-x-3 gap-y-1">
+                          {/* Kolom Kiri: Syarat Umum & Syarat Wali */}
+                          <div className="space-y-0.5">
+                            <div><strong>Syarat :</strong></div>
+                            <ul className="list-disc list-inside pl-0.5 space-y-0">
+                              <li>Anak berusia maksimal 7 tahun.</li>
+                              <li>Kedua orang tua &amp; wali baptis wajib mengikuti rekoleksi persiapan.</li>
+                            </ul>
+                            <div className="pt-0.5"><strong>Syarat wali baptis :</strong></div>
+                            <ul className="list-disc list-inside pl-0.5 space-y-0">
+                              <li>Katolik dewasa, telah menerima Sakramen Inisiasi (Baptis, Komuni, Penguatan).</li>
+                              <li>Bukan orang tua kandung atau kakek/nenek calon baptis.</li>
+                            </ul>
+                          </div>
+
+                          {/* Kolom Kanan: Lampiran Dokumen */}
+                          <div className="space-y-0.5 border-t md:border-t-0 print:border-t-0 md:border-l print:border-l border-black/40 pt-1 md:pt-0 print:pt-0 pl-0 md:pl-2.5 print:pl-2.5">
+                            <div><strong>Hal yang perlu dilampirkan :</strong></div>
+                            <ul className="list-disc list-inside pl-0.5 space-y-0">
+                              <li>Fotocopy akte kelahiran / surat tanda lahir</li>
+                              <li>Fotocopy KK Gereja &amp; KK Sipil</li>
+                              <li>Fotocopy akte perkawinan agama &amp; sipil orang tua</li>
+                              <li>Fotocopy surat baptis wali baptis (sesuai gender) &amp; sertifikat penguatan</li>
+                              <li>Surat Pengantar Pastor Paroki (jika dari luar Paroki Santa Clara)</li>
+                              <li>Surat Izin Orang Tua (apabila salah satu orang tua bukan Katolik)</li>
+                            </ul>
+                          </div>
+                        </div>
                       </div>
 
                       {/* DATA CALON BAPTIS */}
-                      <div className="space-y-1">
-                        <div className="font-bold text-xs">DATA CALON BAPTIS .</div>
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-[10.5px] print:text-[9px]">DATA CALON BAPTIS .</div>
                         <DottedField
                           label="1. Nama Baptis"
                           value={formValues.nama_baptis_anak}
@@ -1051,14 +1103,14 @@ export default function FormStandarPage() {
                         <DottedField
                           label="4. Pembaptisan"
                           value={formValues.tgl_rencana_baptis ? `tanggal ${formValues.tgl_rencana_baptis}` : ''}
-                          suffix={<span className="ml-1 text-[10px]">( rencana )</span>}
+                          suffix={<span className="ml-1 text-[9px] print:text-[8px]">( rencana )</span>}
                         />
                         <DottedField label="5. Nomor Induk Kependudukan (NIK) Anak" value={formValues.nik_anak} />
                       </div>
 
                       {/* DATA ORANG TUA KANDUNG */}
-                      <div className="space-y-1 pt-1">
-                        <div className="font-bold text-xs">DATA ORANG TUA KANDUNG <em>( lengkap dengan nama baptis )</em></div>
+                      <div className="space-y-0.5 pt-0.5 print:pt-0">
+                        <div className="font-bold text-[10.5px] print:text-[9px]">DATA ORANG TUA KANDUNG <em>( lengkap dengan nama baptis )</em></div>
                         <div className="grid grid-cols-12 gap-2">
                           <div className="col-span-8">
                             <DottedField label="1. Nama Ayah" value={formValues.nama_ayah} />
@@ -1095,8 +1147,8 @@ export default function FormStandarPage() {
                       </div>
 
                       {/* WALI BAPTIS */}
-                      <div className="space-y-1 pt-1">
-                        <div className="font-bold text-xs">WALI BAPTIS <em>( lengkap dengan nama baptis )</em></div>
+                      <div className="space-y-0.5 pt-0.5 print:pt-0">
+                        <div className="font-bold text-[10.5px] print:text-[9px]">WALI BAPTIS <em>( lengkap dengan nama baptis )</em></div>
                         <DottedField label="1. Nama Lengkap" value={formValues.wali_baptis} />
                         <div className="grid grid-cols-12 gap-2">
                           <div className="col-span-6">
@@ -1109,54 +1161,54 @@ export default function FormStandarPage() {
                       </div>
 
                       {/* Tanda Tangan 4 Kolom */}
-                      <div className="pt-2">
-                        <div className="text-right italic text-[10px] pb-1">
+                      <div className="pt-1.5 print:pt-1">
+                        <div className="text-right italic text-[9.5px] print:text-[8px] pb-0.5">
                           {currentDateFormatted}
                         </div>
-                        <div className="grid grid-cols-4 gap-2 text-center text-[10px] items-stretch">
+                        <div className="grid grid-cols-4 gap-1.5 text-center text-[9.5px] print:text-[8.5px] items-stretch">
                           {/* Box Sekretariat */}
-                          <div className="border border-black p-2 text-left space-y-1">
+                          <div className="border border-black p-1.5 print:p-1 text-left space-y-0.5">
                             <div className="font-bold">Diterima pihak sekretariat</div>
                             <div>Tanggal : ....................</div>
                             <div>Oleh &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ....................</div>
                           </div>
 
                           {/* Orang Tua */}
-                          <div className="flex flex-col justify-between py-1">
+                          <div className="flex flex-col justify-between py-0.5">
                             <div>Orangtua,</div>
-                            <div className="pt-10 font-bold underline">
+                            <div className="pt-6 print:pt-5 font-bold underline">
                               ( {formValues.nama_ayah || formValues.nama_ibu || '..............................'} )
                             </div>
                           </div>
 
                           {/* Sie. Katekese */}
-                          <div className="flex flex-col justify-between py-1">
+                          <div className="flex flex-col justify-between py-0.5">
                             <div>
                               Mengetahui,<br />Sie. Katekese Lingkungan
                             </div>
-                            <div className="pt-10 font-bold underline">
+                            <div className="pt-6 print:pt-5 font-bold underline">
                               ( .............................. )
                             </div>
                           </div>
 
                           {/* Ketua Lingkungan */}
-                          <div className="flex flex-col justify-between py-1">
+                          <div className="flex flex-col justify-between py-0.5">
                             <div>
                               Mengetahui<br />Ketua Lingkungan {formatNamaLingkungan(lingkunganName)}
                             </div>
-                            <div className="pt-10 font-bold underline">
-                              ( {pengurus.ketua_nama || '..............................'} )
+                            <div className="pt-6 print:pt-5 font-bold underline">
+                              ( {formatKetuaSignature(pengurus.ketua_nama)} )
                             </div>
                           </div>
                         </div>
                       </div>
 
                       {/* Catatan & Petugas Sekretariat */}
-                      <div className="pt-1 border-t border-black text-[9px] leading-relaxed space-y-1">
+                      <div className="pt-1 border-t border-black text-[8.5px] print:text-[7.5px] leading-tight space-y-0.5">
                         <div>
                           <strong>Catatan:</strong> Formulir dan hal-hal yang dilampirkan diserahkan setelah lengkap ke sekretariat maksimal batas tanggal yang telah ditentukan/diumumkan. Lewat dari tanggal penutupan tanggal pendaftaran maka ikut periode baptisan selanjutnya.
                         </div>
-                        <div className="pt-0.5">
+                        <div>
                           <strong>Diisi oleh petugas Sekretariat Paroki :</strong><br />
                           Dibaptis pada Tgl. ........................................ Jam .................... Oleh ................................................................
                         </div>
@@ -1166,44 +1218,44 @@ export default function FormStandarPage() {
 
                   {/* FORM 10A: SURAT PENGANTAR LINGKUNGAN UMUM */}
                   {selectedFormId === 'FORM10A' && (
-                    <div className="space-y-3 text-[11px]">
-                      <div className="space-y-1">
-                        <DottedField label="Nama Ketua Lingkungan" value={pengurus.ketua_nama || formValues.nama_ketua_lingkungan} />
+                    <div className="space-y-2 print:space-y-1.5 text-[10.5px] print:text-[9.5px]">
+                      <div className="space-y-0.5">
+                        <DottedField label="Nama Ketua Lingkungan" value={pengurus.ketua_nama && !pengurus.ketua_nama.includes('belum ditentukan') ? pengurus.ketua_nama : formValues.nama_ketua_lingkungan} />
                         <DottedField label="Lingkungan/Wilayah" value={formatNamaLingkungan(lingkunganName)} />
                       </div>
 
-                      <div className="pt-1">Menerangkan dengan sesungguhnya bahwa :</div>
+                      <div className="pt-0.5">Menerangkan dengan sesungguhnya bahwa :</div>
 
-                      <div className="space-y-1">
+                      <div className="space-y-0.5">
                         <DottedField label="Nama (lengkap)" value={formValues.nama_lengkap} />
                         <DottedField label="Tempat, tgl. Lahir" value={formValues.tempat_tgl_lahir} />
                         <DottedField label="Alamat tinggal" value={formValues.alamat} />
                         <DottedField label="Nama Orangtua" value={formValues.nama_ortu} />
                       </div>
 
-                      <div className="pt-1">
+                      <div className="pt-0.5">
                         <DottedField label="Adalah benar berdomisili di lingkungan" value={formatNamaLingkungan(lingkunganName)} />
                       </div>
 
-                      <div className="space-y-1 pt-1">
+                      <div className="space-y-0.5 pt-0.5">
                         <div>Umat tersebut mohon dibantu untuk dibuatkan surat keterangan/ pengantar mengenai :</div>
-                        <div className="border border-black p-2 min-h-[70px] whitespace-pre-wrap font-medium">
+                        <div className="border border-black p-1.5 print:p-1 min-h-[50px] print:min-h-[35px] whitespace-pre-wrap font-medium text-[10px] print:text-[9px]">
                           {formValues.keperluan || 'Pengurusan administrasi gerejawi / rekomendasi ke Sekretariat Paroki Santa Clara Bekasi Utara.'}
                         </div>
                       </div>
 
-                      <div className="text-justify leading-relaxed pt-1">
+                      <div className="text-justify leading-relaxed pt-0.5">
                         Demikianlah surat pengantar ini kami buat untuk permintaan surat keterangan/pengantar dari Paroki Bekasi Utara dan untuk dipakai sebagaimana mestinya. Atas perhatian dan kerja samanya kami ucapkan terima kasih.
                       </div>
 
-                      <div className="pt-6 flex justify-end text-center">
-                        <div className="w-64 space-y-14">
+                      <div className="pt-4 print:pt-3 flex justify-end text-center">
+                        <div className="w-64 space-y-7 print:space-y-5">
                           <div>
                             {currentDateFormatted}<br />
                             Ketua Lingkungan {formatNamaLingkungan(lingkunganName)}
                           </div>
                           <div className="font-bold underline text-black">
-                            ( {pengurus.ketua_nama || '.........................................'} )
+                            ( {formatKetuaSignature(pengurus.ketua_nama)} )
                           </div>
                         </div>
                       </div>
@@ -1212,12 +1264,12 @@ export default function FormStandarPage() {
 
                   {/* FORMULIR LAINNYA (DOKUMEN STANDAR SESUAI ASLINYA) */}
                   {selectedFormId !== 'FORM01' && selectedFormId !== 'FORM10A' && selectedFormId !== 'FORM02' && (
-                    <div className="space-y-3 text-[11px]">
+                    <div className="space-y-2 print:space-y-1.5 text-[10.5px] print:text-[9.5px]">
                       {/* Syarat box bila ada */}
                       {currentFormDef.syarat && currentFormDef.syarat.length > 0 && (
-                        <div className="border border-black p-2 text-[10px] leading-relaxed">
+                        <div className="border border-black p-1.5 print:p-1 text-[9.5px] print:text-[8px] leading-tight">
                           <div className="font-bold">Syarat &amp; Hal yang perlu dilampirkan:</div>
-                          <ul className="list-disc list-inside pl-1 space-y-0.5">
+                          <ul className="list-disc list-inside pl-0.5 space-y-0">
                             {currentFormDef.syarat.map((s, idx) => (
                               <li key={idx}>{s}</li>
                             ))}
@@ -1226,14 +1278,14 @@ export default function FormStandarPage() {
                       )}
 
                       {/* Render fields with dotted lines */}
-                      <div className="space-y-1.5 pt-1">
+                      <div className="space-y-1 pt-0.5">
                         {currentFormDef.fields.map((fld) => {
                           const val = formValues[fld.key]
                           if (fld.type === 'textarea') {
                             return (
-                              <div key={fld.key} className="space-y-0.5 pt-1">
+                              <div key={fld.key} className="space-y-0.5 pt-0.5">
                                 <div className="font-semibold">{fld.label} :</div>
-                                <div className="border border-black p-2 whitespace-pre-wrap min-h-[50px]">
+                                <div className="border border-black p-1.5 print:p-1 whitespace-pre-wrap min-h-[40px] print:min-h-[28px] text-[10px] print:text-[9px]">
                                   {val || ''}
                                 </div>
                               </div>
@@ -1250,26 +1302,26 @@ export default function FormStandarPage() {
                       </div>
 
                       {/* Standard Signature Block */}
-                      <div className="pt-8">
-                        <div className="text-right italic text-[10px] pb-2">
+                      <div className="pt-4 print:pt-3">
+                        <div className="text-right italic text-[9.5px] print:text-[8px] pb-1">
                           {currentDateFormatted}
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                          <div className="space-y-14">
+                        <div className="grid grid-cols-3 gap-2 text-center text-[9.5px] print:text-[8.5px]">
+                          <div className="space-y-7 print:space-y-5">
                             <div>Pemohon / Yang Bersangkutan</div>
                             <div className="font-bold underline">
                               ( {formValues.nama_lengkap || formValues.nama_calon || formValues.nama_sendiri || formValues.nama_kk || formValues.nama_ayah || '..............................'} )
                             </div>
                           </div>
 
-                          <div className="space-y-14">
+                          <div className="space-y-7 print:space-y-5">
                             <div>Ketua {formatNamaLingkungan(lingkunganName)}</div>
                             <div className="font-bold underline">
-                              ( {pengurus.ketua_nama || '..............................'} )
+                              ( {formatKetuaSignature(pengurus.ketua_nama)} )
                             </div>
                           </div>
 
-                          <div className="space-y-14">
+                          <div className="space-y-7 print:space-y-5">
                             <div>Mengetahui Sekretariat / Pastor Paroki</div>
                             <div className="font-bold underline">
                               ( Paroki Santa Clara )
