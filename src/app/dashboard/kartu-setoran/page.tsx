@@ -87,6 +87,12 @@ function parseOverride(raw: any): SetoranOverrideData {
   }
 }
 
+export interface DisplayKkItem extends KepalaKeluarga {
+  statusUmat?: 'AKTIF' | 'PINDAH' | 'KELUAR'
+  isLunas?: boolean
+  paidMonthsCount?: number
+}
+
 export default function KartuSetoranPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
@@ -94,6 +100,9 @@ export default function KartuSetoranPage() {
   const [lingkunganName, setLingkunganName] = useState('')
 
   const [kkList, setKkList] = useState<KepalaKeluarga[]>([])
+  const [allDbKks, setAllDbKks] = useState<KepalaKeluarga[]>([])
+  const [deletedKkSet, setDeletedKkSet] = useState<Set<string>>(new Set())
+  const [umatStatusOverrides, setUmatStatusOverrides] = useState<Record<string, 'AKTIF' | 'PINDAH' | 'KELUAR'>>({})
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -176,10 +185,29 @@ export default function KartuSetoranPage() {
             if (rawOverrides) {
               setSourceOverrides(JSON.parse(rawOverrides))
             }
+            const rawStatus = localStorage.getItem(`kartu_setoran_umat_status_${targetLingkunganId}`)
+            if (rawStatus) {
+              setUmatStatusOverrides(JSON.parse(rawStatus))
+            }
           } catch (e) {}
 
-          // Fetch KK List from DB + localStorage
+          // Load deletedSet
           const dbUuid = getLingkunganDbUuid(targetLingkunganId)
+          let deletedSet = new Set<string>()
+          if (typeof window !== 'undefined') {
+            try {
+              const rawAll = localStorage.getItem('custom_kks_deleted_store')
+              const rawL = localStorage.getItem(`custom_kks_deleted_${targetLingkunganId}`)
+              const rawU = dbUuid ? localStorage.getItem(`custom_kks_deleted_${dbUuid}`) : null
+              const allD: string[] = rawAll ? JSON.parse(rawAll) : []
+              const lD: string[] = rawL ? JSON.parse(rawL) : []
+              const uD: string[] = rawU ? JSON.parse(rawU) : []
+              deletedSet = new Set([...allD, ...lD, ...uD].map(s => String(s).toLowerCase().trim()))
+            } catch (e) {}
+          }
+          setDeletedKkSet(deletedSet)
+
+          // Fetch KK List from DB + localStorage
           const { data: kks } = await supabase
             .from('kepala_keluarga')
             .select('*')
@@ -210,6 +238,7 @@ export default function KartuSetoranPage() {
             } catch (e) {}
           }
 
+          setAllDbKks(dbKks)
           const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, targetLingkunganNama || 'Lingkungan', dbKks)
           setKkList(finalKks)
 
@@ -363,6 +392,7 @@ export default function KartuSetoranPage() {
       penalangNama = override.penalangNama
     } else if (
       j.sumber_setoran === 'DANA_LINGKUNGAN' ||
+      (j.keterangan || '').toLowerCase().includes('kas lingkungan') ||
       (j.keterangan || '').toLowerCase().includes('dana lingkungan') ||
       (j.keterangan || '').toLowerCase().includes('subsidi')
     ) {
@@ -375,10 +405,11 @@ export default function KartuSetoranPage() {
       sumber = 'PAROKI'
     } else if (
       j.sumber_setoran === 'ORANG_LAIN' ||
+      (j.keterangan || '').toLowerCase().includes('donasi') ||
       (j.keterangan || '').toLowerCase().includes('ditalangi')
     ) {
       sumber = 'ORANG_LAIN'
-      const match = (j.keterangan || '').match(/\(Ditalangi\s+([^)]+)\)/i)
+      const match = (j.keterangan || '').match(/\((?:Ditalangi|Donasi)\s+([^)]+)\)/i)
       penalangNama = match ? match[1].trim() : (j.keterangan || undefined)
     }
 
@@ -430,10 +461,81 @@ export default function KartuSetoranPage() {
   const selectedCoaObj = kartuOptions.find(c => c.code === selectedCoa) || kartuOptions[0] || { code: selectedCoa, name: `COA ${selectedCoa}`, labelShort: `COA ${selectedCoa}` }
   const totalKkCount = uniqueKkIdsWithSetoran.size
 
+  // Bangun daftar KK lengkap termasuk umat yang pindah / keluar jika setorannya di tengah atau sudah lunas
+  const allCombinedKksMap = new Map<string, KepalaKeluarga>()
+  kkList.forEach(k => allCombinedKksMap.set(k.id, k))
+  allDbKks.forEach(k => {
+    if (!allCombinedKksMap.has(k.id)) allCombinedKksMap.set(k.id, k)
+  })
+  setoranMap.forEach((_, kkId) => {
+    if (kkId !== 'umum' && !allCombinedKksMap.has(kkId)) {
+      const jMatch = yearJournals.find(j => j.kk_id === kkId || j.kepala_keluarga?.id === kkId)
+      const nama = jMatch?.kepala_keluarga?.nama_kk || kkId
+      allCombinedKksMap.set(kkId, {
+        id: kkId,
+        lingkungan_id: lingkunganId || '',
+        nama_kk: nama,
+        alamat: 'Pindah / Keluar',
+        is_biduk: true
+      })
+    }
+  })
+
+  const displayedKkList: DisplayKkItem[] = []
+  Array.from(allCombinedKksMap.values()).forEach(k => {
+    const cleanId = (k.id || '').toLowerCase().trim()
+    const cleanName = (k.nama_kk || '').toLowerCase().trim()
+    const combinedText = `${k.alamat || ''} ${k.nama_kk || ''}`.toLowerCase()
+
+    let status: 'AKTIF' | 'PINDAH' | 'KELUAR' = 'AKTIF'
+    if (umatStatusOverrides[k.id]) {
+      status = umatStatusOverrides[k.id]
+    } else if (umatStatusOverrides[cleanName]) {
+      status = umatStatusOverrides[cleanName]
+    } else if (combinedText.includes('pindah')) {
+      status = 'PINDAH'
+    } else if (combinedText.includes('keluar')) {
+      status = 'KELUAR'
+    } else if (deletedKkSet.has(cleanId) || deletedKkSet.has(cleanName)) {
+      status = 'PINDAH'
+    }
+
+    const months = setoranMap.get(k.id) || {}
+    const paidMonthsCount = Object.keys(months).length
+    const isLunas = paidMonthsCount >= 12
+
+    // Syarat tampil:
+    // Umat aktif selalu tampil.
+    // Umat pindah/keluar tampil JIKA setorannya di tengah (paidMonthsCount > 0 && < 12) atau sudah lunas (paidMonthsCount >= 12)
+    if (status === 'AKTIF' || paidMonthsCount > 0) {
+      displayedKkList.push({
+        ...k,
+        statusUmat: status,
+        isLunas,
+        paidMonthsCount
+      })
+    }
+  })
+
+  displayedKkList.sort((a, b) => a.nama_kk.localeCompare(b.nama_kk))
+
+  const handleSetUmatStatus = (kkId: string, namaKk: string, newStatus: 'AKTIF' | 'PINDAH' | 'KELUAR') => {
+    if (!lingkunganId) return
+    const updated = {
+      ...umatStatusOverrides,
+      [kkId]: newStatus,
+      [namaKk.toLowerCase().trim()]: newStatus
+    }
+    setUmatStatusOverrides(updated)
+    try {
+      localStorage.setItem(`kartu_setoran_umat_status_${lingkunganId}`, JSON.stringify(updated))
+    } catch (e) {}
+  }
+
   // Export to Excel / CSV
   const handleExportExcel = () => {
     const headers = ['No', 'Nama Kepala Keluarga', ...SHORT_MONTHS, 'Total Setoran (Rp)']
-    const rows = kkList.map((kk, idx) => {
+    const rows = displayedKkList.map((kk, idx) => {
       const months = setoranMap.get(kk.id) || {}
       let totalKk = 0
       const monthCols = Array.from({ length: 12 }, (_, i) => {
@@ -442,7 +544,10 @@ export default function KartuSetoranPage() {
         totalKk += val
         return val
       })
-      return [idx + 1, `"${kk.nama_kk}"`, ...monthCols, totalKk]
+      const statusNote = kk.statusUmat && kk.statusUmat !== 'AKTIF'
+        ? ` [${kk.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}${kk.isLunas ? ' - Lunas' : ' - Setoran di Tengah'}]`
+        : ''
+      return [idx + 1, `"${kk.nama_kk}${statusNote}"`, ...monthCols, totalKk]
     })
 
     // Also include 'Umum / Kolektif' row if any
@@ -480,7 +585,7 @@ export default function KartuSetoranPage() {
   }
 
   // Filtered KK for display in matrix table
-  const filteredKkList = kkList.filter(k =>
+  const filteredKkList = displayedKkList.filter(k =>
     k.nama_kk.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (k.alamat && k.alamat.toLowerCase().includes(searchQuery.toLowerCase()))
   )
@@ -594,11 +699,15 @@ export default function KartuSetoranPage() {
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-50/80 text-purple-800 border border-purple-200/80 font-medium text-[10px]">
               <span className="w-2 h-2 rounded-full bg-purple-600"></span>
-              Dana Lingkungan
+              Kas Lingkungan
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200/80 font-medium text-[10px]">
               <span className="w-2 h-2 rounded-full bg-amber-600"></span>
-              Ditalangi Orang Lain
+              Dari Donasi Umat Lain
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-300 font-medium text-[10px]">
+              <span>📌</span>
+              Umat Pindah / Keluar
             </div>
           </div>
         </div>
@@ -664,8 +773,46 @@ export default function KartuSetoranPage() {
                         <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 text-center font-mono text-slate-500 text-[11px] p-2 border-b border-r border-slate-100 w-12 min-w-[48px] max-w-[48px]">
                           {idx + 1}
                         </td>
-                        <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50 font-bold text-slate-900 p-2 border-b border-r border-slate-300 shadow-xs min-w-[200px]">
-                          {kk.nama_kk}
+                        <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50 font-bold text-slate-900 p-2 border-b border-r border-slate-300 shadow-xs min-w-[220px]">
+                          <div className="flex items-center flex-wrap gap-1.5 justify-between">
+                            <div className="flex items-center flex-wrap gap-1.5">
+                              <span>{kk.nama_kk}</span>
+                              {kk.statusUmat && kk.statusUmat !== 'AKTIF' && (
+                                <span
+                                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border inline-flex items-center gap-1 shrink-0 ${
+                                    kk.isLunas
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                      : 'bg-amber-50 text-amber-800 border-amber-300'
+                                  }`}
+                                  title={
+                                    kk.isLunas
+                                      ? `Umat ${kk.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}, sudah membayar lunas 12 bulan`
+                                      : `Umat ${kk.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}, setoran tercatat di tengah tahun (${kk.paidMonthsCount} bulan)`
+                                  }
+                                >
+                                  <span>📌</span>
+                                  <span>
+                                    {kk.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}
+                                    {kk.isLunas ? ' (Lunas)' : ' (Setoran di Tengah)'}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Dropdown status kecil untuk bendahara */}
+                            <div className="opacity-0 group-hover:opacity-100 transition shrink-0">
+                              <select
+                                value={kk.statusUmat || 'AKTIF'}
+                                onChange={(e) => handleSetUmatStatus(kk.id, kk.nama_kk, e.target.value as any)}
+                                className="text-[10px] bg-slate-100 border border-slate-200 rounded px-1 py-0.5 text-slate-600 focus:outline-none cursor-pointer"
+                                title="Ubah status umat: Aktif, Pindah, atau Keluar"
+                              >
+                                <option value="AKTIF">Aktif</option>
+                                <option value="PINDAH">Pindah</option>
+                                <option value="KELUAR">Keluar</option>
+                              </select>
+                            </div>
+                          </div>
                         </td>
                         {Array.from({ length: 12 }, (_, i) => {
                           const mNum = i + 1
@@ -681,11 +828,11 @@ export default function KartuSetoranPage() {
                                 <span
                                   title={
                                     sumber === 'ORANG_LAIN'
-                                      ? `Ditalangi oleh: ${penalang || 'Donatur'} (${formatRupiah(val)})`
+                                      ? (penalang === 'N/N' ? `Dari Donasi Umat: N/N (${formatRupiah(val)})` : `Dari Donasi Umat: ${penalang || 'Donatur'} (${formatRupiah(val)})`)
                                       : sumber === 'PAROKI'
                                       ? `Ditalangi Paroki (${formatRupiah(val)})`
                                       : sumber === 'DANA_LINGKUNGAN'
-                                      ? `Ditalangi Dana Kas Lingkungan (${formatRupiah(val)})`
+                                      ? `Dari Kas Lingkungan (${formatRupiah(val)})`
                                       : `Bayar Sendiri (${formatRupiah(val)})`
                                   }
                                   className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${
@@ -735,11 +882,11 @@ export default function KartuSetoranPage() {
                               <span
                                 title={
                                   sumber === 'ORANG_LAIN'
-                                    ? `Ditalangi oleh: ${penalang || 'Donatur'} (${formatRupiah(val)})`
+                                    ? (penalang === 'N/N' ? `Dari Donasi Umat: N/N (${formatRupiah(val)})` : `Dari Donasi Umat: ${penalang || 'Donatur'} (${formatRupiah(val)})`)
                                     : sumber === 'PAROKI'
                                     ? `Ditalangi Paroki (${formatRupiah(val)})`
                                     : sumber === 'DANA_LINGKUNGAN'
-                                    ? `Ditalangi Dana Kas Lingkungan (${formatRupiah(val)})`
+                                    ? `Dari Kas Lingkungan (${formatRupiah(val)})`
                                     : `Bayar Sendiri (${formatRupiah(val)})`
                                 }
                                 className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${

@@ -57,6 +57,10 @@ export default function JurnalPage() {
   const pengeluaranOptions = coaList
     .filter((c) => c.kategori === 'PENGELUARAN' || c.id === '1300' || c.id === '1400')
     .map((c) => ({ code: c.id, name: c.nama_akun }))
+
+  const kasBankOptions = coaList
+    .filter((c) => c.kategori === 'KAS' || c.id === '1100' || c.id === '1200' || c.id === '1300' || c.id === '1400')
+    .map((c) => ({ code: c.id, name: c.nama_akun }))
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
   const [saldoAwalBank, setSaldoAwalBank] = useState<number>(0)
 
@@ -71,9 +75,12 @@ export default function JurnalPage() {
   const [searchDocQuery, setSearchDocQuery] = useState('')
 
   // Sequential Step-by-Step Form State
+  const [step1Mode, setStep1Mode] = useState<'MASUK' | 'KELUAR' | 'LAINNYA' | null>(null)
   const [step1Arus, setStep1Arus] = useState<'MASUK' | 'KELUAR' | null>(null)
+  const [showAllCoas, setShowAllCoas] = useState(false)
   const [selectedRekening, setSelectedRekening] = useState<'KAS' | 'BANK'>('BANK')
   const [sumberSetoran, setSumberSetoran] = useState<'SENDIRI' | 'PAROKI' | 'DANA_LINGKUNGAN' | 'ORANG_LAIN'>('SENDIRI')
+  const [sumberSetoranPenalangSelect, setSumberSetoranPenalangSelect] = useState<string>('')
   const [sumberSetoranPenalang, setSumberSetoranPenalang] = useState<string>('')
   const [noBuktiCustom, setNoBuktiCustom] = useState<string>('')
 
@@ -413,7 +420,7 @@ export default function JurnalPage() {
   const resolveCoaDetails = (code: string) => {
     const found = coaList.find(c => c.id === code)
     if (found) return found
-    const allP = [...penerimaanOptions, ...pengeluaranOptions]
+    const allP = [...penerimaanOptions, ...pengeluaranOptions, ...kasBankOptions]
     const fallback = allP.find(p => p.code === code)
     return {
       id: code,
@@ -494,8 +501,8 @@ export default function JurnalPage() {
     }
     if (step1Arus === 'MASUK') {
       if (sumberSetoran === 'ORANG_LAIN' && sumberSetoranPenalang.trim()) {
-        const penalangTag = `(Ditalangi ${sumberSetoranPenalang.trim()})`
-        if (!displayKet.includes(penalangTag)) {
+        const penalangTag = `(Donasi ${sumberSetoranPenalang.trim()})`
+        if (!displayKet.includes(penalangTag) && !displayKet.includes(`(Ditalangi ${sumberSetoranPenalang.trim()})`)) {
           displayKet = `${displayKet} ${penalangTag}`.trim()
         }
       } else if (sumberSetoran === 'PAROKI') {
@@ -503,8 +510,8 @@ export default function JurnalPage() {
           displayKet = `${displayKet} (Ditalangi Paroki)`.trim()
         }
       } else if (sumberSetoran === 'DANA_LINGKUNGAN') {
-        if (!displayKet.toLowerCase().includes('dana lingkungan') && !displayKet.toLowerCase().includes('subsidi')) {
-          displayKet = `${displayKet} (Dari Dana Lingkungan)`.trim()
+        if (!displayKet.toLowerCase().includes('kas lingkungan') && !displayKet.toLowerCase().includes('dana lingkungan') && !displayKet.toLowerCase().includes('subsidi')) {
+          displayKet = `${displayKet} (Dari Kas Lingkungan)`.trim()
         }
       }
     }
@@ -592,11 +599,14 @@ export default function JurnalPage() {
     setSubmitting(false)
 
     // Reset Form for next transaction
+    setStep1Mode(null)
     setStep1Arus(null)
+    setShowAllCoas(false)
     setStep2Jenis('')
     setStep2ManualJenis('')
     setStep3KkId('')
     setSumberSetoran('SENDIRI')
+    setSumberSetoranPenalangSelect('')
     setSumberSetoranPenalang('')
     setStep4NominalNumeric(0)
     setStep4NominalInput('Rp 0')
@@ -809,21 +819,23 @@ export default function JurnalPage() {
         </div>
 
         <form onSubmit={handleSaveTransaction} className="p-5 sm:p-6 space-y-6">
-          {/* LANGKAH 1 - Uang masuk atau keluar? */}
+          {/* LANGKAH 1 - Uang masuk, uang keluar, atau transaksi lainnya? */}
           <div className="space-y-3">
             <div className="text-xs font-bold text-slate-700">
-              LANGKAH 1 - Uang masuk atau keluar & Rekening Kas
+              LANGKAH 1 - Uang masuk, keluar, atau transaksi lainnya & Rekening Kas
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => {
+                  setStep1Mode('MASUK')
                   setStep1Arus('MASUK')
+                  setShowAllCoas(false)
                   setStep2Jenis('')
                   setStep2ManualJenis('')
                 }}
                 className={`py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center cursor-pointer border ${
-                  step1Arus === 'MASUK'
+                  step1Mode === 'MASUK'
                     ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
                     : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                 }`}
@@ -834,19 +846,73 @@ export default function JurnalPage() {
               <button
                 type="button"
                 onClick={() => {
+                  setStep1Mode('KELUAR')
                   setStep1Arus('KELUAR')
+                  setShowAllCoas(false)
                   setStep2Jenis('')
                   setStep2ManualJenis('')
                 }}
                 className={`py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center cursor-pointer border ${
-                  step1Arus === 'KELUAR'
+                  step1Mode === 'KELUAR'
                     ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
                     : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                 }`}
               >
                 Uang Keluar
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStep1Mode('LAINNYA')
+                  setStep1Arus('MASUK')
+                  setShowAllCoas(true)
+                  setStep2Jenis('')
+                  setStep2ManualJenis('')
+                }}
+                className={`py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center cursor-pointer border ${
+                  step1Mode === 'LAINNYA'
+                    ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                    : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                }`}
+              >
+                Transaksi Lainnya
+              </button>
             </div>
+
+            {/* Jika memilih Transaksi Lainnya, beri pilihan arah arus kas */}
+            {step1Mode === 'LAINNYA' && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 animate-fadeIn">
+                <div className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                  <span>Arah Aliran Kas / Bank:</span>
+                  <span className="text-[11px] text-slate-500 font-normal">Pilih kas bertambah atau berkurang (akan menyesuaikan otomatis dengan COA yang dipilih)</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep1Arus('MASUK')}
+                    className={`py-2 px-3 rounded-lg text-xs font-semibold transition border cursor-pointer ${
+                      step1Arus === 'MASUK'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    + Kas Masuk (Penerimaan)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep1Arus('KELUAR')}
+                    className={`py-2 px-3 rounded-lg text-xs font-semibold transition border cursor-pointer ${
+                      step1Arus === 'KELUAR'
+                        ? 'bg-rose-50 text-rose-800 border-rose-300 shadow-2xs font-bold'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    - Kas Keluar (Pengeluaran)
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* OPSI KAS & BANK (Cash on Hand vs Cash in Bank) */}
             {step1Arus && (
@@ -912,16 +978,34 @@ export default function JurnalPage() {
                     COA
                   </span>
                 </div>
-                {step2Jenis && (
-                  <span className="font-mono text-[11px] font-bold text-slate-800 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded">
-                    Kode COA: {step2Jenis}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {step1Mode !== 'LAINNYA' && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllCoas(!showAllCoas)}
+                      className="text-[11px] text-slate-600 hover:text-slate-900 underline font-medium cursor-pointer"
+                    >
+                      {showAllCoas ? 'COA Sesuai Arus' : 'Lihat Semua COA'}
+                    </button>
+                  )}
+                  {step2Jenis && (
+                    <span className="font-mono text-[11px] font-bold text-slate-800 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded">
+                      Kode COA: {step2Jenis}
+                    </span>
+                  )}
+                </div>
               </div>
               <Select
                 value={step2Jenis}
                 onValueChange={(val) => {
                   setStep2Jenis(val || '')
+                  if (step1Mode === 'LAINNYA') {
+                    if (val && val.startsWith('4')) {
+                      setStep1Arus('MASUK')
+                    } else if (val && val.startsWith('5')) {
+                      setStep1Arus('KELUAR')
+                    }
+                  }
                   if (val !== '4900' && val !== '5900') {
                     setStep2ManualJenis('')
                   }
@@ -929,21 +1013,64 @@ export default function JurnalPage() {
               >
                 <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium">
                   {(() => {
-                    const activeList = step1Arus === 'MASUK' ? penerimaanOptions : pengeluaranOptions
-                    const matched = activeList.find((i) => i.code === step2Jenis)
+                    const matched = coaList.find((i) => i.id === step2Jenis)
                     if (!matched) return <SelectValue placeholder="-- Pilih jenis transaksi & COA --" />
                     return (
                       <div className="flex items-center gap-2 text-slate-900 font-medium truncate">
                         <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 px-1.5 py-0.5 rounded shrink-0">
-                          {matched.code}
+                          {matched.id}
                         </span>
-                        <span className="truncate">{matched.name}</span>
+                        <span className="truncate">{matched.nama_akun}</span>
                       </div>
                     )
                   })()}
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-72">
-                  {step1Arus === 'MASUK' ? (
+                  {step1Mode === 'LAINNYA' || showAllCoas ? (
+                    <>
+                      <div className="px-2 py-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border-y border-emerald-100 my-1">
+                        Akun Penerimaan / Uang Masuk (COA 4xxx)
+                      </div>
+                      {penerimaanOptions.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          <div className="flex items-center gap-2 py-0.5">
+                            <span className="font-mono text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.5 rounded shrink-0">
+                              {item.code}
+                            </span>
+                            <span className="font-medium">{item.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+
+                      <div className="px-2 py-1 text-[10px] font-bold text-rose-800 bg-rose-50 border-y border-rose-100 my-1">
+                        Akun Pengeluaran / Uang Keluar (COA 5xxx)
+                      </div>
+                      {pengeluaranOptions.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          <div className="flex items-center gap-2 py-0.5">
+                            <span className="font-mono text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 px-1.5 py-0.5 rounded shrink-0">
+                              {item.code}
+                            </span>
+                            <span className="font-medium">{item.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+
+                      <div className="px-2 py-1 text-[10px] font-bold text-slate-800 bg-slate-100 border-y border-slate-200 my-1">
+                        Kas & Talangan (COA 1xxx)
+                      </div>
+                      {kasBankOptions.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          <div className="flex items-center gap-2 py-0.5">
+                            <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 px-1.5 py-0.5 rounded shrink-0">
+                              {item.code}
+                            </span>
+                            <span className="font-medium">{item.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  ) : step1Arus === 'MASUK' ? (
                     penerimaanOptions.map((item) => (
                       <SelectItem key={item.code} value={item.code}>
                         <div className="flex items-center gap-2 py-0.5">
@@ -1052,7 +1179,7 @@ export default function JurnalPage() {
                       </span>
                     </button>
 
-                    {/* 2. Dari Dana Lingkungan */}
+                    {/* 2. Dari Kas Lingkungan */}
                     <button
                       type="button"
                       onClick={() => setSumberSetoran('DANA_LINGKUNGAN')}
@@ -1062,15 +1189,15 @@ export default function JurnalPage() {
                           : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                       }`}
                     >
-                      <span>Dari Dana Lingkungan</span>
+                      <span>Dari Kas Lingkungan</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
                         sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-indigo-50 text-indigo-600 font-medium' : 'bg-slate-100/70 text-slate-400'
                       }`}>
-                        Disubsidi Kas
+                        Kas Lingkungan
                       </span>
                     </button>
 
-                    {/* 3. Ditalangi Orang Lain */}
+                    {/* 3. Dari Donasi Umat Lain */}
                     <button
                       type="button"
                       onClick={() => setSumberSetoran('ORANG_LAIN')}
@@ -1080,27 +1207,90 @@ export default function JurnalPage() {
                           : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                       }`}
                     >
-                      <span>Ditalangi Orang Lain</span>
+                      <span>Dari Donasi Umat Lain</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
                         sumberSetoran === 'ORANG_LAIN' ? 'bg-amber-50 text-amber-600 font-medium' : 'bg-slate-100/70 text-slate-400'
                       }`}>
-                        Talangan Donatur
+                        Donasi Umat Lain
                       </span>
                     </button>
                   </div>
 
                   {sumberSetoran === 'ORANG_LAIN' && (
-                    <div className="pt-1.5 animate-fadeIn">
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        Nama Yang Menalangi / Donatur (Keterangan):
-                      </label>
-                      <input
-                        type="text"
-                        value={sumberSetoranPenalang}
-                        onChange={(e) => setSumberSetoranPenalang(e.target.value)}
-                        placeholder="Contoh: Bpk. Andreas / Ibu Maria / Donatur Kasih"
-                        className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-500 bg-white"
-                      />
+                    <div className="pt-2 space-y-2 animate-fadeIn bg-amber-50/50 p-3 rounded-xl border border-amber-200/70">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[11px] font-bold text-slate-800">
+                          Nama Donatur / Yang Menalangi:
+                        </label>
+                        <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded font-medium">
+                          Pilih Donatur / N/N
+                        </span>
+                      </div>
+                      <Select
+                        value={sumberSetoranPenalangSelect}
+                        onValueChange={(val) => {
+                          const safeVal = val || ''
+                          setSumberSetoranPenalangSelect(safeVal)
+                          if (safeVal === 'NN') {
+                            setSumberSetoranPenalang('N/N')
+                          } else if (safeVal === 'MANUAL') {
+                            setSumberSetoranPenalang('')
+                          } else {
+                            setSumberSetoranPenalang(safeVal)
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-10 text-xs font-medium w-full">
+                          <SelectValue placeholder="-- Pilih Umat Donatur atau N/N --" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-64">
+                          <SelectItem value="NN">
+                            <div className="flex items-center gap-2 py-0.5 font-bold text-slate-900">
+                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-mono text-[11px]">N/N</span>
+                              <span>N/N (Umat Anonim / Tidak Mau Ditampilkan)</span>
+                            </div>
+                          </SelectItem>
+                          <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50">
+                            Daftar Umat / KK Lingkungan
+                          </div>
+                          {kkList.map((kk) => (
+                            <SelectItem key={kk.id} value={kk.nama_kk}>
+                              <div className="text-left py-0.5">
+                                <span className="font-semibold text-slate-800">{kk.nama_kk}</span>
+                                {kk.alamat && (
+                                  <span className="text-[10px] text-slate-400 ml-1.5 truncate">
+                                    ({kk.alamat})
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                          <div className="border-t border-slate-100 my-1" />
+                          <SelectItem value="MANUAL">
+                            <span className="font-medium text-slate-600 italic">
+                              + Donatur Lainnya (Ketik Manual)
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {(sumberSetoranPenalangSelect === 'MANUAL' || (!['NN', ...kkList.map(k => k.nama_kk)].includes(sumberSetoranPenalangSelect) && sumberSetoranPenalangSelect !== '')) && (
+                        <div className="pt-1">
+                          <input
+                            type="text"
+                            value={sumberSetoranPenalang}
+                            onChange={(e) => setSumberSetoranPenalang(e.target.value)}
+                            placeholder="Tuliskan nama donatur lainnya..."
+                            className="w-full text-xs px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white font-medium"
+                          />
+                        </div>
+                      )}
+
+                      {sumberSetoranPenalang === 'N/N' && (
+                        <p className="text-[11px] text-amber-800 italic">
+                          * Donasi dicatat sebagai <strong>N/N</strong> untuk melindungi privasi umat yang tidak ingin identitas namanya ditampilkan di laporan.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1395,11 +1585,11 @@ export default function JurnalPage() {
                               }`}
                             >
                               {j.sumber_setoran === 'DANA_LINGKUNGAN'
-                                ? 'Disubsidi Lingkungan'
+                                ? 'Dari Kas Lingkungan'
                                 : j.sumber_setoran === 'PAROKI'
                                 ? 'Ditalangi Paroki'
                                 : j.sumber_setoran === 'ORANG_LAIN'
-                                ? 'Ditalangi Donatur'
+                                ? 'Donasi Umat Lain'
                                 : 'Bayar Mandiri'}
                             </span>
                           )}
