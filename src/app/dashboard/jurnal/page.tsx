@@ -1153,7 +1153,7 @@ export default function JurnalPage() {
                     >
                       <span>Dari Kas Lingkungan</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-indigo-50 text-indigo-600 font-medium' : 'bg-slate-100/70 text-slate-400'
+                        sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-slate-200/90 text-slate-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
                       }`}>
                         Kas Lingkungan
                       </span>
@@ -1171,7 +1171,7 @@ export default function JurnalPage() {
                     >
                       <span>Dari Donasi Umat Lain</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'ORANG_LAIN' ? 'bg-amber-50 text-amber-600 font-medium' : 'bg-slate-100/70 text-slate-400'
+                        sumberSetoran === 'ORANG_LAIN' ? 'bg-slate-200/90 text-slate-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
                       }`}>
                         Donasi Umat Lain
                       </span>
@@ -1179,12 +1179,12 @@ export default function JurnalPage() {
                   </div>
 
                   {sumberSetoran === 'ORANG_LAIN' && (
-                    <div className="pt-2 space-y-2 animate-fadeIn bg-amber-50/50 p-3 rounded-xl border border-amber-200/70">
+                    <div className="pt-2 space-y-2 animate-fadeIn bg-slate-100/70 p-3 rounded-xl border border-slate-200/90">
                       <div className="flex items-center justify-between">
                         <label className="block text-[11px] font-bold text-slate-800">
                           Nama Donatur / Yang Menalangi:
                         </label>
-                        <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded font-medium">
+                        <span className="text-[10px] text-slate-600 bg-slate-200/80 px-1.5 py-0.5 rounded font-medium">
                           Pilih Donatur / N/N
                         </span>
                       </div>
@@ -1208,7 +1208,7 @@ export default function JurnalPage() {
                         <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-64">
                           <SelectItem value="NN">
                             <div className="flex items-center gap-2 py-0.5 font-bold text-slate-900">
-                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-mono text-[11px]">N/N</span>
+                              <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-800 font-mono text-[11px]">N/N</span>
                               <span>N/N (Umat Anonim / Tidak Mau Ditampilkan)</span>
                             </div>
                           </SelectItem>
@@ -1243,13 +1243,13 @@ export default function JurnalPage() {
                             value={sumberSetoranPenalang}
                             onChange={(e) => setSumberSetoranPenalang(e.target.value)}
                             placeholder="Tuliskan nama donatur lainnya..."
-                            className="w-full text-xs px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white font-medium"
+                            className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white font-medium"
                           />
                         </div>
                       )}
 
                       {sumberSetoranPenalang === 'N/N' && (
-                        <p className="text-[11px] text-amber-800 italic">
+                        <p className="text-[11px] text-slate-500 italic">
                           * Donasi dicatat sebagai <strong>N/N</strong> untuk melindungi privasi umat yang tidak ingin identitas namanya ditampilkan di laporan.
                         </p>
                       )}
