@@ -303,28 +303,28 @@ export default function ParokiBendaharaPage() {
 
       const persentaseCapaian = targetKas > 0 ? Number(((realisasiIuran / targetKas) * 100).toFixed(1)) : 0
 
-      // Kategori Perhatian Romo (Soft, Netral, Tidak Neon)
+      // Kategori Perhatian Romo (Soft, Muted, Minimalist & Tidak Neon)
       let statusKategori: 'BUTUH_PERHATIAN' | 'PERLU_FOLLOWUP' | 'TERTIB' = 'BUTUH_PERHATIAN'
       let statusLabel = 'Butuh Perhatian Romo'
-      let badgeClass = 'bg-rose-50 text-rose-800 border-rose-200/90'
-      let barClass = 'bg-[#be123c]'
-      let barBg = 'bg-rose-100/60'
+      let badgeClass = 'bg-[#F6F3F3] text-[#6B5353] border-[#E4DCDC]'
+      let barClass = 'bg-[#8C6D6D]'
+      let barBg = 'bg-slate-100'
       let deskripsi = 'Capaian < 35%, partisipasi kas sangat minim. Perlu perhatian & kunjungan pastoral Romo.'
 
       if (persentaseCapaian >= 70) {
         statusKategori = 'TERTIB'
         statusLabel = 'Mandiri & Tertib'
-        badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-200/90'
-        barClass = 'bg-[#15803d]'
-        barBg = 'bg-emerald-100/60'
+        badgeClass = 'bg-[#F2F5F3] text-[#4E6358] border-[#DCE5DF]'
+        barClass = 'bg-[#637D6F]'
+        barBg = 'bg-slate-100'
         deskripsi = 'Capaian ≥ 70%, kas lingkungan sehat dan tertib.'
         countTertib++
       } else if (persentaseCapaian >= 35) {
         statusKategori = 'PERLU_FOLLOWUP'
         statusLabel = 'Perlu Follow-up'
-        badgeClass = 'bg-amber-50 text-amber-800 border-amber-200/90'
-        barClass = 'bg-[#b45309]'
-        barBg = 'bg-amber-100/60'
+        badgeClass = 'bg-[#F6F4F0] text-[#6B5F4E] border-[#E5DFD5]'
+        barClass = 'bg-[#8C7B65]'
+        barBg = 'bg-slate-100'
         deskripsi = 'Capaian 35%–69%, ada setoran tapi perlu diingatkan agar tunggakan terkejar.'
         countPerluFollowup++
       } else {
@@ -472,7 +472,7 @@ export default function ParokiBendaharaPage() {
         // Tentukan Kesimpulan Status (Warna Soft & Netral Elegan, tidak neon)
         let kesimpulanStatus = {
           label: 'Belum Bayar (Tunggakan 9 Bulan)',
-          badgeClass: 'bg-slate-50 text-slate-700 border-slate-200/90',
+          badgeClass: 'bg-[#F6F3F3] text-[#6B5353] border-[#E4DCDC]',
           color: 'text-slate-700',
           isLunas: false
         }
@@ -480,21 +480,21 @@ export default function ParokiBendaharaPage() {
         if (gol.golongan === 'Tidak Mampu') {
           kesimpulanStatus = {
             label: 'Bebas Iuran (Subsidi Paroki)',
-            badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+            badgeClass: 'bg-slate-100/80 text-slate-600 border-slate-200/80',
             color: 'text-slate-600',
             isLunas: true
           }
         } else if (paidCount >= 12) {
           kesimpulanStatus = {
             label: 'Lunas Penuh 1 Tahun (12/12 Bln)',
-            badgeClass: 'bg-slate-100 text-slate-800 border-slate-200',
+            badgeClass: 'bg-[#F2F5F3] text-[#4E6358] border-[#DCE5DF]',
             color: 'text-slate-800',
             isLunas: true
           }
         } else if (paidCount >= BULAN_BERJALAN_CURRENT) {
           kesimpulanStatus = {
             label: `Lunas s/d Bulan Ini (${paidCount}/${BULAN_BERJALAN_CURRENT} Bln)`,
-            badgeClass: 'bg-slate-100 text-slate-800 border-slate-200',
+            badgeClass: 'bg-[#F2F5F3] text-[#4E6358] border-[#DCE5DF]',
             color: 'text-slate-800',
             isLunas: true
           }
@@ -502,8 +502,8 @@ export default function ParokiBendaharaPage() {
           const sisa = BULAN_BERJALAN_CURRENT - paidCount
           kesimpulanStatus = {
             label: `Bayar Sebagian (${paidCount}/${BULAN_BERJALAN_CURRENT} Bln - Kurang ${sisa} Bln)`,
-            badgeClass: 'bg-amber-50/70 text-amber-800/90 border-amber-200/70',
-            color: 'text-amber-700',
+            badgeClass: 'bg-[#F6F4F0] text-[#6B5F4E] border-[#E5DFD5]',
+            color: 'text-slate-700',
             isLunas: false
           }
         }
@@ -634,25 +634,41 @@ export default function ParokiBendaharaPage() {
     )
   }
 
+  const sortLabels: Record<string, string> = {
+    ATTENTION_FIRST: 'Prioritas Perhatian Romo',
+    PERCENT_ASC: 'Capaian Terendah (0% - 100%)',
+    PERCENT_DESC: 'Capaian Tertinggi (100% - 0%)',
+    NOMINAL_DESC: 'Realisasi Terbesar',
+    NAME_ASC: 'Nama Lingkungan (A-Z)'
+  }
+
+  const statusFilterLabels: Record<string, string> = {
+    ALL: 'Semua Status',
+    LUNAS: 'Sudah Lunas s/d Bulan Berjalan',
+    SEBAGIAN: 'Bayar Sebagian',
+    BELUM: 'Belum Bayar (Menunggak)',
+    BEBAS: 'Bebas Iuran (Keluarga Tidak Mampu)'
+  }
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16 text-[#1B2130]">
-      {/* Top Banner Header */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
-            <Coins className="w-6 h-6 text-amber-700" />
+    <div className="space-y-6 max-w-7xl mx-auto pb-16 text-slate-800">
+      {/* Top Banner Header - Clean, Soft & Minimalist */}
+      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100/90 border border-slate-200/80 flex items-center justify-center shrink-0">
+            <Coins className="w-5 h-5 text-slate-600" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200">
-                Pengawas & Bendahara Paroki
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200/80">
+                Pengawas &amp; Bendahara Paroki
               </span>
-              <span className="text-xs text-slate-500 font-medium">
+              <span className="text-xs text-slate-400 font-medium">
                 Gereja St. Clara • Paroki Bekasi Utara
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 tracking-tight font-serif">
-              Monitoring Keuangan & Kartu Setoran Seluruh Lingkungan
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1 tracking-tight font-serif">
+              Monitoring Keuangan &amp; Kartu Setoran Seluruh Lingkungan
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
               Pantau kepatuhan setoran, nominal iuran, capaian persentase kas, dan status kesimpulan pembayaran tiap keluarga.
@@ -660,51 +676,52 @@ export default function ParokiBendaharaPage() {
           </div>
         </div>
 
-        {/* Action Buttons: Linked to Sheet & Refresh */}
+        {/* Action Buttons: Linked to Sheet (Soft Grey) & Refresh */}
         <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
           <Button
             type="button"
+            variant="outline"
             onClick={() => setSheetModalOpen(true)}
-            className="bg-[#0F9D58] hover:bg-[#0B8043] text-white font-bold h-10 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-all"
+            className="bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 border-slate-200/90 font-semibold h-10 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-2xs cursor-pointer transition-all"
           >
-            <FileSpreadsheet className="w-4 h-4 text-white" />
+            <FileSpreadsheet className="w-4 h-4 text-slate-600" />
             Linked to Sheet
           </Button>
           <Button
             type="button"
             variant="outline"
             onClick={loadParokiFinancialData}
-            className="border-slate-300 text-slate-700 hover:bg-slate-100 font-bold h-10 px-3.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+            className="bg-white border-slate-200/90 text-slate-600 hover:bg-slate-50 hover:text-slate-800 font-semibold h-10 px-3.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
             title="Sinkronkan data terbaru"
           >
-            <RefreshCw className="w-4 h-4 text-slate-600" />
+            <RefreshCw className="w-4 h-4 text-slate-500" />
             Refresh
           </Button>
         </div>
       </div>
 
-      {/* 4 Kartu Metrik & Pastoral Paroki */}
+      {/* 4 Kartu Metrik & Pastoral Paroki (Soft & Elegant Neutral Palette) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Kas Terkumpul Paroki vs Target */}
-        <Card className="bg-white border-slate-200/90 rounded-2xl shadow-xs">
-          <CardContent className="p-4 flex flex-col justify-between h-full">
+        <Card className="bg-white border-slate-200/80 rounded-2xl shadow-2xs">
+          <CardContent className="p-5 flex flex-col justify-between h-full">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kas Paroki Terkumpul</span>
-              <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
-                <Coins className="w-5 h-5" />
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Kas Paroki Terkumpul</span>
+              <div className="w-9 h-9 rounded-xl bg-slate-100/80 border border-slate-200/60 text-slate-600 flex items-center justify-center shrink-0">
+                <Coins className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-2">
-              <div className="text-xl sm:text-2xl font-black text-slate-900">
+            <div className="mt-3">
+              <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 {formatRupiah(rekapCapaianLingkungan.grandTotalRealisasi)}
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-slate-500 mt-1">
                 Target: {formatRupiah(rekapCapaianLingkungan.grandTotalTarget)} ({rekapCapaianLingkungan.grandTotalPersentase}%)
               </div>
               {/* Progress Bar Global Paroki */}
-              <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2.5 overflow-hidden">
+              <div className="w-full h-1.5 bg-slate-100 rounded-full mt-3 overflow-hidden">
                 <div
-                  className="h-full bg-slate-800 rounded-full transition-all"
+                  className="h-full bg-slate-600 rounded-full transition-all"
                   style={{ width: `${Math.min(100, rekapCapaianLingkungan.grandTotalPersentase)}%` }}
                 />
               </div>
@@ -712,32 +729,32 @@ export default function ParokiBendaharaPage() {
           </CardContent>
         </Card>
 
-        {/* 🔴 Butuh Perhatian Romo */}
+        {/* Butuh Perhatian Romo */}
         <Card
           onClick={() => {
             setRekapFilterKategori('BUTUH_PERHATIAN')
             document.getElementById('rekap-kas-section')?.scrollIntoView({ behavior: 'smooth' })
           }}
-          className={`bg-white border-slate-200/90 hover:border-rose-300 transition-all rounded-2xl shadow-xs cursor-pointer group ${
-            rekapFilterKategori === 'BUTUH_PERHATIAN' ? 'ring-2 ring-rose-700/30 border-rose-300' : ''
+          className={`bg-white border-slate-200/80 hover:border-slate-300 transition-all rounded-2xl shadow-2xs cursor-pointer group ${
+            rekapFilterKategori === 'BUTUH_PERHATIAN' ? 'ring-1 ring-slate-400 border-slate-400 bg-slate-50/40' : ''
           }`}
         >
-          <CardContent className="p-4 flex flex-col justify-between h-full">
+          <CardContent className="p-5 flex flex-col justify-between h-full">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-rose-800 uppercase tracking-wider">Butuh Perhatian Romo</span>
-              <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-700 flex items-center justify-center shrink-0 group-hover:bg-rose-100 transition-colors">
-                <AlertCircle className="w-5 h-5" />
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Butuh Perhatian Romo</span>
+              <div className="w-9 h-9 rounded-xl bg-[#F6F3F3] border border-[#E4DCDC] text-[#6B5353] flex items-center justify-center shrink-0 group-hover:bg-[#EFEAEA] transition-colors">
+                <AlertCircle className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-2">
-              <div className="text-xl sm:text-2xl font-black text-rose-900">
+            <div className="mt-3">
+              <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 {rekapCapaianLingkungan.countButuhPerhatian}{' '}
-                <span className="text-xs font-semibold text-slate-500">Lingkungan</span>
+                <span className="text-xs font-medium text-slate-500">Lingkungan</span>
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-slate-500 mt-1">
                 Capaian &lt; 35% atau belum ada setoran
               </div>
-              <div className="text-[10px] text-rose-700 font-semibold mt-2.5 flex items-center gap-1">
+              <div className="text-[11px] text-slate-500 group-hover:text-slate-800 font-medium mt-3 flex items-center gap-1 transition-colors">
                 <span>Klik untuk saring data</span>
                 <ChevronRight className="w-3 h-3" />
               </div>
@@ -745,32 +762,32 @@ export default function ParokiBendaharaPage() {
           </CardContent>
         </Card>
 
-        {/* 🟡 Perlu Follow-up */}
+        {/* Perlu Follow-up */}
         <Card
           onClick={() => {
             setRekapFilterKategori('PERLU_FOLLOWUP')
             document.getElementById('rekap-kas-section')?.scrollIntoView({ behavior: 'smooth' })
           }}
-          className={`bg-white border-slate-200/90 hover:border-amber-300 transition-all rounded-2xl shadow-xs cursor-pointer group ${
-            rekapFilterKategori === 'PERLU_FOLLOWUP' ? 'ring-2 ring-amber-700/30 border-amber-300' : ''
+          className={`bg-white border-slate-200/80 hover:border-slate-300 transition-all rounded-2xl shadow-2xs cursor-pointer group ${
+            rekapFilterKategori === 'PERLU_FOLLOWUP' ? 'ring-1 ring-slate-400 border-slate-400 bg-slate-50/40' : ''
           }`}
         >
-          <CardContent className="p-4 flex flex-col justify-between h-full">
+          <CardContent className="p-5 flex flex-col justify-between h-full">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-amber-800 uppercase tracking-wider">Perlu Follow-up</span>
-              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-700 flex items-center justify-center shrink-0 group-hover:bg-amber-100 transition-colors">
-                <Clock className="w-5 h-5" />
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Perlu Follow-up</span>
+              <div className="w-9 h-9 rounded-xl bg-[#F6F4F0] border border-[#E5DFD5] text-[#6B5F4E] flex items-center justify-center shrink-0 group-hover:bg-[#EFECE6] transition-colors">
+                <Clock className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-2">
-              <div className="text-xl sm:text-2xl font-black text-amber-900">
+            <div className="mt-3">
+              <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 {rekapCapaianLingkungan.countPerluFollowup}{' '}
-                <span className="text-xs font-semibold text-slate-500">Lingkungan</span>
+                <span className="text-xs font-medium text-slate-500">Lingkungan</span>
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-slate-500 mt-1">
                 Capaian 35% – 69% (perlu diingatkan)
               </div>
-              <div className="text-[10px] text-amber-700 font-semibold mt-2.5 flex items-center gap-1">
+              <div className="text-[11px] text-slate-500 group-hover:text-slate-800 font-medium mt-3 flex items-center gap-1 transition-colors">
                 <span>Klik untuk saring data</span>
                 <ChevronRight className="w-3 h-3" />
               </div>
@@ -778,32 +795,32 @@ export default function ParokiBendaharaPage() {
           </CardContent>
         </Card>
 
-        {/* 🟢 Mandiri & Tertib */}
+        {/* Mandiri & Tertib */}
         <Card
           onClick={() => {
             setRekapFilterKategori('TERTIB')
             document.getElementById('rekap-kas-section')?.scrollIntoView({ behavior: 'smooth' })
           }}
-          className={`bg-white border-slate-200/90 hover:border-emerald-300 transition-all rounded-2xl shadow-xs cursor-pointer group ${
-            rekapFilterKategori === 'TERTIB' ? 'ring-2 ring-emerald-700/30 border-emerald-300' : ''
+          className={`bg-white border-slate-200/80 hover:border-slate-300 transition-all rounded-2xl shadow-2xs cursor-pointer group ${
+            rekapFilterKategori === 'TERTIB' ? 'ring-1 ring-slate-400 border-slate-400 bg-slate-50/40' : ''
           }`}
         >
-          <CardContent className="p-4 flex flex-col justify-between h-full">
+          <CardContent className="p-5 flex flex-col justify-between h-full">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Mandiri &amp; Tertib</span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-700 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
-                <CheckCircle2 className="w-5 h-5" />
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Mandiri &amp; Tertib</span>
+              <div className="w-9 h-9 rounded-xl bg-[#F2F5F3] border border-[#DCE5DF] text-[#4E6358] flex items-center justify-center shrink-0 group-hover:bg-[#E7ECE9] transition-colors">
+                <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-2">
-              <div className="text-xl sm:text-2xl font-black text-emerald-900">
+            <div className="mt-3">
+              <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 {rekapCapaianLingkungan.countTertib}{' '}
-                <span className="text-xs font-semibold text-slate-500">Lingkungan</span>
+                <span className="text-xs font-medium text-slate-500">Lingkungan</span>
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-slate-500 mt-1">
                 Capaian &ge; 70% s/d bulan {MONTH_NAMES[BULAN_BERJALAN_CURRENT - 1]}
               </div>
-              <div className="text-[10px] text-emerald-700 font-semibold mt-2.5 flex items-center gap-1">
+              <div className="text-[11px] text-slate-500 group-hover:text-slate-800 font-medium mt-3 flex items-center gap-1 transition-colors">
                 <span>Klik untuk saring data</span>
                 <ChevronRight className="w-3 h-3" />
               </div>
@@ -816,44 +833,44 @@ export default function ParokiBendaharaPage() {
       {/* SEKSI 1: TABEL REKAPITULASI IURAN KAS TIAP LINGKUNGAN */}
       {/* (Nama Lingkungan, Jumlah KK, Target, Realisasi, Persentase & Status Romo) */}
       {/* ============================================================== */}
-      <Card id="rekap-kas-section" className="bg-white border-slate-200/90 rounded-2xl shadow-xs overflow-hidden scroll-mt-6">
-        <CardHeader className="p-5 border-b border-slate-200 flex flex-col gap-4">
+      <Card id="rekap-kas-section" className="bg-white border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden scroll-mt-6">
+        <CardHeader className="p-5 border-b border-slate-200/80 flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <CardTitle className="text-base font-bold text-slate-900 font-serif">
                   Rekapitulasi Capaian Iuran Kas Seluruh Lingkungan
                 </CardTitle>
-                <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                <span className="text-[11px] font-medium text-slate-600 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md">
                   {allLingkungan.length} Lingkungan
                 </span>
               </div>
               <CardDescription className="text-xs text-slate-500 mt-1">
-                Rumus: <strong>Target Kas</strong> = Jumlah KK Wajib &times; Rp 20.000 &times; {BULAN_BERJALAN_CURRENT} Bulan (KK Tidak Mampu dikecualikan dari beban target).
+                Rumus: <strong className="text-slate-700 font-semibold">Target Kas</strong> = Jumlah KK Wajib &times; Rp 20.000 &times; {BULAN_BERJALAN_CURRENT} Bulan (KK Tidak Mampu dikecualikan dari beban target).
               </CardDescription>
             </div>
             <Button
               type="button"
               variant="outline"
               onClick={handleExportCapaianCsv}
-              className="border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl h-9 px-3 cursor-pointer shrink-0 self-start sm:self-auto"
+              className="border-slate-200/90 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl h-9 px-3.5 cursor-pointer shrink-0 self-start sm:self-auto shadow-2xs"
             >
-              <Download className="w-4 h-4 mr-1 text-slate-600" />
+              <Download className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
               Unduh Rekap Kas
             </Button>
           </div>
 
           {/* Filter Kategori & Kontrol Pencarian / Pengurutan */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1 border-t border-slate-100">
-            {/* Tabs Filter Kategori Pastoral */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2 border-t border-slate-100">
+            {/* Tabs Filter Kategori Pastoral (Minimalist Soft Pills) */}
             <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setRekapFilterKategori('ALL')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border ${
                   rekapFilterKategori === 'ALL'
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                    : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 Semua Lingkungan ({rekapCapaianLingkungan.list.length})
@@ -861,35 +878,38 @@ export default function ParokiBendaharaPage() {
               <button
                 type="button"
                 onClick={() => setRekapFilterKategori('BUTUH_PERHATIAN')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 ${
                   rekapFilterKategori === 'BUTUH_PERHATIAN'
-                    ? 'bg-rose-900 text-white border-rose-900 shadow-xs'
-                    : 'bg-rose-50/70 text-rose-800 border-rose-200/80 hover:bg-rose-100/70'
+                    ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                    : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
-                🔴 Butuh Perhatian Romo ({rekapCapaianLingkungan.countButuhPerhatian})
+                <span className={`w-1.5 h-1.5 rounded-full ${rekapFilterKategori === 'BUTUH_PERHATIAN' ? 'bg-[#D4B2B2]' : 'bg-[#9E7B7B]'}`} />
+                Butuh Perhatian Romo ({rekapCapaianLingkungan.countButuhPerhatian})
               </button>
               <button
                 type="button"
                 onClick={() => setRekapFilterKategori('PERLU_FOLLOWUP')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 ${
                   rekapFilterKategori === 'PERLU_FOLLOWUP'
-                    ? 'bg-amber-900 text-white border-amber-900 shadow-xs'
-                    : 'bg-amber-50/70 text-amber-800 border-amber-200/80 hover:bg-amber-100/70'
+                    ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                    : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
-                🟡 Perlu Follow-up ({rekapCapaianLingkungan.countPerluFollowup})
+                <span className={`w-1.5 h-1.5 rounded-full ${rekapFilterKategori === 'PERLU_FOLLOWUP' ? 'bg-[#D6C5A9]' : 'bg-[#9E8C70]'}`} />
+                Perlu Follow-up ({rekapCapaianLingkungan.countPerluFollowup})
               </button>
               <button
                 type="button"
                 onClick={() => setRekapFilterKategori('TERTIB')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 ${
                   rekapFilterKategori === 'TERTIB'
-                    ? 'bg-emerald-900 text-white border-emerald-900 shadow-xs'
-                    : 'bg-emerald-50/70 text-emerald-800 border-emerald-200/80 hover:bg-emerald-100/70'
+                    ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                    : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
-                🟢 Mandiri &amp; Tertib ({rekapCapaianLingkungan.countTertib})
+                <span className={`w-1.5 h-1.5 rounded-full ${rekapFilterKategori === 'TERTIB' ? 'bg-[#A8C4B5]' : 'bg-[#688777]'}`} />
+                Mandiri &amp; Tertib ({rekapCapaianLingkungan.countTertib})
               </button>
             </div>
 
@@ -901,15 +921,15 @@ export default function ParokiBendaharaPage() {
                   value={rekapSearchText}
                   onChange={(e) => setRekapSearchText(e.target.value)}
                   placeholder="Cari lingkungan / wilayah..."
-                  className="pl-8 bg-white border-slate-300 text-slate-900 text-xs rounded-xl h-9"
+                  className="pl-8 bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs rounded-xl h-9 focus:bg-white"
                 />
               </div>
 
               <Select value={rekapSortBy} onValueChange={(val: any) => setRekapSortBy(val)}>
-                <SelectTrigger className="w-48 bg-white border-slate-300 text-slate-800 text-xs font-medium rounded-xl h-9">
-                  <SelectValue placeholder="Urutkan" />
+                <SelectTrigger className="w-52 bg-slate-50/60 border-slate-200/90 text-slate-700 text-xs font-medium rounded-xl h-9">
+                  <span className="truncate">{sortLabels[rekapSortBy] || 'Prioritas Perhatian Romo'}</span>
                 </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
+                <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs">
                   <SelectItem value="ATTENTION_FIRST">Prioritas Perhatian Romo</SelectItem>
                   <SelectItem value="PERCENT_ASC">Capaian Terendah (0% - 100%)</SelectItem>
                   <SelectItem value="PERCENT_DESC">Capaian Tertinggi (100% - 0%)</SelectItem>
@@ -923,16 +943,16 @@ export default function ParokiBendaharaPage() {
         <CardContent className="p-0">
           <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <Table className="text-xs">
-              <TableHeader className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 shadow-2xs">
+              <TableHeader className="bg-slate-50/90 sticky top-0 z-10 border-b border-slate-200/80">
                 <TableRow>
-                  <TableHead className="w-12 text-center font-bold text-slate-700">No</TableHead>
-                  <TableHead className="w-48 font-bold text-slate-700">Lingkungan &amp; Wilayah</TableHead>
-                  <TableHead className="w-32 text-center font-bold text-slate-700">Jumlah KK</TableHead>
-                  <TableHead className="w-36 text-right font-bold text-slate-700">Target Kas (Rp)</TableHead>
-                  <TableHead className="w-36 text-right font-bold text-slate-700">Realisasi Kas (Rp)</TableHead>
-                  <TableHead className="w-48 font-bold text-slate-700">Capaian Kas (%)</TableHead>
-                  <TableHead className="w-44 text-center font-bold text-slate-700">Status Pastoral</TableHead>
-                  <TableHead className="w-24 text-center font-bold text-slate-700">Aksi</TableHead>
+                  <TableHead className="w-12 text-center font-semibold text-slate-600">No</TableHead>
+                  <TableHead className="w-48 font-semibold text-slate-600">Lingkungan &amp; Wilayah</TableHead>
+                  <TableHead className="w-32 text-center font-semibold text-slate-600">Jumlah KK</TableHead>
+                  <TableHead className="w-36 text-right font-semibold text-slate-600">Target Kas (Rp)</TableHead>
+                  <TableHead className="w-36 text-right font-semibold text-slate-600">Realisasi Kas (Rp)</TableHead>
+                  <TableHead className="w-48 font-semibold text-slate-600">Capaian Kas (%)</TableHead>
+                  <TableHead className="w-44 text-center font-semibold text-slate-600">Status Pastoral</TableHead>
+                  <TableHead className="w-24 text-center font-semibold text-slate-600">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-slate-100">
@@ -944,35 +964,35 @@ export default function ParokiBendaharaPage() {
                   </TableRow>
                 ) : (
                   filteredRekapList.map((item, idx) => (
-                    <TableRow key={item.lingkunganId} className="hover:bg-slate-50/80 transition-colors">
-                      <TableCell className="text-center font-mono text-slate-500 font-semibold">{idx + 1}</TableCell>
+                    <TableRow key={item.lingkunganId} className="hover:bg-slate-50/70 transition-colors">
+                      <TableCell className="text-center font-mono text-slate-400 font-medium">{idx + 1}</TableCell>
                       <TableCell>
-                        <div className="font-bold text-slate-900">
+                        <div className="font-semibold text-slate-800">
                           {formatNamaLingkungan(item.namaLingkungan)}
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-[11px] text-slate-400">
                           Wilayah: {item.wilayah}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <div className="font-bold text-slate-800">
-                          {item.jumlahKkTotal} <span className="text-[11px] text-slate-500 font-normal">KK</span>
+                        <div className="font-semibold text-slate-800">
+                          {item.jumlahKkTotal} <span className="text-[11px] text-slate-400 font-normal">KK</span>
                         </div>
-                        <div className="text-[10px] text-slate-500 font-medium">
+                        <div className="text-[10px] text-slate-400">
                           {item.kkWajibCount} Wajib {item.kkBebasCount > 0 ? `• ${item.kkBebasCount} Bebas` : ''}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right font-mono text-slate-700 font-semibold">
+                      <TableCell className="text-right font-mono text-slate-600 font-medium">
                         {formatRupiah(item.targetKas)}
                       </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-slate-900">
+                      <TableCell className="text-right font-mono font-semibold text-slate-800">
                         {item.realisasiIuran > 0 ? formatRupiah(item.realisasiIuran) : 'Rp 0'}
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-mono font-bold text-slate-800">{item.persentaseCapaian}%</span>
-                            <span className="text-[10px] text-slate-500">
+                            <span className="font-mono font-semibold text-slate-700">{item.persentaseCapaian}%</span>
+                            <span className="text-[10px] text-slate-400">
                               {item.realisasiIuran > 0 ? 'Tercatat' : 'Belum ada'}
                             </span>
                           </div>
@@ -988,14 +1008,14 @@ export default function ParokiBendaharaPage() {
                       <TableCell className="text-center">
                         <span
                           title={item.deskripsi}
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${item.badgeClass}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${item.badgeClass}`}
                         >
                           {item.statusKategori === 'BUTUH_PERHATIAN' ? (
-                            <AlertCircle className="w-3 h-3 shrink-0 text-rose-700" />
+                            <AlertCircle className="w-3 h-3 shrink-0 text-[#8C6D6D]" />
                           ) : item.statusKategori === 'PERLU_FOLLOWUP' ? (
-                            <Clock className="w-3 h-3 shrink-0 text-amber-700" />
+                            <Clock className="w-3 h-3 shrink-0 text-[#8C7B65]" />
                           ) : (
-                            <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-700" />
+                            <CheckCircle2 className="w-3 h-3 shrink-0 text-[#637D6F]" />
                           )}
                           <span>{item.statusLabel}</span>
                         </span>
@@ -1006,7 +1026,7 @@ export default function ParokiBendaharaPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleSelectLingkunganForUmat(item.lingkunganId)}
-                          className="h-7 px-2.5 text-[11px] font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200/80 cursor-pointer"
+                          className="h-7 px-2.5 text-[11px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200/80 cursor-pointer"
                           title="Lihat rincian kartu setoran umat lingkungan ini"
                         >
                           Lihat Umat
@@ -1027,7 +1047,7 @@ export default function ParokiBendaharaPage() {
       {/* ============================================================== */}
       <div id="monitoring-kartu-umat-section" className="space-y-4 scroll-mt-6">
         {/* Filter Controls Bar */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h2 className="text-base font-bold text-slate-900 font-serif">
@@ -1041,18 +1061,18 @@ export default function ParokiBendaharaPage() {
               type="button"
               variant="outline"
               onClick={handleExportUmatCsv}
-              className="border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl h-9 px-3 cursor-pointer shrink-0 self-start sm:self-auto"
+              className="border-slate-200/90 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl h-9 px-3.5 cursor-pointer shrink-0 self-start sm:self-auto shadow-2xs"
             >
-              <Download className="w-4 h-4 mr-1 text-slate-600" />
+              <Download className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
               Unduh CSV Umat
             </Button>
           </div>
 
           {/* Active Filter Lingkungan Indicator */}
           {selectedLingkunganFilter !== 'ALL' && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200/90 rounded-xl text-xs text-slate-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-slate-800"></span>
+                <span className="w-2 h-2 rounded-full bg-slate-600"></span>
                 <span>
                   Menampilkan rincian kartu setoran keluarga khusus di:{' '}
                   <strong className="text-slate-900">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)}</strong>
@@ -1063,7 +1083,7 @@ export default function ParokiBendaharaPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedLingkunganFilter('ALL')}
-                className="h-7 text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-200/60 font-semibold cursor-pointer self-start sm:self-auto"
+                className="h-7 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-medium cursor-pointer self-start sm:self-auto"
               >
                 Reset ke Semua Lingkungan
               </Button>
@@ -1073,14 +1093,14 @@ export default function ParokiBendaharaPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
             {/* Filter Lingkungan */}
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-bold text-slate-500">Filter Lingkungan</Label>
+              <Label className="text-[10px] uppercase font-semibold text-slate-500">Filter Lingkungan</Label>
               <Select value={selectedLingkunganFilter} onValueChange={(val) => setSelectedLingkunganFilter(val || 'ALL')}>
-                <SelectTrigger className="bg-white border-slate-300 text-slate-900 text-xs font-semibold rounded-xl h-10">
+                <SelectTrigger className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10">
                   <span className="truncate">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)}</span>
                 </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs max-h-72">
+                <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs max-h-72">
                   <SelectItem value="ALL" className="font-semibold text-slate-800">
-                    ⭐ Semua Lingkungan (69 Lingkungan)
+                    Semua Lingkungan (69 Lingkungan)
                   </SelectItem>
                   {allLingkungan.map(ling => (
                     <SelectItem key={ling.id} value={ling.id}>
@@ -1093,41 +1113,41 @@ export default function ParokiBendaharaPage() {
 
             {/* Filter Status Pembayaran */}
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-bold text-slate-500">Kesimpulan Status</Label>
+              <Label className="text-[10px] uppercase font-semibold text-slate-500">Kesimpulan Status</Label>
               <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || 'ALL')}>
-                <SelectTrigger className="bg-white border-slate-300 text-slate-900 text-xs font-bold rounded-xl h-10">
-                  <SelectValue placeholder="Semua Status" />
+                <SelectTrigger className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10">
+                  <span className="truncate">{statusFilterLabels[statusFilter] || 'Semua Status'}</span>
                 </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
+                <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs">
                   <SelectItem value="ALL">Semua Status</SelectItem>
-                  <SelectItem value="LUNAS">✅ Sudah Lunas s/d Bulan Berjalan</SelectItem>
-                  <SelectItem value="SEBAGIAN">🟡 Bayar Sebagian</SelectItem>
-                  <SelectItem value="BELUM">❌ Belum Bayar (Menunggak)</SelectItem>
-                  <SelectItem value="BEBAS">⚪ Bebas Iuran (Keluarga Tidak Mampu)</SelectItem>
+                  <SelectItem value="LUNAS">Sudah Lunas s/d Bulan Berjalan</SelectItem>
+                  <SelectItem value="SEBAGIAN">Bayar Sebagian</SelectItem>
+                  <SelectItem value="BELUM">Belum Bayar (Menunggak)</SelectItem>
+                  <SelectItem value="BEBAS">Bebas Iuran (Keluarga Tidak Mampu)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Filter Tahun */}
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-bold text-slate-500">Tahun Buku</Label>
+              <Label className="text-[10px] uppercase font-semibold text-slate-500">Tahun Buku</Label>
               <Input
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value, 10) || 2026)}
-                className="bg-white border-slate-300 text-slate-900 text-xs font-bold rounded-xl h-10"
+                className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10 focus:bg-white"
               />
             </div>
 
             {/* Pencarian Nama KK */}
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-bold text-slate-500">Pencarian Umat / KK</Label>
+              <Label className="text-[10px] uppercase font-semibold text-slate-500">Pencarian Umat / KK</Label>
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input
                   value={searchKk}
                   onChange={(e) => setSearchKk(e.target.value)}
                   placeholder="Cari nama KK atau no KK..."
-                  className="pl-9 bg-white border-slate-300 text-slate-900 text-xs rounded-xl h-10"
+                  className="pl-9 bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs rounded-xl h-10 focus:bg-white"
                 />
               </div>
             </div>
@@ -1135,26 +1155,26 @@ export default function ParokiBendaharaPage() {
         </div>
 
         {/* Tabel Data Kartu Setoran Seluruh Umat */}
-        <Card className="bg-white border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
-          <div className="p-3.5 bg-slate-50/90 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
+        <Card className="bg-white border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden">
+          <div className="p-3.5 bg-slate-50/70 border-b border-slate-200/80 flex items-center justify-between text-xs text-slate-600">
             <span>
-              Menampilkan <strong>{allUmatSetoranList.length}</strong> KK berdasarkan kriteria filter
+              Menampilkan <strong className="text-slate-800">{allUmatSetoranList.length}</strong> KK berdasarkan kriteria filter
             </span>
             <span className="text-[11px] text-slate-500">
-              Standar Iuran: <strong>Rp 20.000 / KK / Bulan</strong>
+              Standar Iuran: <strong className="text-slate-700">Rp 20.000 / KK / Bulan</strong>
             </span>
           </div>
           <div className="overflow-x-auto max-h-[550px] overflow-y-auto">
             <Table className="text-xs">
-              <TableHeader className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 shadow-2xs">
+              <TableHeader className="bg-slate-50/90 sticky top-0 z-10 border-b border-slate-200/80">
                 <TableRow>
-                  <TableHead className="w-12 text-center font-bold text-slate-700">No</TableHead>
-                  <TableHead className="w-44 font-bold text-slate-700">Lingkungan</TableHead>
-                  <TableHead className="font-bold text-slate-700">Kepala Keluarga</TableHead>
-                  <TableHead className="w-28 font-bold text-slate-700">Golongan</TableHead>
-                  <TableHead className="w-44 font-bold text-slate-700">Riwayat Bulan Terbayar</TableHead>
-                  <TableHead className="w-32 text-right font-bold text-slate-700">Total Terbayar</TableHead>
-                  <TableHead className="w-64 font-bold text-slate-700">Kesimpulan Status Pembayaran</TableHead>
+                  <TableHead className="w-12 text-center font-semibold text-slate-600">No</TableHead>
+                  <TableHead className="w-44 font-semibold text-slate-600">Lingkungan</TableHead>
+                  <TableHead className="font-semibold text-slate-600">Kepala Keluarga</TableHead>
+                  <TableHead className="w-28 font-semibold text-slate-600">Golongan</TableHead>
+                  <TableHead className="w-44 font-semibold text-slate-600">Riwayat Bulan Terbayar</TableHead>
+                  <TableHead className="w-32 text-right font-semibold text-slate-600">Total Terbayar</TableHead>
+                  <TableHead className="w-64 font-semibold text-slate-600">Kesimpulan Status Pembayaran</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-slate-100">
@@ -1166,24 +1186,24 @@ export default function ParokiBendaharaPage() {
                   </TableRow>
                 ) : (
                   allUmatSetoranList.slice(0, 100).map((item, idx) => (
-                    <TableRow key={`${item.lingkunganId}-${item.kk.id}`} className="hover:bg-blue-50/40 transition-colors">
-                      <TableCell className="text-center font-mono text-slate-500 font-semibold">{idx + 1}</TableCell>
-                      <TableCell className="font-bold text-slate-800">
+                    <TableRow key={`${item.lingkunganId}-${item.kk.id}`} className="hover:bg-slate-50/70 transition-colors">
+                      <TableCell className="text-center font-mono text-slate-400 font-medium">{idx + 1}</TableCell>
+                      <TableCell className="font-semibold text-slate-800">
                         {formatNamaLingkungan(item.lingkunganNama)}
                       </TableCell>
                       <TableCell>
-                        <div className="font-bold text-slate-900">{item.kk.nama_kk}</div>
+                        <div className="font-semibold text-slate-800">{item.kk.nama_kk}</div>
                         {item.kk.no_kk && item.kk.no_kk.trim() !== '' && item.kk.no_kk.trim() !== '-' && (
-                          <div className="text-[11px] text-slate-500 font-mono">No. KK: {item.kk.no_kk}</div>
+                          <div className="text-[11px] text-slate-400 font-mono">No. KK: {item.kk.no_kk}</div>
                         )}
                       </TableCell>
                       <TableCell>
-                        <span className={`inline-block px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${
+                        <span className={`inline-block px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${
                           String(item.golongan.golongan) === 'Tidak Mampu'
-                            ? 'bg-rose-50/70 text-rose-700/90 border-rose-200/60'
+                            ? 'bg-[#F6F3F3] text-[#6B5353] border-[#E4DCDC]'
                             : String(item.golongan.golongan).includes('Rentan') || String(item.golongan.golongan).includes('Prasejahtera')
-                            ? 'bg-amber-50/70 text-amber-800/90 border-amber-200/60'
-                            : 'bg-slate-100 text-slate-700 border-slate-200/80'
+                            ? 'bg-[#F6F4F0] text-[#6B5F4E] border-[#E5DFD5]'
+                            : 'bg-slate-100/80 text-slate-600 border-slate-200/80'
                         }`}>
                           {item.golongan.golongan}
                         </span>
@@ -1192,7 +1212,7 @@ export default function ParokiBendaharaPage() {
                         {item.paidMonths.length > 0 ? (
                           <div className="flex flex-wrap gap-1 max-w-xs">
                             {item.paidMonths.map(m => (
-                              <span key={m} className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/80 text-[10px] font-medium">
+                              <span key={m} className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/80 text-[10px] font-medium">
                                 {MONTH_NAMES[m - 1].slice(0, 3)}
                               </span>
                             ))}
@@ -1201,17 +1221,17 @@ export default function ParokiBendaharaPage() {
                           <span className="text-[11px] text-slate-400 italic">Belum ada setoran</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-slate-900">
+                      <TableCell className="text-right font-mono font-semibold text-slate-800">
                         {item.totalBayar > 0 ? formatRupiah(item.totalBayar) : 'Rp 0'}
                       </TableCell>
                       <TableCell>
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-semibold ${item.kesimpulanStatus.badgeClass}`}>
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-medium ${item.kesimpulanStatus.badgeClass}`}>
                           {item.kesimpulanStatus.isLunas ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-slate-600" />
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#637D6F]" />
                           ) : item.kesimpulanStatus.label.startsWith('Bayar Sebagian') ? (
-                            <Clock className="w-3.5 h-3.5 shrink-0 text-amber-700" />
+                            <Clock className="w-3.5 h-3.5 shrink-0 text-[#8C7B65]" />
                           ) : (
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#B25E5E]" />
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#8C6D6D]" />
                           )}
                           <span>{item.kesimpulanStatus.label}</span>
                         </div>
@@ -1223,7 +1243,7 @@ export default function ParokiBendaharaPage() {
             </Table>
           </div>
           {allUmatSetoranList.length > 100 && (
-            <div className="p-3 bg-slate-50 border-t border-slate-200 text-center text-xs text-slate-500">
+            <div className="p-3 bg-slate-50 border-t border-slate-200/80 text-center text-xs text-slate-500">
               Menampilkan 100 data pertama dari {allUmatSetoranList.length} data. Gunakan filter lingkungan atau status di atas untuk melihat data spesifik.
             </div>
           )}
@@ -1236,23 +1256,23 @@ export default function ParokiBendaharaPage() {
       <Dialog open={sheetModalOpen} onOpenChange={setSheetModalOpen}>
         <DialogContent className="max-w-md bg-white text-slate-900 rounded-2xl border-slate-200 p-6">
           <DialogHeader>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center mb-2">
-              <FileSpreadsheet className="w-6 h-6" />
+            <div className="w-11 h-11 rounded-2xl bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center mb-2">
+              <FileSpreadsheet className="w-5 h-5" />
             </div>
             <DialogTitle className="text-lg font-bold font-serif text-slate-900">
               Linked to Google Sheets Paroki
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Integrasi langsung untuk menarik dan memantau seluruh data kas & kartu setoran dari 69 lingkungan secara terpusat di Google Spreadsheet.
+              Integrasi langsung untuk menarik dan memantau seluruh data kas &amp; kartu setoran dari 69 lingkungan secara terpusat di Google Spreadsheet.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 pt-2">
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 font-medium">Status Koneksi:</span>
-                <span className="inline-flex items-center gap-1 font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full text-[11px]">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Terhubung Aktif
+                <span className="inline-flex items-center gap-1 font-medium text-[#4E6358] bg-[#F2F5F3] border border-[#DCE5DF] px-2 py-0.5 rounded-full text-[11px]">
+                  <CheckCircle2 className="w-3 h-3 text-[#637D6F]" /> Terhubung Aktif
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -1261,16 +1281,16 @@ export default function ParokiBendaharaPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 font-medium">Total Lingkungan Tersinkron:</span>
-                <span className="font-bold text-[#004085]">{allLingkungan.length} Lingkungan</span>
+                <span className="font-semibold text-slate-800">{allLingkungan.length} Lingkungan</span>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-600">Spreadsheet URL</label>
+              <label className="text-[11px] font-semibold text-slate-600">Spreadsheet URL</label>
               <Input
                 readOnly
                 value={spreadsheetUrl}
-                className="bg-slate-100 border-slate-300 text-slate-700 text-xs font-mono rounded-xl h-10 select-all"
+                className="bg-slate-50 border-slate-200 text-slate-600 text-xs font-mono rounded-xl h-10 select-all"
               />
             </div>
           </div>
@@ -1281,7 +1301,7 @@ export default function ParokiBendaharaPage() {
               variant="outline"
               disabled={isSyncingSheet}
               onClick={handleSyncToSheet}
-              className="border-slate-300 text-slate-700 hover:bg-slate-100 font-bold rounded-xl text-xs h-10 flex items-center justify-center gap-2 cursor-pointer flex-1"
+              className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold rounded-xl text-xs h-10 flex items-center justify-center gap-2 cursor-pointer flex-1"
             >
               <RefreshCw className={`w-4 h-4 ${isSyncingSheet ? 'animate-spin' : ''}`} />
               {isSyncingSheet ? 'Menyinkronkan...' : 'Tarik & Sinkronkan Sekarang'}
@@ -1289,7 +1309,7 @@ export default function ParokiBendaharaPage() {
             <Button
               type="button"
               onClick={() => window.open(spreadsheetUrl, '_blank')}
-              className="bg-[#0F9D58] hover:bg-[#0B8043] text-white font-bold rounded-xl text-xs h-10 flex items-center justify-center gap-2 cursor-pointer shadow-xs flex-1"
+              className="bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-xl text-xs h-10 flex items-center justify-center gap-2 cursor-pointer shadow-2xs flex-1"
             >
               <ExternalLink className="w-4 h-4" />
               Buka Google Sheets

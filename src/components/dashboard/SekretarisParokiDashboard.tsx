@@ -546,37 +546,37 @@ export function SekretarisParokiDashboard() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/60 space-y-1">
-            <div className="text-xs font-bold text-emerald-800 flex items-center justify-between">
+          <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/60 space-y-1">
+            <div className="text-xs font-semibold text-slate-600 flex items-center justify-between">
               <span>Keluarga Sejahtera</span>
-              <span className="text-sm">🟢</span>
+              <span className="w-2 h-2 rounded-full bg-[#637D6F]"></span>
             </div>
-            <div className="text-xl font-extrabold text-emerald-950">
+            <div className="text-xl font-bold text-slate-900">
               {scopedGolonganCounts.sejahtera} KK ({scopedGolonganCounts.sejahteraPct}%)
             </div>
-            <p className="text-[11px] text-emerald-700">Mandiri, mampu berswacita & bergotong royong</p>
+            <p className="text-[11px] text-slate-500">Mandiri, mampu berswacita &amp; bergotong royong</p>
           </div>
 
-          <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/60 space-y-1">
-            <div className="text-xs font-bold text-amber-800 flex items-center justify-between">
+          <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/60 space-y-1">
+            <div className="text-xs font-semibold text-slate-600 flex items-center justify-between">
               <span>Terduga Prasejahtera</span>
-              <span className="text-sm">🟡</span>
+              <span className="w-2 h-2 rounded-full bg-[#8C7B65]"></span>
             </div>
-            <div className="text-xl font-extrabold text-amber-950">
+            <div className="text-xl font-bold text-slate-900">
               {scopedGolonganCounts.prasejahtera} KK ({scopedGolonganCounts.prasejahteraPct}%)
             </div>
-            <p className="text-[11px] text-amber-700">Perlu pendampingan & pemantauan berkala</p>
+            <p className="text-[11px] text-slate-500">Perlu pendampingan &amp; pemantauan berkala</p>
           </div>
 
-          <div className="p-3.5 rounded-xl border border-rose-200 bg-rose-50/60 space-y-1">
-            <div className="text-xs font-bold text-rose-800 flex items-center justify-between">
+          <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/60 space-y-1">
+            <div className="text-xs font-semibold text-slate-600 flex items-center justify-between">
               <span>Rentan Tidak Mampu</span>
-              <span className="text-sm">🔴</span>
+              <span className="w-2 h-2 rounded-full bg-[#8C6D6D]"></span>
             </div>
-            <div className="text-xl font-extrabold text-rose-950">
+            <div className="text-xl font-bold text-slate-900">
               {scopedGolonganCounts.rentan} KK ({scopedGolonganCounts.rentanPct}%)
             </div>
-            <p className="text-[11px] text-rose-700">Prioritas bantuan talangan & subsidi paroki</p>
+            <p className="text-[11px] text-slate-500">Prioritas bantuan talangan &amp; subsidi paroki</p>
           </div>
         </div>
       </div>

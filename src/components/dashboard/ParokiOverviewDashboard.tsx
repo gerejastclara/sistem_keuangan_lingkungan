@@ -388,13 +388,13 @@ export function ParokiOverviewDashboard({ onSelectLingkungan }: ParokiOverviewDa
       {/* 4 Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Status Keaktifan */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-2">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs space-y-2">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
             <span>Status Keaktifan</span>
-            <Activity className="w-4 h-4 text-emerald-600" />
+            <Activity className="w-4 h-4 text-slate-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">
-            {statsCapaian.aktif} <span className="text-sm font-semibold text-slate-500">/ 69 Aktif</span>
+          <div className="text-2xl font-bold text-slate-900">
+            {statsCapaian.aktif} <span className="text-sm font-medium text-slate-500">/ 69 Aktif</span>
           </div>
           <p className="text-[11px] text-slate-500 font-medium">
             {statsCapaian.needAttention} lingkungan pasif / belum ada data
@@ -402,12 +402,12 @@ export function ParokiOverviewDashboard({ onSelectLingkungan }: ParokiOverviewDa
         </div>
 
         {/* Card 2: Tingkat Kepatuhan */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-2">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs space-y-2">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
             <span>Kepatuhan Pembukuan</span>
-            <Clock className="w-4 h-4 text-sky-600" />
+            <Clock className="w-4 h-4 text-slate-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">
+          <div className="text-2xl font-bold text-slate-900">
             {statsCapaian.kepatuhanPct}%
           </div>
           <p className="text-[11px] text-slate-500 font-medium">
@@ -416,27 +416,27 @@ export function ParokiOverviewDashboard({ onSelectLingkungan }: ParokiOverviewDa
         </div>
 
         {/* Card 3: Konsolidasi Saldo Kas */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-2">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs space-y-2">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
             <span>Akumulasi Saldo Kas Se-Paroki</span>
-            <Wallet className="w-4 h-4 text-amber-600" />
+            <Wallet className="w-4 h-4 text-slate-500" />
           </div>
-          <div className="text-xl sm:text-2xl font-black text-slate-900">
+          <div className="text-xl sm:text-2xl font-bold text-slate-900">
             {formatRupiah(statsCapaian.totalSaldo)}
           </div>
           <p className="text-[11px] text-slate-400">Total kas seluruh lingkungan</p>
         </div>
 
         {/* Card 4: Total KK & Jiwa */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-2">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs space-y-2">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
             <span>Total Umat Resmi</span>
-            <Home className="w-4 h-4 text-indigo-600" />
+            <Home className="w-4 h-4 text-slate-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">
+          <div className="text-2xl font-bold text-slate-900">
             {santaClaraStats.totalFamilies.toLocaleString('id-ID')} KK
           </div>
-          <p className="text-[11px] text-indigo-700 font-medium">
+          <p className="text-[11px] text-slate-500 font-medium">
             {santaClaraStats.totalMembers.toLocaleString('id-ID')} Jiwa terdata resmi
           </p>
         </div>
@@ -481,16 +481,16 @@ export function ParokiOverviewDashboard({ onSelectLingkungan }: ParokiOverviewDa
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
           <span className="text-[11px] font-medium text-slate-500">Status Keaktifan:</span>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF]">
             ● Aktif (&le;7 hr)
           </span>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#F6F4F0] text-[#6B5F4E] border border-[#E5DFD5]">
             ▲ Perhatian (8-14 hr)
           </span>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#F6F3F3] text-[#6B5353] border border-[#E4DCDC]">
             ■ Pasif (&gt;14 hr)
           </span>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
             ○ Belum Ada Data
           </span>
         </div>
@@ -609,25 +609,25 @@ export function ParokiOverviewDashboard({ onSelectLingkungan }: ParokiOverviewDa
                         </td>
                         <td className="py-3 px-4">
                           {item.act.statusKeaktifan === 'AKTIF' && (
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80 inline-flex items-center gap-1.5 whitespace-nowrap">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                            <span className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF] inline-flex items-center gap-1.5 whitespace-nowrap">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#637D6F]"></span>
                               Aktif ({item.act.daysInactive === 0 ? 'Hari ini' : `${item.act.daysInactive} hr lalu`})
                             </span>
                           )}
                           {item.act.statusKeaktifan === 'PERHATIAN' && (
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80 inline-flex items-center gap-1.5 whitespace-nowrap">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                            <span className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#F6F4F0] text-[#6B5F4E] border border-[#E5DFD5] inline-flex items-center gap-1.5 whitespace-nowrap">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#8C7B65]"></span>
                               Perhatian ({item.act.daysInactive} hr lalu)
                             </span>
                           )}
                           {item.act.statusKeaktifan === 'PASIF' && (
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-800 border border-rose-200/80 inline-flex items-center gap-1.5 whitespace-nowrap">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+                            <span className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#F6F3F3] text-[#6B5353] border border-[#E4DCDC] inline-flex items-center gap-1.5 whitespace-nowrap">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#8C6D6D]"></span>
                               Pasif ({item.act.daysInactive} hr lalu)
                             </span>
                           )}
                           {item.act.statusKeaktifan === 'BELUM_ADA_DATA' && (
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/80 inline-flex items-center gap-1.5 whitespace-nowrap">
+                            <span className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200/80 inline-flex items-center gap-1.5 whitespace-nowrap">
                               <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                               Belum Ada Data
                             </span>
