@@ -42,12 +42,12 @@ import { createClient } from '@/utils/supabase/client'
 import { UserRole } from '@/lib/types'
 
 const COLOR_PRESETS = [
-  { name: 'Hijau (Mandiri)', badgeColor: '#16a34a', bgLight: '#f0fdf4', borderLight: '#bbf7d0', textColor: '#15803d', iconEmoji: '🟢' },
-  { name: 'Kuning (Perhatian)', badgeColor: '#eab308', bgLight: '#fefce8', borderLight: '#fef08a', textColor: '#a16207', iconEmoji: '🟡' },
-  { name: 'Oranye (Rentan)', badgeColor: '#ea580c', bgLight: '#fff7ed', borderLight: '#fed7aa', textColor: '#c2410c', iconEmoji: '🟠' },
-  { name: 'Merah (Bantuan Penuh)', badgeColor: '#dc2626', bgLight: '#fef2f2', borderLight: '#fecaca', textColor: '#b91c1c', iconEmoji: '🔴' },
-  { name: 'Biru (Khusus)', badgeColor: '#2563eb', bgLight: '#eff6ff', borderLight: '#bfdbfe', textColor: '#1d4ed8', iconEmoji: '🔵' },
-  { name: 'Ungu (Prioritas)', badgeColor: '#9333ea', bgLight: '#faf5ff', borderLight: '#e9d5ff', textColor: '#7e22ce', iconEmoji: '🟣' },
+  { name: 'Hijau (Mandiri)', badgeColor: '#2d6a4f', bgLight: '#f4f9f6', borderLight: '#d5e8dc', textColor: '#22543d', iconEmoji: '🟢' },
+  { name: 'Kuning (Perhatian)', badgeColor: '#8a6332', bgLight: '#fdf9f3', borderLight: '#efe8dc', textColor: '#704c20', iconEmoji: '🟡' },
+  { name: 'Oranye (Rentan)', badgeColor: '#b45309', bgLight: '#fff9f3', borderLight: '#f3e8d5', textColor: '#8c4e09', iconEmoji: '🟠' },
+  { name: 'Merah (Bantuan Penuh)', badgeColor: '#9f3a3a', bgLight: '#faf5f5', borderLight: '#eddcdc', textColor: '#802e2e', iconEmoji: '🔴' },
+  { name: 'Biru (Khusus)', badgeColor: '#3b5998', bgLight: '#f4f7fa', borderLight: '#d8e1ed', textColor: '#2b4478', iconEmoji: '🔵' },
+  { name: 'Slate (Netral)', badgeColor: '#526b83', bgLight: '#f6f8fa', borderLight: '#dde3ea', textColor: '#334155', iconEmoji: '⚪' },
 ]
 
 function parseIndikatorPoints(text: string): string[] {

@@ -1317,21 +1317,60 @@ export default function DashboardOverviewPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                <div className="bg-red-50/80 border border-red-200/80 rounded-xl p-2">
-                  <div className="text-[11px] font-bold text-red-700 truncate">Tidak Mampu</div>
-                  <div className="text-xl font-extrabold text-red-900 mt-0.5">{countTidakMampu} <span className="text-xs font-normal">KK</span></div>
+                {/* Tidak Mampu */}
+                <div className="bg-[#FAF5F5] border border-[#EDDCDC] rounded-xl p-2.5 flex flex-col justify-between transition-colors">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#9F3A3A] shrink-0" />
+                    <span className="text-[11px] font-semibold text-[#802E2E] truncate">Tidak Mampu</span>
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900 mt-1 font-serif">
+                    {countTidakMampu} <span className="text-xs font-normal text-slate-500 font-sans">KK</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                    Bantuan Penuh
+                  </div>
                 </div>
-                <div className="bg-rose-50/80 border border-rose-200/80 rounded-xl p-2">
-                  <div className="text-[11px] font-bold text-rose-700 truncate">Rentan Tdk Mampu</div>
-                  <div className="text-xl font-extrabold text-rose-900 mt-0.5">{countRentan} <span className="text-xs font-normal">KK</span></div>
+
+                {/* Rentan Tidak Mampu */}
+                <div className="bg-[#FFF9F3] border border-[#F3E8D5] rounded-xl p-2.5 flex flex-col justify-between transition-colors">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#B45309] shrink-0" />
+                    <span className="text-[11px] font-semibold text-[#8C4E09] truncate">Rentan Tdk Mampu</span>
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900 mt-1 font-serif">
+                    {countRentan} <span className="text-xs font-normal text-slate-500 font-sans">KK</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                    Prioritas Subsidi
+                  </div>
                 </div>
-                <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-2">
-                  <div className="text-[11px] font-bold text-amber-800 truncate">Terduga Prasejahtera</div>
-                  <div className="text-xl font-extrabold text-amber-950 mt-0.5">{countTerduga} <span className="text-xs font-normal">KK</span></div>
+
+                {/* Terduga Prasejahtera */}
+                <div className="bg-[#F6F8FA] border border-[#DDE3EA] rounded-xl p-2.5 flex flex-col justify-between transition-colors">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#526B83] shrink-0" />
+                    <span className="text-[11px] font-semibold text-[#334155] truncate">Terduga Prasejahtera</span>
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900 mt-1 font-serif">
+                    {countTerduga} <span className="text-xs font-normal text-slate-500 font-sans">KK</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                    Perlu Ditinjau
+                  </div>
                 </div>
-                <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-2">
-                  <div className="text-[11px] font-bold text-emerald-800 truncate">Sejahtera</div>
-                  <div className="text-xl font-extrabold text-emerald-950 mt-0.5">{countSejahtera} <span className="text-xs font-normal">KK</span></div>
+
+                {/* Sejahtera */}
+                <div className="bg-[#F4F9F6] border border-[#D5E8DC] rounded-xl p-2.5 flex flex-col justify-between transition-colors">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#2D6A4F] shrink-0" />
+                    <span className="text-[11px] font-semibold text-[#22543D] truncate">Sejahtera</span>
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900 mt-1 font-serif">
+                    {countSejahtera} <span className="text-xs font-normal text-slate-500 font-sans">KK</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                    Keluarga Mandiri
+                  </div>
                 </div>
               </div>
             </CardContent>
