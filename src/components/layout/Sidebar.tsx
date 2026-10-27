@@ -194,7 +194,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         item.href !== '/dashboard/coa-saldo' &&
         item.href !== '/dashboard/dafu' &&
         item.href !== '/dashboard/approval' &&
-        item.href !== '/dashboard/matching-excel'
+        item.href !== '/dashboard/matching-excel' &&
+        item.href !== '/dashboard/kartu-setoran'
       )
     }
     return true

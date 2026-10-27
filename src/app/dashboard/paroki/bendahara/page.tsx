@@ -48,6 +48,9 @@ export default function ParokiBendaharaPage() {
   const [loading, setLoading] = useState(true)
   const [allLingkungan, setAllLingkungan] = useState<any[]>([])
 
+  // Active View Tab ('REKAP' = Rekap Kas 69 Lingkungan, 'KARTU' = Kartu Setoran Umat Jan-Des)
+  const [activeTab, setActiveTab] = useState<'REKAP' | 'KARTU'>('REKAP')
+
   // Rekapitulasi Lingkungan Filter & Sort State
   const [rekapFilterKategori, setRekapFilterKategori] = useState<'ALL' | 'BUTUH_PERHATIAN' | 'PERLU_FOLLOWUP' | 'TERTIB'>('ALL')
   const [rekapSearchText, setRekapSearchText] = useState('')
@@ -399,13 +402,10 @@ export default function ParokiBendaharaPage() {
       })
   }, [rekapCapaianLingkungan.list, rekapFilterKategori, rekapSearchText, rekapSortBy])
 
-  // Aksi Klik Lihat Umat: Set filter dan gulir ke tabel bawah
+  // Aksi Klik Lihat Umat: Set filter dan pindah ke Tab 2 (Kartu Setoran Umat)
   const handleSelectLingkunganForUmat = (lingId: string) => {
     setSelectedLingkunganFilter(lingId)
-    const element = document.getElementById('monitoring-kartu-umat-section')
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
-    }
+    setActiveTab('KARTU')
   }
 
   // =========================================================================
@@ -732,11 +732,11 @@ export default function ParokiBendaharaPage() {
         {/* Butuh Perhatian Romo */}
         <Card
           onClick={() => {
+            setActiveTab('REKAP')
             setRekapFilterKategori('BUTUH_PERHATIAN')
-            document.getElementById('rekap-kas-section')?.scrollIntoView({ behavior: 'smooth' })
           }}
           className={`bg-white border-slate-200/80 hover:border-slate-300 transition-all rounded-2xl shadow-2xs cursor-pointer group ${
-            rekapFilterKategori === 'BUTUH_PERHATIAN' ? 'ring-1 ring-slate-400 border-slate-400 bg-slate-50/40' : ''
+            activeTab === 'REKAP' && rekapFilterKategori === 'BUTUH_PERHATIAN' ? 'ring-1 ring-slate-400 border-slate-400 bg-slate-50/40' : ''
           }`}
         >
           <CardContent className="p-5 flex flex-col justify-between h-full">
@@ -765,11 +765,11 @@ export default function ParokiBendaharaPage() {
         {/* Perlu Follow-up */}
         <Card
           onClick={() => {
+            setActiveTab('REKAP')
             setRekapFilterKategori('PERLU_FOLLOWUP')
-            document.getElementById('rekap-kas-section')?.scrollIntoView({ behavior: 'smooth' })
           }}
           className={`bg-white border-slate-200/80 hover:border-slate-300 transition-all rounded-2xl shadow-2xs cursor-pointer group ${
-            rekapFilterKategori === 'PERLU_FOLLOWUP' ? 'ring-1 ring-slate-400 border-slate-400 bg-slate-50/40' : ''
+            activeTab === 'REKAP' && rekapFilterKategori === 'PERLU_FOLLOWUP' ? 'ring-1 ring-slate-400 border-slate-400 bg-slate-50/40' : ''
           }`}
         >
           <CardContent className="p-5 flex flex-col justify-between h-full">
@@ -798,11 +798,11 @@ export default function ParokiBendaharaPage() {
         {/* Mandiri & Tertib */}
         <Card
           onClick={() => {
+            setActiveTab('REKAP')
             setRekapFilterKategori('TERTIB')
-            document.getElementById('rekap-kas-section')?.scrollIntoView({ behavior: 'smooth' })
           }}
           className={`bg-white border-slate-200/80 hover:border-slate-300 transition-all rounded-2xl shadow-2xs cursor-pointer group ${
-            rekapFilterKategori === 'TERTIB' ? 'ring-1 ring-slate-400 border-slate-400 bg-slate-50/40' : ''
+            activeTab === 'REKAP' && rekapFilterKategori === 'TERTIB' ? 'ring-1 ring-slate-400 border-slate-400 bg-slate-50/40' : ''
           }`}
         >
           <CardContent className="p-5 flex flex-col justify-between h-full">
@@ -830,425 +830,495 @@ export default function ParokiBendaharaPage() {
       </div>
 
       {/* ============================================================== */}
-      {/* SEKSI 1: TABEL REKAPITULASI IURAN KAS TIAP LINGKUNGAN */}
-      {/* (Nama Lingkungan, Jumlah KK, Target, Realisasi, Persentase & Status Romo) */}
+      {/* SEGMENTED 2-TAB SWITCHER (REKAP KAS 69 LINGKUNGAN vs KARTU SETORAN UMAT) */}
       {/* ============================================================== */}
-      <Card id="rekap-kas-section" className="bg-white border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden scroll-mt-6">
-        <CardHeader className="p-5 border-b border-slate-200/80 flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base font-bold text-slate-900 font-serif">
-                  Rekapitulasi Capaian Iuran Kas Seluruh Lingkungan
-                </CardTitle>
-                <span className="text-[11px] font-medium text-slate-600 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md">
-                  {allLingkungan.length} Lingkungan
-                </span>
-              </div>
-              <CardDescription className="text-xs text-slate-500 mt-1">
-                Rumus: <strong className="text-slate-700 font-semibold">Target Kas</strong> = Jumlah KK Wajib &times; Rp 20.000 &times; {BULAN_BERJALAN_CURRENT} Bulan (KK Tidak Mampu dikecualikan dari beban target).
-              </CardDescription>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleExportCapaianCsv}
-              className="border-slate-200/90 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl h-9 px-3.5 cursor-pointer shrink-0 self-start sm:self-auto shadow-2xs"
-            >
-              <Download className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-              Unduh Rekap Kas
-            </Button>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
+        <div className="inline-flex p-1 rounded-2xl bg-slate-100/90 border border-slate-200/80 w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveTab('REKAP')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'REKAP'
+                ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/60'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5 text-slate-500" />
+            <span>1. Rekap Kas 69 Lingkungan</span>
+            <span className="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/80">
+              {allLingkungan.length}
+            </span>
+          </button>
 
-          {/* Filter Kategori & Kontrol Pencarian / Pengurutan */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2 border-t border-slate-100">
-            {/* Tabs Filter Kategori Pastoral (Minimalist Soft Pills) */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setRekapFilterKategori('ALL')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border ${
-                  rekapFilterKategori === 'ALL'
-                    ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
-                    : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                Semua Lingkungan ({rekapCapaianLingkungan.list.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setRekapFilterKategori('BUTUH_PERHATIAN')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 ${
-                  rekapFilterKategori === 'BUTUH_PERHATIAN'
-                    ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
-                    : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${rekapFilterKategori === 'BUTUH_PERHATIAN' ? 'bg-[#D4B2B2]' : 'bg-[#9E7B7B]'}`} />
-                Butuh Perhatian Romo ({rekapCapaianLingkungan.countButuhPerhatian})
-              </button>
-              <button
-                type="button"
-                onClick={() => setRekapFilterKategori('PERLU_FOLLOWUP')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 ${
-                  rekapFilterKategori === 'PERLU_FOLLOWUP'
-                    ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
-                    : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${rekapFilterKategori === 'PERLU_FOLLOWUP' ? 'bg-[#D6C5A9]' : 'bg-[#9E8C70]'}`} />
-                Perlu Follow-up ({rekapCapaianLingkungan.countPerluFollowup})
-              </button>
-              <button
-                type="button"
-                onClick={() => setRekapFilterKategori('TERTIB')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 ${
-                  rekapFilterKategori === 'TERTIB'
-                    ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
-                    : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${rekapFilterKategori === 'TERTIB' ? 'bg-[#A8C4B5]' : 'bg-[#688777]'}`} />
-                Mandiri &amp; Tertib ({rekapCapaianLingkungan.countTertib})
-              </button>
-            </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('KARTU')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'KARTU'
+                ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/60'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            }`}
+          >
+            <CreditCard className="w-3.5 h-3.5 text-slate-500" />
+            <span>2. Kartu Setoran Umat (Jan–Des)</span>
+            <span className="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/80 max-w-[140px] truncate">
+              {selectedLingkunganFilter === 'ALL' ? 'Semua' : formatNamaLingkungan(getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)).replace('Lingkungan ', '')}
+            </span>
+          </button>
+        </div>
 
-            {/* Pencarian Lingkungan & Sort */}
-            <div className="flex items-center gap-2">
-              <div className="relative w-full sm:w-56">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <Input
-                  value={rekapSearchText}
-                  onChange={(e) => setRekapSearchText(e.target.value)}
-                  placeholder="Cari lingkungan / wilayah..."
-                  className="pl-8 bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs rounded-xl h-9 focus:bg-white"
-                />
-              </div>
-
-              <Select value={rekapSortBy} onValueChange={(val: any) => setRekapSortBy(val)}>
-                <SelectTrigger className="w-52 bg-slate-50/60 border-slate-200/90 text-slate-700 text-xs font-medium rounded-xl h-9">
-                  <span className="truncate">{sortLabels[rekapSortBy] || 'Prioritas Perhatian Romo'}</span>
-                </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs">
-                  <SelectItem value="ATTENTION_FIRST">Prioritas Perhatian Romo</SelectItem>
-                  <SelectItem value="PERCENT_ASC">Capaian Terendah (0% - 100%)</SelectItem>
-                  <SelectItem value="PERCENT_DESC">Capaian Tertinggi (100% - 0%)</SelectItem>
-                  <SelectItem value="NOMINAL_DESC">Realisasi Terbesar</SelectItem>
-                  <SelectItem value="NAME_ASC">Nama Lingkungan (A-Z)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-            <Table className="text-xs">
-              <TableHeader className="bg-slate-50/90 sticky top-0 z-10 border-b border-slate-200/80">
-                <TableRow>
-                  <TableHead className="w-12 text-center font-semibold text-slate-600">No</TableHead>
-                  <TableHead className="w-48 font-semibold text-slate-600">Lingkungan &amp; Wilayah</TableHead>
-                  <TableHead className="w-32 text-center font-semibold text-slate-600">Jumlah KK</TableHead>
-                  <TableHead className="w-36 text-right font-semibold text-slate-600">Target Kas (Rp)</TableHead>
-                  <TableHead className="w-36 text-right font-semibold text-slate-600">Realisasi Kas (Rp)</TableHead>
-                  <TableHead className="w-48 font-semibold text-slate-600">Capaian Kas (%)</TableHead>
-                  <TableHead className="w-44 text-center font-semibold text-slate-600">Status Pastoral</TableHead>
-                  <TableHead className="w-24 text-center font-semibold text-slate-600">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y divide-slate-100">
-                {filteredRekapList.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-32 text-center text-slate-500">
-                      Tidak ada lingkungan yang sesuai dengan kriteria filter saat ini.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredRekapList.map((item, idx) => (
-                    <TableRow key={item.lingkunganId} className="hover:bg-slate-50/70 transition-colors">
-                      <TableCell className="text-center font-mono text-slate-400 font-medium">{idx + 1}</TableCell>
-                      <TableCell>
-                        <div className="font-semibold text-slate-800">
-                          {formatNamaLingkungan(item.namaLingkungan)}
-                        </div>
-                        <div className="text-[11px] text-slate-400">
-                          Wilayah: {item.wilayah}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="font-semibold text-slate-800">
-                          {item.jumlahKkTotal} <span className="text-[11px] text-slate-400 font-normal">KK</span>
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          {item.kkWajibCount} Wajib {item.kkBebasCount > 0 ? `• ${item.kkBebasCount} Bebas` : ''}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-slate-600 font-medium">
-                        {formatRupiah(item.targetKas)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-semibold text-slate-800">
-                        {item.realisasiIuran > 0 ? formatRupiah(item.realisasiIuran) : 'Rp 0'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-mono font-semibold text-slate-700">{item.persentaseCapaian}%</span>
-                            <span className="text-[10px] text-slate-400">
-                              {item.realisasiIuran > 0 ? 'Tercatat' : 'Belum ada'}
-                            </span>
-                          </div>
-                          {/* Mini Progress Bar Halus & Elegan */}
-                          <div className={`w-full h-1.5 rounded-full overflow-hidden ${item.barBg}`}>
-                            <div
-                              className={`h-full rounded-full transition-all ${item.barClass}`}
-                              style={{ width: `${Math.min(100, Math.max(item.realisasiIuran > 0 ? 4 : 0, item.persentaseCapaian))}%` }}
-                            />
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span
-                          title={item.deskripsi}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${item.badgeClass}`}
-                        >
-                          {item.statusKategori === 'BUTUH_PERHATIAN' ? (
-                            <AlertCircle className="w-3 h-3 shrink-0 text-[#8C6D6D]" />
-                          ) : item.statusKategori === 'PERLU_FOLLOWUP' ? (
-                            <Clock className="w-3 h-3 shrink-0 text-[#8C7B65]" />
-                          ) : (
-                            <CheckCircle2 className="w-3 h-3 shrink-0 text-[#637D6F]" />
-                          )}
-                          <span>{item.statusLabel}</span>
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSelectLingkunganForUmat(item.lingkunganId)}
-                          className="h-7 px-2.5 text-[11px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200/80 cursor-pointer"
-                          title="Lihat rincian kartu setoran umat lingkungan ini"
-                        >
-                          Lihat Umat
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+        <span className="text-[11px] text-slate-400">
+          {activeTab === 'REKAP'
+            ? 'Klik "Lihat Kartu Umat →" pada baris lingkungan untuk membuka rincian setoran KK'
+            : 'Menampilkan matriks kartu setoran bulanan (Jan–Des) dan kesimpulan status pembayaran KK'}
+        </span>
+      </div>
 
       {/* ============================================================== */}
-      {/* SEKSI 2: MONITORING KARTU SETORAN SEMUA LINGKUNGAN */}
-      {/* (Data Umat, Kesimpulan "Orang ini sudah bayar", Lunas/Belum) */}
+      {/* TAB 1: TABEL REKAPITULASI IURAN KAS TIAP LINGKUNGAN */}
       {/* ============================================================== */}
-      <div id="monitoring-kartu-umat-section" className="space-y-4 scroll-mt-6">
-        {/* Filter Controls Bar */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 font-serif">
-                Monitoring Kartu Setoran Seluruh Umat
-              </h2>
-              <p className="text-xs text-slate-500">
-                Cek status kepatuhan setoran setiap kepala keluarga di seluruh lingkungan beserta kesimpulan status pembayarannya.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleExportUmatCsv}
-              className="border-slate-200/90 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl h-9 px-3.5 cursor-pointer shrink-0 self-start sm:self-auto shadow-2xs"
-            >
-              <Download className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-              Unduh CSV Umat
-            </Button>
-          </div>
-
-          {/* Active Filter Lingkungan Indicator */}
-          {selectedLingkunganFilter !== 'ALL' && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-slate-600"></span>
-                <span>
-                  Menampilkan rincian kartu setoran keluarga khusus di:{' '}
-                  <strong className="text-slate-900">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)}</strong>
-                </span>
+      {activeTab === 'REKAP' && (
+        <Card id="rekap-kas-section" className="bg-white border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden scroll-mt-6">
+          <CardHeader className="p-5 border-b border-slate-200/80 flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base font-bold text-slate-900 font-serif">
+                    Rekapitulasi Capaian Iuran Kas Seluruh Lingkungan
+                  </CardTitle>
+                  <span className="text-[11px] font-medium text-slate-600 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md">
+                    {allLingkungan.length} Lingkungan
+                  </span>
+                </div>
+                <CardDescription className="text-xs text-slate-500 mt-1">
+                  Rumus: <strong className="text-slate-700 font-semibold">Target Kas</strong> = Jumlah KK Wajib &times; Rp 20.000 &times; {BULAN_BERJALAN_CURRENT} Bulan (KK Tidak Mampu dikecualikan dari beban target).
+                </CardDescription>
               </div>
               <Button
                 type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedLingkunganFilter('ALL')}
-                className="h-7 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-medium cursor-pointer self-start sm:self-auto"
+                variant="outline"
+                onClick={handleExportCapaianCsv}
+                className="border-slate-200/90 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl h-9 px-3.5 cursor-pointer shrink-0 self-start sm:self-auto shadow-2xs"
               >
-                Reset ke Semua Lingkungan
+                <Download className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
+                Unduh Rekap Kas
               </Button>
             </div>
-          )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
-            {/* Filter Lingkungan */}
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-semibold text-slate-500">Filter Lingkungan</Label>
-              <Select value={selectedLingkunganFilter} onValueChange={(val) => setSelectedLingkunganFilter(val || 'ALL')}>
-                <SelectTrigger className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10">
-                  <span className="truncate">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)}</span>
-                </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs max-h-72">
-                  <SelectItem value="ALL" className="font-semibold text-slate-800">
-                    Semua Lingkungan (69 Lingkungan)
-                  </SelectItem>
-                  {allLingkungan.map(ling => (
-                    <SelectItem key={ling.id} value={ling.id}>
-                      {formatNamaLingkungan(ling.nama_lingkungan)}
+            {/* Filter Kategori & Kontrol Pencarian / Pengurutan */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2 border-t border-slate-100">
+              {/* Tabs Filter Kategori Pastoral (Minimalist Soft Pills) */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setRekapFilterKategori('ALL')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border ${
+                    rekapFilterKategori === 'ALL'
+                      ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                      : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  Semua Lingkungan ({rekapCapaianLingkungan.list.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRekapFilterKategori('BUTUH_PERHATIAN')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 ${
+                    rekapFilterKategori === 'BUTUH_PERHATIAN'
+                      ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                      : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${rekapFilterKategori === 'BUTUH_PERHATIAN' ? 'bg-[#D4B2B2]' : 'bg-[#9E7B7B]'}`} />
+                  Butuh Perhatian Romo ({rekapCapaianLingkungan.countButuhPerhatian})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRekapFilterKategori('PERLU_FOLLOWUP')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 ${
+                    rekapFilterKategori === 'PERLU_FOLLOWUP'
+                      ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                      : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${rekapFilterKategori === 'PERLU_FOLLOWUP' ? 'bg-[#D6C5A9]' : 'bg-[#9E8C70]'}`} />
+                  Perlu Follow-up ({rekapCapaianLingkungan.countPerluFollowup})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRekapFilterKategori('TERTIB')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 ${
+                    rekapFilterKategori === 'TERTIB'
+                      ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                      : 'bg-slate-50/80 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${rekapFilterKategori === 'TERTIB' ? 'bg-[#A8C4B5]' : 'bg-[#688777]'}`} />
+                  Mandiri &amp; Tertib ({rekapCapaianLingkungan.countTertib})
+                </button>
+              </div>
+
+              {/* Pencarian Lingkungan & Sort */}
+              <div className="flex items-center gap-2">
+                <div className="relative w-full sm:w-56">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={rekapSearchText}
+                    onChange={(e) => setRekapSearchText(e.target.value)}
+                    placeholder="Cari lingkungan / wilayah..."
+                    className="pl-8 bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs rounded-xl h-9 focus:bg-white"
+                  />
+                </div>
+
+                <Select value={rekapSortBy} onValueChange={(val: any) => setRekapSortBy(val)}>
+                  <SelectTrigger className="w-52 bg-slate-50/60 border-slate-200/90 text-slate-700 text-xs font-medium rounded-xl h-9">
+                    <span className="truncate">{sortLabels[rekapSortBy] || 'Prioritas Perhatian Romo'}</span>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs">
+                    <SelectItem value="ATTENTION_FIRST">Prioritas Perhatian Romo</SelectItem>
+                    <SelectItem value="PERCENT_ASC">Capaian Terendah (0% - 100%)</SelectItem>
+                    <SelectItem value="PERCENT_DESC">Capaian Tertinggi (100% - 0%)</SelectItem>
+                    <SelectItem value="NOMINAL_DESC">Realisasi Terbesar</SelectItem>
+                    <SelectItem value="NAME_ASC">Nama Lingkungan (A-Z)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto max-h-[540px] overflow-y-auto">
+              <Table className="text-xs">
+                <TableHeader className="bg-slate-50/90 sticky top-0 z-10 border-b border-slate-200/80">
+                  <TableRow>
+                    <TableHead className="w-12 text-center font-semibold text-slate-600">No</TableHead>
+                    <TableHead className="w-48 font-semibold text-slate-600">Lingkungan &amp; Wilayah</TableHead>
+                    <TableHead className="w-32 text-center font-semibold text-slate-600">Jumlah KK</TableHead>
+                    <TableHead className="w-36 text-right font-semibold text-slate-600">Target Kas (Rp)</TableHead>
+                    <TableHead className="w-36 text-right font-semibold text-slate-600">Realisasi Kas (Rp)</TableHead>
+                    <TableHead className="w-48 font-semibold text-slate-600">Capaian Kas (%)</TableHead>
+                    <TableHead className="w-44 text-center font-semibold text-slate-600">Status Pastoral</TableHead>
+                    <TableHead className="w-32 text-center font-semibold text-slate-600">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100">
+                  {filteredRekapList.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="h-32 text-center text-slate-500">
+                        Tidak ada lingkungan yang sesuai dengan kriteria filter saat ini.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredRekapList.map((item, idx) => (
+                      <TableRow key={item.lingkunganId} className="hover:bg-slate-50/70 transition-colors">
+                        <TableCell className="text-center font-mono text-slate-400 font-medium">{idx + 1}</TableCell>
+                        <TableCell>
+                          <div className="font-semibold text-slate-800">
+                            {formatNamaLingkungan(item.namaLingkungan)}
+                          </div>
+                          <div className="text-[11px] text-slate-400">
+                            Wilayah: {item.wilayah}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="font-semibold text-slate-800">
+                            {item.jumlahKkTotal} <span className="text-[11px] text-slate-400 font-normal">KK</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            {item.kkWajibCount} Wajib {item.kkBebasCount > 0 ? `• ${item.kkBebasCount} Bebas` : ''}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-slate-600 font-medium">
+                          {formatRupiah(item.targetKas)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-semibold text-slate-800">
+                          {item.realisasiIuran > 0 ? formatRupiah(item.realisasiIuran) : 'Rp 0'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-mono font-semibold text-slate-700">{item.persentaseCapaian}%</span>
+                              <span className="text-[10px] text-slate-400">
+                                {item.realisasiIuran > 0 ? 'Tercatat' : 'Belum ada'}
+                              </span>
+                            </div>
+                            {/* Mini Progress Bar Halus & Elegan */}
+                            <div className={`w-full h-1.5 rounded-full overflow-hidden ${item.barBg}`}>
+                              <div
+                                className={`h-full rounded-full transition-all ${item.barClass}`}
+                                style={{ width: `${Math.min(100, Math.max(item.realisasiIuran > 0 ? 4 : 0, item.persentaseCapaian))}%` }}
+                              />
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span
+                            title={item.deskripsi}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${item.badgeClass}`}
+                          >
+                            {item.statusKategori === 'BUTUH_PERHATIAN' ? (
+                              <AlertCircle className="w-3 h-3 shrink-0 text-[#8C6D6D]" />
+                            ) : item.statusKategori === 'PERLU_FOLLOWUP' ? (
+                              <Clock className="w-3 h-3 shrink-0 text-[#8C7B65]" />
+                            ) : (
+                              <CheckCircle2 className="w-3 h-3 shrink-0 text-[#637D6F]" />
+                            )}
+                            <span>{item.statusLabel}</span>
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSelectLingkunganForUmat(item.lingkunganId)}
+                            className="h-7 px-2.5 text-[11px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200/80 cursor-pointer"
+                            title="Lihat rincian kartu setoran umat lingkungan ini"
+                          >
+                            Lihat Kartu Umat →
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ============================================================== */}
+      {/* TAB 2: MONITORING KARTU SETORAN SEMUA LINGKUNGAN (JAN - DES) */}
+      {/* ============================================================== */}
+      {activeTab === 'KARTU' && (
+        <div id="monitoring-kartu-umat-section" className="space-y-4 scroll-mt-6">
+          {/* Filter Controls Bar */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 font-serif">
+                  Monitoring Kartu Setoran Seluruh Umat (Matriks Jan – Des)
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Cek riwayat bulan terbayar (Jan–Des) dan kesimpulan status pembayaran setiap kepala keluarga.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setActiveTab('REKAP')}
+                  className="border-slate-200/90 hover:bg-slate-50 text-slate-600 text-xs font-medium rounded-xl h-9 px-3 cursor-pointer shadow-2xs"
+                >
+                  ← Kembali ke Rekap 69 Lingkungan
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleExportUmatCsv}
+                  className="border-slate-200/90 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl h-9 px-3.5 cursor-pointer shrink-0 shadow-2xs"
+                >
+                  <Download className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
+                  Unduh CSV Umat
+                </Button>
+              </div>
+            </div>
+
+            {/* Active Filter Lingkungan Indicator */}
+            {selectedLingkunganFilter !== 'ALL' && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-slate-600"></span>
+                  <span>
+                    Menampilkan rincian kartu setoran keluarga khusus di:{' '}
+                    <strong className="text-slate-900">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)}</strong>
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedLingkunganFilter('ALL')}
+                  className="h-7 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-medium cursor-pointer self-start sm:self-auto"
+                >
+                  Reset ke Semua Lingkungan
+                </Button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+              {/* Filter Lingkungan */}
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase font-semibold text-slate-500">Filter Lingkungan</Label>
+                <Select value={selectedLingkunganFilter} onValueChange={(val) => setSelectedLingkunganFilter(val || 'ALL')}>
+                  <SelectTrigger className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10">
+                    <span className="truncate">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)}</span>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs max-h-72">
+                    <SelectItem value="ALL" className="font-semibold text-slate-800">
+                      Semua Lingkungan (69 Lingkungan)
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                    {allLingkungan.map(ling => (
+                      <SelectItem key={ling.id} value={ling.id}>
+                        {formatNamaLingkungan(ling.nama_lingkungan)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Filter Status Pembayaran */}
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-semibold text-slate-500">Kesimpulan Status</Label>
-              <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || 'ALL')}>
-                <SelectTrigger className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10">
-                  <span className="truncate">{statusFilterLabels[statusFilter] || 'Semua Status'}</span>
-                </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs">
-                  <SelectItem value="ALL">Semua Status</SelectItem>
-                  <SelectItem value="LUNAS">Sudah Lunas s/d Bulan Berjalan</SelectItem>
-                  <SelectItem value="SEBAGIAN">Bayar Sebagian</SelectItem>
-                  <SelectItem value="BELUM">Belum Bayar (Menunggak)</SelectItem>
-                  <SelectItem value="BEBAS">Bebas Iuran (Keluarga Tidak Mampu)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Filter Status Pembayaran */}
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase font-semibold text-slate-500">Kesimpulan Status</Label>
+                <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || 'ALL')}>
+                  <SelectTrigger className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10">
+                    <span className="truncate">{statusFilterLabels[statusFilter] || 'Semua Status'}</span>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs">
+                    <SelectItem value="ALL">Semua Status</SelectItem>
+                    <SelectItem value="LUNAS">Sudah Lunas s/d Bulan Berjalan</SelectItem>
+                    <SelectItem value="SEBAGIAN">Bayar Sebagian</SelectItem>
+                    <SelectItem value="BELUM">Belum Bayar (Menunggak)</SelectItem>
+                    <SelectItem value="BEBAS">Bebas Iuran (Keluarga Tidak Mampu)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Filter Tahun */}
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-semibold text-slate-500">Tahun Buku</Label>
-              <Input
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value, 10) || 2026)}
-                className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10 focus:bg-white"
-              />
-            </div>
-
-            {/* Pencarian Nama KK */}
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-semibold text-slate-500">Pencarian Umat / KK</Label>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              {/* Filter Tahun */}
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase font-semibold text-slate-500">Tahun Buku</Label>
                 <Input
-                  value={searchKk}
-                  onChange={(e) => setSearchKk(e.target.value)}
-                  placeholder="Cari nama KK atau no KK..."
-                  className="pl-9 bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs rounded-xl h-10 focus:bg-white"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(parseInt(e.target.value, 10) || 2026)}
+                  className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10 focus:bg-white"
                 />
+              </div>
+
+              {/* Pencarian Nama KK */}
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase font-semibold text-slate-500">Pencarian Umat / KK</Label>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={searchKk}
+                    onChange={(e) => setSearchKk(e.target.value)}
+                    placeholder="Cari nama KK atau no KK..."
+                    className="pl-9 bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs rounded-xl h-10 focus:bg-white"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Tabel Data Kartu Setoran Seluruh Umat */}
-        <Card className="bg-white border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden">
-          <div className="p-3.5 bg-slate-50/70 border-b border-slate-200/80 flex items-center justify-between text-xs text-slate-600">
-            <span>
-              Menampilkan <strong className="text-slate-800">{allUmatSetoranList.length}</strong> KK berdasarkan kriteria filter
-            </span>
-            <span className="text-[11px] text-slate-500">
-              Standar Iuran: <strong className="text-slate-700">Rp 20.000 / KK / Bulan</strong>
-            </span>
-          </div>
-          <div className="overflow-x-auto max-h-[550px] overflow-y-auto">
-            <Table className="text-xs">
-              <TableHeader className="bg-slate-50/90 sticky top-0 z-10 border-b border-slate-200/80">
-                <TableRow>
-                  <TableHead className="w-12 text-center font-semibold text-slate-600">No</TableHead>
-                  <TableHead className="w-44 font-semibold text-slate-600">Lingkungan</TableHead>
-                  <TableHead className="font-semibold text-slate-600">Kepala Keluarga</TableHead>
-                  <TableHead className="w-28 font-semibold text-slate-600">Golongan</TableHead>
-                  <TableHead className="w-44 font-semibold text-slate-600">Riwayat Bulan Terbayar</TableHead>
-                  <TableHead className="w-32 text-right font-semibold text-slate-600">Total Terbayar</TableHead>
-                  <TableHead className="w-64 font-semibold text-slate-600">Kesimpulan Status Pembayaran</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y divide-slate-100">
-                {allUmatSetoranList.length === 0 ? (
+          {/* Tabel Data Kartu Setoran Seluruh Umat */}
+          <Card className="bg-white border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden">
+            <div className="p-3.5 bg-slate-50/70 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+              <span>
+                Menampilkan <strong className="text-slate-800">{allUmatSetoranList.length}</strong> KK berdasarkan kriteria filter • Standar Iuran: <strong className="text-slate-700">Rp 20.000 / KK / Bulan</strong>
+              </span>
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="text-slate-400">Keterangan Bulan:</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF]">
+                  ● Sudah Setor
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-50 text-slate-400 border border-slate-200">
+                  ○ Belum Setor
+                </span>
+              </div>
+            </div>
+            <div className="overflow-x-auto max-h-[550px] overflow-y-auto">
+              <Table className="text-xs">
+                <TableHeader className="bg-slate-50/90 sticky top-0 z-10 border-b border-slate-200/80">
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center text-slate-500">
-                      Tidak ada data setoran yang cocok dengan filter.
-                    </TableCell>
+                    <TableHead className="w-12 text-center font-semibold text-slate-600">No</TableHead>
+                    <TableHead className="w-40 font-semibold text-slate-600">Lingkungan</TableHead>
+                    <TableHead className="w-48 font-semibold text-slate-600">Kepala Keluarga</TableHead>
+                    <TableHead className="w-28 font-semibold text-slate-600">Golongan</TableHead>
+                    <TableHead className="font-semibold text-slate-600">Matriks Kartu Setoran (Jan – Des)</TableHead>
+                    <TableHead className="w-32 text-right font-semibold text-slate-600">Total Terbayar</TableHead>
+                    <TableHead className="w-60 font-semibold text-slate-600">Kesimpulan Status Pembayaran</TableHead>
                   </TableRow>
-                ) : (
-                  allUmatSetoranList.slice(0, 100).map((item, idx) => (
-                    <TableRow key={`${item.lingkunganId}-${item.kk.id}`} className="hover:bg-slate-50/70 transition-colors">
-                      <TableCell className="text-center font-mono text-slate-400 font-medium">{idx + 1}</TableCell>
-                      <TableCell className="font-semibold text-slate-800">
-                        {formatNamaLingkungan(item.lingkunganNama)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-semibold text-slate-800">{item.kk.nama_kk}</div>
-                        {item.kk.no_kk && item.kk.no_kk.trim() !== '' && item.kk.no_kk.trim() !== '-' && (
-                          <div className="text-[11px] text-slate-400 font-mono">No. KK: {item.kk.no_kk}</div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-block px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${
-                          String(item.golongan.golongan) === 'Tidak Mampu'
-                            ? 'bg-[#F6F3F3] text-[#6B5353] border-[#E4DCDC]'
-                            : String(item.golongan.golongan).includes('Rentan') || String(item.golongan.golongan).includes('Prasejahtera')
-                            ? 'bg-[#F6F4F0] text-[#6B5F4E] border-[#E5DFD5]'
-                            : 'bg-slate-100/80 text-slate-600 border-slate-200/80'
-                        }`}>
-                          {item.golongan.golongan}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {item.paidMonths.length > 0 ? (
-                          <div className="flex flex-wrap gap-1 max-w-xs">
-                            {item.paidMonths.map(m => (
-                              <span key={m} className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/80 text-[10px] font-medium">
-                                {MONTH_NAMES[m - 1].slice(0, 3)}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 italic">Belum ada setoran</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-semibold text-slate-800">
-                        {item.totalBayar > 0 ? formatRupiah(item.totalBayar) : 'Rp 0'}
-                      </TableCell>
-                      <TableCell>
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-medium ${item.kesimpulanStatus.badgeClass}`}>
-                          {item.kesimpulanStatus.isLunas ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#637D6F]" />
-                          ) : item.kesimpulanStatus.label.startsWith('Bayar Sebagian') ? (
-                            <Clock className="w-3.5 h-3.5 shrink-0 text-[#8C7B65]" />
-                          ) : (
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#8C6D6D]" />
-                          )}
-                          <span>{item.kesimpulanStatus.label}</span>
-                        </div>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100">
+                  {allUmatSetoranList.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                        Tidak ada data setoran yang cocok dengan filter.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          {allUmatSetoranList.length > 100 && (
-            <div className="p-3 bg-slate-50 border-t border-slate-200/80 text-center text-xs text-slate-500">
-              Menampilkan 100 data pertama dari {allUmatSetoranList.length} data. Gunakan filter lingkungan atau status di atas untuk melihat data spesifik.
+                  ) : (
+                    allUmatSetoranList.slice(0, 100).map((item, idx) => (
+                      <TableRow key={`${item.lingkunganId}-${item.kk.id}`} className="hover:bg-slate-50/70 transition-colors">
+                        <TableCell className="text-center font-mono text-slate-400 font-medium">{idx + 1}</TableCell>
+                        <TableCell className="font-semibold text-slate-800">
+                          {formatNamaLingkungan(item.lingkunganNama)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-semibold text-slate-800">{item.kk.nama_kk}</div>
+                          {item.kk.no_kk && item.kk.no_kk.trim() !== '' && item.kk.no_kk.trim() !== '-' && (
+                            <div className="text-[11px] text-slate-400 font-mono">No. KK: {item.kk.no_kk}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`inline-block px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${
+                            String(item.golongan.golongan) === 'Tidak Mampu'
+                              ? 'bg-[#F6F3F3] text-[#6B5353] border-[#E4DCDC]'
+                              : String(item.golongan.golongan).includes('Rentan') || String(item.golongan.golongan).includes('Prasejahtera')
+                              ? 'bg-[#F6F4F0] text-[#6B5F4E] border-[#E5DFD5]'
+                              : 'bg-slate-100/80 text-slate-600 border-slate-200/80'
+                          }`}>
+                            {item.golongan.golongan}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {MONTH_NAMES.map((mName, mIdx) => {
+                              const monthNum = mIdx + 1
+                              const isPaid = item.paidMonths.includes(monthNum)
+                              return (
+                                <span
+                                  key={monthNum}
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
+                                    isPaid
+                                      ? 'bg-[#F2F5F3] text-[#4E6358] border-[#DCE5DF] font-semibold'
+                                      : 'bg-slate-50/80 text-slate-300 border-slate-200/60'
+                                  }`}
+                                >
+                                  {mName.slice(0, 3)}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-semibold text-slate-800">
+                          {item.totalBayar > 0 ? formatRupiah(item.totalBayar) : 'Rp 0'}
+                        </TableCell>
+                        <TableCell>
+                          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-medium ${item.kesimpulanStatus.badgeClass}`}>
+                            {item.kesimpulanStatus.isLunas ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#637D6F]" />
+                            ) : item.kesimpulanStatus.label.startsWith('Bayar Sebagian') ? (
+                              <Clock className="w-3.5 h-3.5 shrink-0 text-[#8C7B65]" />
+                            ) : (
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#8C6D6D]" />
+                            )}
+                            <span>{item.kesimpulanStatus.label}</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
-          )}
-        </Card>
-      </div>
+            {allUmatSetoranList.length > 100 && (
+              <div className="p-3 bg-slate-50 border-t border-slate-200/80 text-center text-xs text-slate-500">
+                Menampilkan 100 data pertama dari {allUmatSetoranList.length} data. Gunakan filter lingkungan atau status di atas untuk melihat data spesifik.
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
 
       {/* ============================================================== */}
       {/* DIALOG LINKED TO GOOGLE SHEET */}
