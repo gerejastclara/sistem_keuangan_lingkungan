@@ -108,6 +108,39 @@ export default function ParokiBendaharaPage() {
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
   const [dafuByLingkungan, setDafuByLingkungan] = useState<Record<string, KepalaKeluarga[]>>({})
 
+  // Refs for sticky table headers when scrolling page (<main>) or table container
+  const rekapTableRef = React.useRef<HTMLDivElement>(null)
+  const kartuTableRef = React.useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const updateStickyOffsets = () => {
+      ;[rekapTableRef.current, kartuTableRef.current].forEach(container => {
+        if (!container) return
+        const mainEl = container.closest('main')
+        const rect = container.getBoundingClientRect()
+        const mainTop = mainEl ? mainEl.getBoundingClientRect().top : 0
+        if (rect.top < mainTop) {
+          const offset = Math.min(Math.max(0, mainTop - rect.top), Math.max(0, rect.height - 48))
+          container.style.setProperty('--sticky-top', `${offset}px`)
+        } else {
+          container.style.setProperty('--sticky-top', '0px')
+        }
+      })
+    }
+
+    updateStickyOffsets()
+    const mainEl = document.querySelector('main')
+    if (mainEl) mainEl.addEventListener('scroll', updateStickyOffsets, { passive: true })
+    window.addEventListener('scroll', updateStickyOffsets, { passive: true })
+    window.addEventListener('resize', updateStickyOffsets, { passive: true })
+
+    return () => {
+      if (mainEl) mainEl.removeEventListener('scroll', updateStickyOffsets)
+      window.removeEventListener('scroll', updateStickyOffsets)
+      window.removeEventListener('resize', updateStickyOffsets)
+    }
+  }, [activeTab, loading, selectedLingkunganFilter, selectedCoa, selectedYear, rekapFilterKategori])
+
   // Linked to Sheet State
   const [sheetModalOpen, setSheetModalOpen] = useState(false)
   const [isSyncingSheet, setIsSyncingSheet] = useState(false)
@@ -1060,18 +1093,18 @@ export default function ParokiBendaharaPage() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto max-h-[540px] overflow-y-auto">
-              <Table className="text-xs">
-                <TableHeader className="bg-slate-50/90 sticky top-0 z-10 border-b border-slate-200/80">
-                  <TableRow>
-                    <TableHead className="w-12 text-center font-semibold text-slate-600">No</TableHead>
-                    <TableHead className="w-48 font-semibold text-slate-600">Lingkungan &amp; Wilayah</TableHead>
-                    <TableHead className="w-32 text-center font-semibold text-slate-600">Jumlah KK</TableHead>
-                    <TableHead className="w-36 text-right font-semibold text-slate-600">Target Kas (Rp)</TableHead>
-                    <TableHead className="w-36 text-right font-semibold text-slate-600">Realisasi Kas (Rp)</TableHead>
-                    <TableHead className="w-48 font-semibold text-slate-600">Capaian Kas (%)</TableHead>
-                    <TableHead className="w-44 text-center font-semibold text-slate-600">Status Pastoral</TableHead>
-                    <TableHead className="w-36 text-center font-semibold text-slate-600">Aksi</TableHead>
+            <div ref={rekapTableRef} className="overflow-auto max-h-[540px]">
+              <table className="w-full caption-bottom text-xs border-separate border-spacing-0">
+                <TableHeader className="bg-slate-100 sticky z-20">
+                  <TableRow className="bg-slate-100">
+                    <TableHead style={{ top: 'var(--sticky-top, 0px)' }} className="sticky z-20 bg-slate-100 border-b border-slate-200/90 w-12 text-center font-semibold text-slate-700 shadow-2xs">No</TableHead>
+                    <TableHead style={{ top: 'var(--sticky-top, 0px)' }} className="sticky z-20 bg-slate-100 border-b border-slate-200/90 w-48 font-semibold text-slate-700 shadow-2xs">Lingkungan &amp; Wilayah</TableHead>
+                    <TableHead style={{ top: 'var(--sticky-top, 0px)' }} className="sticky z-20 bg-slate-100 border-b border-slate-200/90 w-32 text-center font-semibold text-slate-700 shadow-2xs">Jumlah KK</TableHead>
+                    <TableHead style={{ top: 'var(--sticky-top, 0px)' }} className="sticky z-20 bg-slate-100 border-b border-slate-200/90 w-36 text-right font-semibold text-slate-700 shadow-2xs">Target Kas (Rp)</TableHead>
+                    <TableHead style={{ top: 'var(--sticky-top, 0px)' }} className="sticky z-20 bg-slate-100 border-b border-slate-200/90 w-36 text-right font-semibold text-slate-700 shadow-2xs">Realisasi Kas (Rp)</TableHead>
+                    <TableHead style={{ top: 'var(--sticky-top, 0px)' }} className="sticky z-20 bg-slate-100 border-b border-slate-200/90 w-48 font-semibold text-slate-700 shadow-2xs">Capaian Kas (%)</TableHead>
+                    <TableHead style={{ top: 'var(--sticky-top, 0px)' }} className="sticky z-20 bg-slate-100 border-b border-slate-200/90 w-44 text-center font-semibold text-slate-700 shadow-2xs">Status Pastoral</TableHead>
+                    <TableHead style={{ top: 'var(--sticky-top, 0px)' }} className="sticky z-20 bg-slate-100 border-b border-slate-200/90 w-36 text-center font-semibold text-slate-700 shadow-2xs">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-100">
@@ -1155,7 +1188,7 @@ export default function ParokiBendaharaPage() {
                     ))
                   )}
                 </TableBody>
-              </Table>
+              </table>
             </div>
           </CardContent>
         </Card>
@@ -1339,22 +1372,35 @@ export default function ParokiBendaharaPage() {
               </div>
 
               {/* Tabel 12 Bulan Kartu Setoran dengan Freeze Header Bulan (Sticky top & left) */}
-              <div className="border border-slate-200/90 rounded-xl overflow-auto max-h-[580px] shadow-2xs bg-white scrollbar-thin">
+              <div ref={kartuTableRef} className="border border-slate-200/90 rounded-xl overflow-auto max-h-[580px] shadow-2xs bg-white scrollbar-thin">
                 <table className="w-full text-xs text-left border-separate border-spacing-0">
-                  <thead className="bg-slate-50">
-                    <tr className="bg-slate-50">
-                      <th className="sticky top-0 left-0 z-40 bg-slate-50 w-12 min-w-[48px] max-w-[48px] text-center font-semibold text-slate-700 p-2.5 border-b border-r border-slate-200">
+                  <thead className="bg-slate-100 sticky z-30">
+                    <tr className="bg-slate-100">
+                      <th
+                        style={{ top: 'var(--sticky-top, 0px)' }}
+                        className="sticky left-0 z-40 bg-slate-100 w-12 min-w-[48px] max-w-[48px] text-center font-bold text-slate-800 p-2.5 border-b-2 border-r border-slate-300 shadow-2xs"
+                      >
                         No
                       </th>
-                      <th className="sticky top-0 left-12 z-40 bg-slate-50 min-w-[220px] font-semibold text-slate-700 p-2.5 border-b border-r border-slate-200 shadow-2xs">
+                      <th
+                        style={{ top: 'var(--sticky-top, 0px)' }}
+                        className="sticky left-12 z-40 bg-slate-100 min-w-[220px] font-bold text-slate-800 p-2.5 border-b-2 border-r border-slate-300 shadow-xs"
+                      >
                         Kepala Keluarga
                       </th>
                       {SHORT_MONTHS.map((m) => (
-                        <th key={m} className="sticky top-0 z-30 bg-slate-50 w-16 min-w-[64px] text-center font-semibold text-slate-700 p-2.5 border-b border-slate-200">
+                        <th
+                          key={m}
+                          style={{ top: 'var(--sticky-top, 0px)' }}
+                          className="sticky z-30 bg-slate-100 w-16 min-w-[64px] text-center font-bold text-slate-800 p-2.5 border-b-2 border-slate-300 shadow-2xs"
+                        >
                           {m}
                         </th>
                       ))}
-                      <th className="sticky top-0 z-30 bg-slate-50 w-28 min-w-[100px] text-right font-semibold text-slate-700 p-2.5 pr-3 border-b border-slate-200">
+                      <th
+                        style={{ top: 'var(--sticky-top, 0px)' }}
+                        className="sticky z-30 bg-slate-100 w-28 min-w-[100px] text-right font-bold text-slate-800 p-2.5 pr-3 border-b-2 border-slate-300 shadow-2xs"
+                      >
                         Total (Rp)
                       </th>
                     </tr>

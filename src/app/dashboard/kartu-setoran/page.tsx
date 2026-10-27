@@ -110,6 +110,35 @@ export default function KartuSetoranPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showAllStatus, setShowAllStatus] = useState(false)
   const [isManageModalOpen, setIsManageModalOpen] = useState(false)
+  const kartuTableRef = React.useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const updateStickyOffset = () => {
+      const container = kartuTableRef.current
+      if (!container) return
+      const mainEl = container.closest('main')
+      const rect = container.getBoundingClientRect()
+      const mainTop = mainEl ? mainEl.getBoundingClientRect().top : 0
+      if (rect.top < mainTop) {
+        const offset = Math.min(Math.max(0, mainTop - rect.top), Math.max(0, rect.height - 48))
+        container.style.setProperty('--sticky-top', `${offset}px`)
+      } else {
+        container.style.setProperty('--sticky-top', '0px')
+      }
+    }
+
+    updateStickyOffset()
+    const mainEl = document.querySelector('main')
+    if (mainEl) mainEl.addEventListener('scroll', updateStickyOffset, { passive: true })
+    window.addEventListener('scroll', updateStickyOffset, { passive: true })
+    window.addEventListener('resize', updateStickyOffset, { passive: true })
+
+    return () => {
+      if (mainEl) mainEl.removeEventListener('scroll', updateStickyOffset)
+      window.removeEventListener('scroll', updateStickyOffset)
+      window.removeEventListener('resize', updateStickyOffset)
+    }
+  }, [loading, lingkunganId, kkList.length])
   const [selectedDonasiNote, setSelectedDonasiNote] = useState<{
     namaKk: string
     bulan: string
@@ -898,23 +927,36 @@ export default function KartuSetoranPage() {
               </div>
             </div>
 
-            {/* Matriks 12 Bulan Kartu Setoran dengan Freeze Header Bulan (Sticky top & left) */}
-            <div className="border border-slate-200 rounded-xl overflow-auto max-h-[580px] shadow-xs bg-white scrollbar-thin">
+            {/* Tabel 12 Bulan Kartu Setoran dengan Freeze Header Bulan (Sticky top & left) */}
+            <div ref={kartuTableRef} className="border border-slate-200 rounded-xl overflow-auto max-h-[580px] shadow-xs bg-white scrollbar-thin">
               <table className="w-full text-xs text-left border-separate border-spacing-0">
-                <thead className="bg-slate-100">
+                <thead className="bg-slate-100 sticky z-30">
                   <tr className="bg-slate-100">
-                    <th className="sticky top-0 left-0 z-40 bg-slate-100 w-12 min-w-[48px] max-w-[48px] text-center font-bold text-slate-800 p-2.5 border-b-2 border-r border-slate-300">
+                    <th
+                      style={{ top: 'var(--sticky-top, 0px)' }}
+                      className="sticky left-0 z-40 bg-slate-100 w-12 min-w-[48px] max-w-[48px] text-center font-bold text-slate-800 p-2.5 border-b-2 border-r border-slate-300 shadow-2xs"
+                    >
                       No
                     </th>
-                    <th className="sticky top-0 left-12 z-40 bg-slate-100 min-w-[200px] font-bold text-slate-800 p-2.5 border-b-2 border-r border-slate-300 shadow-xs">
+                    <th
+                      style={{ top: 'var(--sticky-top, 0px)' }}
+                      className="sticky left-12 z-40 bg-slate-100 min-w-[200px] font-bold text-slate-800 p-2.5 border-b-2 border-r border-slate-300 shadow-xs"
+                    >
                       Kepala Keluarga
                     </th>
                     {SHORT_MONTHS.map((m) => (
-                      <th key={m} className="sticky top-0 z-30 bg-slate-100 w-16 min-w-[64px] text-center font-bold text-slate-800 p-2.5 border-b-2 border-slate-300">
+                      <th
+                        key={m}
+                        style={{ top: 'var(--sticky-top, 0px)' }}
+                        className="sticky z-30 bg-slate-100 w-16 min-w-[64px] text-center font-bold text-slate-800 p-2.5 border-b-2 border-slate-300 shadow-2xs"
+                      >
                         {m}
                       </th>
                     ))}
-                    <th className="sticky top-0 z-30 bg-slate-100 w-28 min-w-[100px] text-right font-bold text-slate-800 p-2.5 pr-3 border-b-2 border-slate-300">
+                    <th
+                      style={{ top: 'var(--sticky-top, 0px)' }}
+                      className="sticky z-30 bg-slate-100 w-28 min-w-[100px] text-right font-bold text-slate-800 p-2.5 pr-3 border-b-2 border-slate-300 shadow-2xs"
+                    >
                       Total (Rp)
                     </th>
                   </tr>
