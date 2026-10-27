@@ -1202,12 +1202,12 @@ export default function ParokiBendaharaPage() {
           {/* 1. FILTER BAR ATAS */}
           <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 flex-1 min-w-0">
                 {/* Filter Pilih Lingkungan */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <Label className="text-xs font-bold text-slate-700">Filter Lingkungan</Label>
                   <Select value={selectedLingkunganFilter} onValueChange={(val) => setSelectedLingkunganFilter(val || 'ALL')}>
-                    <SelectTrigger className="bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm">
+                    <SelectTrigger className="w-full max-w-full overflow-hidden bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm px-3.5">
                       <span className="truncate">
                         {selectedLingkunganFilter === 'ALL'
                           ? `Semua Lingkungan (${allLingkungan.length})`
@@ -1228,10 +1228,10 @@ export default function ParokiBendaharaPage() {
                 </div>
 
                 {/* Filter Jenis Setoran / Akun COA */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <Label className="text-xs font-bold text-slate-700">Jenis Setoran / Akun COA</Label>
                   <Select value={selectedCoa} onValueChange={(val) => setSelectedCoa(val || '4100')}>
-                    <SelectTrigger className="bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm">
+                    <SelectTrigger className="w-full max-w-full overflow-hidden bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm px-3.5">
                       <span className="truncate">{selectedCoaObj.name}</span>
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
@@ -1245,10 +1245,10 @@ export default function ParokiBendaharaPage() {
                 </div>
 
                 {/* Filter Tahun Buku */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <Label className="text-xs font-bold text-slate-700">Tahun Buku</Label>
                   <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(parseInt(val || '2026', 10))}>
-                    <SelectTrigger className="bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm">
+                    <SelectTrigger className="w-full max-w-full overflow-hidden bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm px-3.5">
                       <span className="truncate">Tahun {selectedYear}</span>
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
@@ -1262,7 +1262,7 @@ export default function ParokiBendaharaPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   type="button"
                   variant="outline"

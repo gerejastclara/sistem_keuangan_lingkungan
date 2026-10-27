@@ -763,13 +763,13 @@ export default function KartuSetoranPage() {
     <div className="space-y-6 max-w-6xl mx-auto pb-16">
       {/* 1. FILTER BAR ATAS */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 flex-1 min-w-0">
             {/* Filter Jenis Setoran */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 min-w-0">
               <Label className="text-xs font-bold text-slate-700">Jenis Setoran / Akun COA</Label>
               <Select value={selectedCoa} onValueChange={(val) => setSelectedCoa(val || '4100')}>
-                <SelectTrigger className="bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm">
+                <SelectTrigger className="w-full max-w-full overflow-hidden bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm px-3.5">
                   <span className="truncate">{selectedCoaObj.name}</span>
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900">
@@ -783,10 +783,10 @@ export default function KartuSetoranPage() {
             </div>
 
             {/* Filter Tahun */}
-            <div className="space-y-1.5 max-w-xs">
+            <div className="space-y-1.5 min-w-0 sm:max-w-[200px]">
               <Label className="text-xs font-bold text-slate-700">Tahun Buku</Label>
               <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(parseInt(val || '2026', 10))}>
-                <SelectTrigger className="bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-sm">
+                <SelectTrigger className="w-full max-w-full overflow-hidden bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm px-3.5">
                   <span className="truncate">Tahun {selectedYear}</span>
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900">
@@ -800,7 +800,7 @@ export default function KartuSetoranPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-2 sm:pt-4">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               type="button"
               variant="outline"
