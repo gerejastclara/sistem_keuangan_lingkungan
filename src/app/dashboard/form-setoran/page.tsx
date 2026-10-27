@@ -678,8 +678,9 @@ export default function FormSetoranPage() {
                 {/* 1. Sekretariat Paroki */}
                 <div className="flex flex-col items-center flex-1 max-w-[200px] px-2">
                   <div className="mb-12 print-sign-gap text-center font-bold">Diterima Oleh :</div>
-                  <div className="w-full text-center font-normal text-xs mb-1">
-                    (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)
+                  <div className="w-36 max-w-[150px] mx-auto flex justify-between font-normal text-xs mb-1">
+                    <span>(</span>
+                    <span>)</span>
                   </div>
                   <div className="border-b border-black border-dashed w-36 max-w-[150px] mx-auto"></div>
                   <div className="mt-1 font-normal text-xs text-center">Sekretariat Paroki</div>
@@ -688,11 +689,16 @@ export default function FormSetoranPage() {
                 {/* 2. Ketua Lingkungan */}
                 <div className="flex flex-col items-center flex-1 max-w-[200px] px-2">
                   <div className="mb-12 print-sign-gap text-center font-bold">Disetujui oleh:</div>
-                  <div className="w-full text-center font-normal text-xs mb-1 whitespace-nowrap">
-                    {pengurus?.ketua_nama && pengurus.ketua_nama !== 'Susunan pengurus belum ditentukan'
-                      ? `(${pengurus.ketua_nama})`
-                      : '(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)'}
-                  </div>
+                  {pengurus?.ketua_nama && pengurus.ketua_nama !== 'Susunan pengurus belum ditentukan' ? (
+                    <div className="w-full text-center font-normal text-xs mb-1 whitespace-nowrap">
+                      ({pengurus.ketua_nama})
+                    </div>
+                  ) : (
+                    <div className="w-36 max-w-[150px] mx-auto flex justify-between font-normal text-xs mb-1">
+                      <span>(</span>
+                      <span>)</span>
+                    </div>
+                  )}
                   <div className="border-b border-black border-dashed w-36 max-w-[150px] mx-auto"></div>
                   <div className="mt-1 font-normal text-xs text-center">Ketua Lingkungan</div>
                 </div>
@@ -700,11 +706,16 @@ export default function FormSetoranPage() {
                 {/* 3. Bendahara Lingkungan */}
                 <div className="flex flex-col items-center flex-1 max-w-[200px] px-2">
                   <div className="mb-12 print-sign-gap text-center font-bold">Disetor Oleh :</div>
-                  <div className="w-full text-center font-normal text-xs mb-1 whitespace-nowrap">
-                    {pengurus?.bendahara_nama && pengurus.bendahara_nama !== 'Susunan pengurus belum ditentukan'
-                      ? `(${pengurus.bendahara_nama})`
-                      : '(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)'}
-                  </div>
+                  {pengurus?.bendahara_nama && pengurus.bendahara_nama !== 'Susunan pengurus belum ditentukan' ? (
+                    <div className="w-full text-center font-normal text-xs mb-1 whitespace-nowrap">
+                      ({pengurus.bendahara_nama})
+                    </div>
+                  ) : (
+                    <div className="w-36 max-w-[150px] mx-auto flex justify-between font-normal text-xs mb-1">
+                      <span>(</span>
+                      <span>)</span>
+                    </div>
+                  )}
                   <div className="border-b border-black border-dashed w-36 max-w-[150px] mx-auto"></div>
                   <div className="mt-1 font-normal text-xs text-center">Bendahara Lingkungan</div>
                 </div>
