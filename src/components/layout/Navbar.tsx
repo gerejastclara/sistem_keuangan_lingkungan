@@ -1,13 +1,57 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserProfile, Lingkungan } from '@/lib/types'
 import { getWilayahForLingkungan, formatNamaLingkungan, getAllMasterLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier, findLingkunganByQuery } from '@/lib/constants'
-import { LogOut, Building2, User, ChevronDown, Menu, Bell, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react'
+import { LogOut, Building2, User, ChevronDown, Menu, Bell, ShieldCheck, CheckCircle2, ArrowRight, KeyRound, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { getDafuApprovals, fetchDafuApprovals, DafuApprovalItem } from '@/lib/dafuApproval'
+
+// Format nama tampilan yang rapi (contoh: bendahara1 -> Bendahara 1)
+function formatDisplayName(username?: string): string {
+  if (!username) return 'Pengguna'
+  if (/^bendahara(\d+)$/i.test(username)) {
+    return username.replace(/^bendahara(\d+)$/i, 'Bendahara $1')
+  }
+  if (/^sekretaris(\d+)$/i.test(username)) {
+    return username.replace(/^sekretaris(\d+)$/i, 'Sekretaris $1')
+  }
+  if (username === 'paroki' || username === 'paroki_admin') {
+    return 'Pengawas Paroki'
+  }
+  if (username === 'sekretaris_paroki' || username === 'sekertaris_paroki') {
+    return 'Sekretaris Paroki'
+  }
+  if (username.startsWith('bendahara_')) {
+    const part = username.replace('bendahara_', '').replace(/_/g, ' ')
+    return `Bendahara ${part.charAt(0).toUpperCase() + part.slice(1)}`
+  }
+  if (username.startsWith('sekretaris_') || username.startsWith('sekertaris_')) {
+    const part = username.replace(/^sek(?:re|er)taris_/, '').replace(/_/g, ' ')
+    return `Sekretaris ${part.charAt(0).toUpperCase() + part.slice(1)}`
+  }
+  return username.charAt(0).toUpperCase() + username.slice(1)
+}
+
+function getCleanRoleLabel(role?: string): string {
+  switch (role) {
+    case 'BENDAHARA':
+      return 'Bendahara'
+    case 'SEKRETARIS':
+      return 'Sekretaris'
+    case 'PAROKI':
+      return 'Pengawas Paroki'
+    case 'SEKRETARIS_PAROKI':
+      return 'Sekretaris Paroki'
+    default:
+      return role || 'Pengguna'
+  }
+}
 
 interface NavbarProps {
   userProfile: UserProfile | null
@@ -29,9 +73,99 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleSidebar,
 }) => {
   const router = useRouter()
-  const [showProfileMenu, setShowProfileMenu] = React.useState(false)
-  const [showNotifMenu, setShowNotifMenu] = React.useState(false)
-  const [approvals, setApprovals] = React.useState<DafuApprovalItem[]>([])
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [showNotifMenu, setShowNotifMenu] = useState(false)
+  const [approvals, setApprovals] = useState<DafuApprovalItem[]>([])
+
+  // Click outside ref untuk menutup dropdown jika klik di luar mana saja
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+  const notifMenuRef = useRef<HTMLDivElement>(null)
+
+  // Ganti Password Modal State
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
+  const [passwordBaru, setPasswordBaru] = useState('')
+  const [konfirmasiPassword, setKonfirmasiPassword] = useState('')
+  const [showPass, setShowPass] = useState(false)
+  const [isSubmittingPass, setIsSubmittingPass] = useState(false)
+  const [passError, setPassError] = useState('')
+  const [passSuccess, setPassSuccess] = useState('')
+
+  // Listener Klik di Mana Saja (Outside Click) & Escape Key
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
+        setShowProfileMenu(false)
+      }
+      if (notifMenuRef.current && !notifMenuRef.current.contains(target)) {
+        setShowNotifMenu(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowProfileMenu(false)
+        setShowNotifMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
+  // Handler Submit Ganti Password
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPassError('')
+    setPassSuccess('')
+
+    if (!passwordBaru || passwordBaru.length < 6) {
+      setPassError('Password baru minimal 6 karakter.')
+      return
+    }
+
+    if (passwordBaru !== konfirmasiPassword) {
+      setPassError('Konfirmasi password tidak cocok.')
+      return
+    }
+
+    setIsSubmittingPass(true)
+    try {
+      const { createClient } = await import('@/utils/supabase/client')
+      const supabase = createClient()
+
+      if (userProfile?.username) {
+        const { error } = await supabase
+          .from('users')
+          .update({ password: passwordBaru })
+          .eq('username', userProfile.username)
+
+        if (error) {
+          console.warn('Gagal update password di supabase:', error)
+        }
+      }
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`pwd_${userProfile?.username}`, passwordBaru)
+      }
+
+      setPassSuccess('Password berhasil diperbarui!')
+      setTimeout(() => {
+        setIsChangePasswordOpen(false)
+        setPasswordBaru('')
+        setKonfirmasiPassword('')
+        setPassSuccess('')
+      }, 1200)
+    } catch (err: any) {
+      setPassError(err?.message || 'Terjadi kesalahan saat mengganti password.')
+    } finally {
+      setIsSubmittingPass(false)
+    }
+  }
 
   useEffect(() => {
     const loadNotifs = async () => {
@@ -183,7 +317,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Notification Bell (Khusus Sekretaris Paroki) */}
           {userProfile?.role === 'SEKRETARIS_PAROKI' && (
-            <div className="relative">
+            <div className="relative" ref={notifMenuRef}>
               <button
                 type="button"
                 onClick={() => {
@@ -273,48 +407,158 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           )}
 
-          {/* User Profile Menu Dropdown */}
-          <div className="relative">
+          {/* User Profile Menu Dropdown (Dapat Ditutup dengan Klik di Mana Saja) */}
+          <div className="relative" ref={profileMenuRef}>
             <button
-              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              onClick={() => {
+                setShowProfileMenu(!showProfileMenu)
+                setShowNotifMenu(false)
+              }}
               className="flex items-center gap-2 bg-[#22335A] hover:bg-[#22335A]/80 p-1.5 pr-3 rounded-[7px] border border-[#2C3E66] transition-colors cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-[5px] bg-[#A9834F]/20 border border-[#A9834F]/30 text-[#A9834F] font-bold flex items-center justify-center text-xs shrink-0">
+              <div className="w-8 h-8 rounded-[5px] bg-[#A9834F] text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
                 {(userProfile?.username || userProfile?.email || 'U').charAt(0).toUpperCase()}
               </div>
               <div className="text-left hidden md:block">
                 <div className="text-xs font-bold text-white leading-tight truncate max-w-[140px]">
-                  {userProfile?.username || (userProfile?.email ? userProfile.email.split('@')[0] : 'User')}
+                  {formatDisplayName(userProfile?.username)}
                 </div>
                 <div className="text-[10px] text-[#8A90A3] truncate">
-                  {userProfile?.role || 'BENDAHARA'}
+                  {userProfile?.username || 'user'}
                 </div>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-[#8A90A3] ml-0.5 shrink-0" />
             </button>
 
             {showProfileMenu && (
-              <div className="absolute right-0 mt-2 w-60 bg-[#16233F] border border-[#2C3E66] rounded-[10px] shadow-2xl p-2.5 z-50 text-xs">
-                <div className="p-2 border-b border-[#2C3E66] mb-1 space-y-1">
-                  <p className="font-bold text-white text-sm truncate">{userProfile?.username || userProfile?.email}</p>
-                  <div className="mt-1">{getRoleBadge(userProfile?.role)}</div>
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-50 text-xs text-slate-800 animate-in fade-in zoom-in-95 duration-100">
+                <div className="p-1 space-y-0.5">
+                  <p className="font-bold text-slate-900 text-sm leading-tight truncate">
+                    {formatDisplayName(userProfile?.username)}
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-mono truncate">
+                    @{userProfile?.username || 'user'}
+                  </p>
+                  <div className="pt-1.5">
+                    <span className="inline-block px-3 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/90">
+                      {getCleanRoleLabel(userProfile?.role)}
+                    </span>
+                  </div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    onLogout()
-                    setShowProfileMenu(false)
-                  }}
-                  className="w-full text-left p-2.5 hover:bg-red-500/20 text-red-300 rounded-[7px] flex items-center gap-2 transition-colors cursor-pointer font-medium mt-1"
-                >
-                  <LogOut className="w-4 h-4 text-red-400" />
-                  <span>Keluar (Logout)</span>
-                </button>
+                <div className="border-t border-slate-100 my-2" />
+
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProfileMenu(false)
+                      setIsChangePasswordOpen(true)
+                    }}
+                    className="w-full text-left p-2 hover:bg-slate-50 text-slate-700 rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                  >
+                    <KeyRound className="w-4 h-4 text-slate-500 shrink-0" />
+                    <span>Ganti Password</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProfileMenu(false)
+                      onLogout()
+                    }}
+                    className="w-full text-left p-2 hover:bg-rose-50 text-rose-600 rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                  >
+                    <LogOut className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>Keluar (Logout)</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Modal Dialog Ganti Password */}
+      <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
+        <DialogContent className="max-w-md bg-white text-slate-900 rounded-2xl border-slate-200 p-6">
+          <DialogHeader>
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mb-2">
+              <KeyRound className="w-5 h-5" />
+            </div>
+            <DialogTitle className="text-base font-bold text-slate-900 font-serif">
+              Ganti Password Akun
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Perbarui password login untuk akun <strong>@{userProfile?.username || 'user'}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdatePassword} className="space-y-4 pt-2">
+            {passError && (
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200/80 text-xs text-rose-800 font-medium">
+                {passError}
+              </div>
+            )}
+            {passSuccess && (
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-xs text-emerald-800 font-medium">
+                {passSuccess}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Password Baru</Label>
+              <div className="relative">
+                <Input
+                  type={showPass ? 'text' : 'password'}
+                  value={passwordBaru}
+                  onChange={(e) => setPasswordBaru(e.target.value)}
+                  placeholder="Masukkan password baru (min. 6 karakter)"
+                  className="pr-10 bg-white border-slate-300 text-slate-900 text-xs rounded-xl h-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Konfirmasi Password Baru</Label>
+              <Input
+                type={showPass ? 'text' : 'password'}
+                value={konfirmasiPassword}
+                onChange={(e) => setKonfirmasiPassword(e.target.value)}
+                placeholder="Ulangi password baru"
+                className="bg-white border-slate-300 text-slate-900 text-xs rounded-xl h-10"
+              />
+            </div>
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsChangePasswordOpen(false)}
+                className="text-xs font-semibold text-slate-700 border-slate-300 rounded-xl cursor-pointer"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isSubmittingPass}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl cursor-pointer"
+              >
+                {isSubmittingPass ? 'Menyimpan...' : 'Simpan Password'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </header>
   )
 }
