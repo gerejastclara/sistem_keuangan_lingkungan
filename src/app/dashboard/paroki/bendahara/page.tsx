@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { getAllMasterLingkungan, formatNamaLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
-import { ensureDummyKksForLingkungan, getDummyGolonganForKk } from '@/lib/dummyData'
+import { getAllMasterLingkungan, formatNamaLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier, getWilayahForLingkungan } from '@/lib/constants'
+import { ensureDummyKksForLingkungan, getDummyGolonganForKk, getLingkunganStats } from '@/lib/dummyData'
 import { fetchAllParishKksWithGolongan } from '@/lib/dafuService'
 import { isStandardUuid } from '@/lib/journalSync'
 import { KepalaKeluarga, JurnalTransaksi, GolonganKeluarga } from '@/lib/types'
@@ -33,7 +33,10 @@ import {
   Users,
   Check,
   X,
-  Clock
+  Clock,
+  HeartHandshake,
+  ArrowUpDown,
+  ChevronRight
 } from 'lucide-react'
 
 // Iuran Bulanan Standar Kas Lingkungan (COA 4100)
@@ -45,7 +48,12 @@ export default function ParokiBendaharaPage() {
   const [loading, setLoading] = useState(true)
   const [allLingkungan, setAllLingkungan] = useState<any[]>([])
 
-  // Selection & Filters
+  // Rekapitulasi Lingkungan Filter & Sort State
+  const [rekapFilterKategori, setRekapFilterKategori] = useState<'ALL' | 'BUTUH_PERHATIAN' | 'PERLU_FOLLOWUP' | 'TERTIB'>('ALL')
+  const [rekapSearchText, setRekapSearchText] = useState('')
+  const [rekapSortBy, setRekapSortBy] = useState<'ATTENTION_FIRST' | 'PERCENT_ASC' | 'PERCENT_DESC' | 'NOMINAL_DESC' | 'NAME_ASC'>('ATTENTION_FIRST')
+
+  // Selection & Filters for Monitoring Umat
   const [selectedYear, setSelectedYear] = useState<number>(2026)
   const [selectedCoa, setSelectedCoa] = useState<string>('4100')
   const [selectedLingkunganFilter, setSelectedLingkunganFilter] = useState<string>('ALL')
@@ -253,16 +261,37 @@ export default function ParokiBendaharaPage() {
   }, [coaYearJournals])
 
   // =========================================================================
-  // REKAP REALISASI IURAN KAS PER LINGKUNGAN
+  // REKAP REALISASI IURAN KAS PER LINGKUNGAN (TARGET, REALISASI, PERSENTASE & STATUS ROMO)
   // =========================================================================
   const rekapCapaianLingkungan = useMemo(() => {
     let grandTotalKk = 0
+    let grandTotalKkWajib = 0
+    let grandTotalKkBebas = 0
+    let grandTotalTarget = 0
     let grandTotalRealisasi = 0
+    let countButuhPerhatian = 0
+    let countPerluFollowup = 0
+    let countTertib = 0
 
     const list = allLingkungan.map(ling => {
       const kks = dafuByLingkungan[ling.id] || []
-      const jumlahKk = kks.length
-      grandTotalKk += jumlahKk
+      const stats = getLingkunganStats(ling.id, ling.nama_lingkungan)
+      const jumlahKkTotal = kks.length > 0 ? kks.length : (stats.kkCount > 0 ? stats.kkCount : 0)
+      grandTotalKk += jumlahKkTotal
+
+      // KK Bebas Iuran (Golongan Tidak Mampu / Subsidi)
+      const kkBebasCount = kks.filter(k => {
+        const gol = getDummyGolonganForKk(k)
+        return gol.golongan === 'Tidak Mampu'
+      }).length
+
+      const kkWajibCount = Math.max(0, jumlahKkTotal - kkBebasCount)
+      grandTotalKkWajib += kkWajibCount
+      grandTotalKkBebas += kkBebasCount
+
+      // Target iuran s/d bulan berjalan (KK Wajib * Standar Iuran * Bulan Berjalan)
+      const targetKas = kkWajibCount * STANDAR_IURAN_PER_BULAN * BULAN_BERJALAN_CURRENT
+      grandTotalTarget += targetKas
 
       // Realisasi iuran kas lingkungan ini
       const dbUuid = getLingkunganDbUuid(ling.id)
@@ -272,23 +301,112 @@ export default function ParokiBendaharaPage() {
       const realisasiIuran = lingJournals.reduce((sum, j) => sum + (Number(j.nominal) || 0), 0)
       grandTotalRealisasi += realisasiIuran
 
-      const statusSetoran = realisasiIuran > 0 ? 'Sudah Ada Setoran' : 'Belum Ada Setoran'
+      const persentaseCapaian = targetKas > 0 ? Number(((realisasiIuran / targetKas) * 100).toFixed(1)) : 0
+
+      // Kategori Perhatian Romo (Soft, Netral, Tidak Neon)
+      let statusKategori: 'BUTUH_PERHATIAN' | 'PERLU_FOLLOWUP' | 'TERTIB' = 'BUTUH_PERHATIAN'
+      let statusLabel = 'Butuh Perhatian Romo'
+      let badgeClass = 'bg-rose-50 text-rose-800 border-rose-200/90'
+      let barClass = 'bg-[#be123c]'
+      let barBg = 'bg-rose-100/60'
+      let deskripsi = 'Capaian < 35%, partisipasi kas sangat minim. Perlu perhatian & kunjungan pastoral Romo.'
+
+      if (persentaseCapaian >= 70) {
+        statusKategori = 'TERTIB'
+        statusLabel = 'Mandiri & Tertib'
+        badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-200/90'
+        barClass = 'bg-[#15803d]'
+        barBg = 'bg-emerald-100/60'
+        deskripsi = 'Capaian ≥ 70%, kas lingkungan sehat dan tertib.'
+        countTertib++
+      } else if (persentaseCapaian >= 35) {
+        statusKategori = 'PERLU_FOLLOWUP'
+        statusLabel = 'Perlu Follow-up'
+        badgeClass = 'bg-amber-50 text-amber-800 border-amber-200/90'
+        barClass = 'bg-[#b45309]'
+        barBg = 'bg-amber-100/60'
+        deskripsi = 'Capaian 35%–69%, ada setoran tapi perlu diingatkan agar tunggakan terkejar.'
+        countPerluFollowup++
+      } else {
+        countButuhPerhatian++
+      }
+
+      const wilayah = getWilayahForLingkungan(ling.nama_lingkungan || ling.id)
 
       return {
         lingkunganId: ling.id,
         namaLingkungan: ling.nama_lingkungan,
-        jumlahKk,
+        wilayah,
+        jumlahKkTotal,
+        kkWajibCount,
+        kkBebasCount,
+        targetKas,
         realisasiIuran,
-        statusSetoran
+        persentaseCapaian,
+        statusKategori,
+        statusLabel,
+        badgeClass,
+        barClass,
+        barBg,
+        deskripsi
       }
     })
 
+    const grandTotalPersentase = grandTotalTarget > 0 ? Number(((grandTotalRealisasi / grandTotalTarget) * 100).toFixed(1)) : 0
+
     return {
-      list: list.sort((a, b) => b.realisasiIuran - a.realisasiIuran),
+      list,
       grandTotalKk,
-      grandTotalRealisasi
+      grandTotalKkWajib,
+      grandTotalKkBebas,
+      grandTotalTarget,
+      grandTotalRealisasi,
+      grandTotalPersentase,
+      countButuhPerhatian,
+      countPerluFollowup,
+      countTertib
     }
   }, [allLingkungan, dafuByLingkungan, coaYearJournals])
+
+  // Filter & Urutkan Daftar Rekapitulasi Lingkungan
+  const filteredRekapList = useMemo(() => {
+    return rekapCapaianLingkungan.list
+      .filter(item => {
+        if (rekapFilterKategori !== 'ALL' && item.statusKategori !== rekapFilterKategori) {
+          return false
+        }
+        if (rekapSearchText.trim()) {
+          const q = rekapSearchText.toLowerCase()
+          const matchName = item.namaLingkungan.toLowerCase().includes(q)
+          const matchWil = item.wilayah.toLowerCase().includes(q)
+          if (!matchName && !matchWil) return false
+        }
+        return true
+      })
+      .sort((a, b) => {
+        if (rekapSortBy === 'ATTENTION_FIRST') {
+          const weight = { BUTUH_PERHATIAN: 0, PERLU_FOLLOWUP: 1, TERTIB: 2 }
+          if (weight[a.statusKategori] !== weight[b.statusKategori]) {
+            return weight[a.statusKategori] - weight[b.statusKategori]
+          }
+          return a.persentaseCapaian - b.persentaseCapaian
+        }
+        if (rekapSortBy === 'PERCENT_ASC') return a.persentaseCapaian - b.persentaseCapaian
+        if (rekapSortBy === 'PERCENT_DESC') return b.persentaseCapaian - a.persentaseCapaian
+        if (rekapSortBy === 'NOMINAL_DESC') return b.realisasiIuran - a.realisasiIuran
+        if (rekapSortBy === 'NAME_ASC') return a.namaLingkungan.localeCompare(b.namaLingkungan)
+        return 0
+      })
+  }, [rekapCapaianLingkungan.list, rekapFilterKategori, rekapSearchText, rekapSortBy])
+
+  // Aksi Klik Lihat Umat: Set filter dan gulir ke tabel bawah
+  const handleSelectLingkunganForUmat = (lingId: string) => {
+    setSelectedLingkunganFilter(lingId)
+    const element = document.getElementById('monitoring-kartu-umat-section')
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
 
   // =========================================================================
   // DETAIL MONITORING KARTU SETORAN SEMUA UMAT
@@ -429,28 +547,47 @@ export default function ParokiBendaharaPage() {
   // Export Realisasi Kas CSV
   const handleExportCapaianCsv = () => {
     const rows = [
-      ['REKAPITULASI REALISASI IURAN KAS LINGKUNGAN'],
+      ['REKAPITULASI CAPAIAN IURAN KAS LINGKUNGAN & STATUS PERHATIAN ROMO'],
       ['GEREJA ST CLARA - PAROKI BEKASI UTARA'],
-      [`Tahun Buku: ${selectedYear}`],
+      [`Tahun Buku: ${selectedYear} (Periode s/d Bulan ke-${BULAN_BERJALAN_CURRENT} - ${MONTH_NAMES[BULAN_BERJALAN_CURRENT - 1]})`],
+      [`Standar Iuran: Rp ${STANDAR_IURAN_PER_BULAN.toLocaleString('id-ID')} / KK / Bulan`],
       [`Tanggal Ekspor: ${new Date().toLocaleDateString('id-ID')}`],
       [''],
-      ['No', 'Nama Lingkungan', 'Jumlah KK', 'Realisasi Iuran (Rp)', 'Status Setoran']
+      [
+        'No',
+        'Nama Lingkungan',
+        'Wilayah',
+        'Total KK',
+        'KK Wajib Iuran',
+        'KK Bebas Iuran (Subsidi)',
+        'Target Kas s/d Bulan Ini (Rp)',
+        'Realisasi Kas Terkumpul (Rp)',
+        'Capaian (%)',
+        'Status Pastoral Romo',
+        'Catatan Rekomendasi'
+      ]
     ]
 
-    rekapCapaianLingkungan.list.forEach((item, idx) => {
+    filteredRekapList.forEach((item, idx) => {
       rows.push([
         String(idx + 1),
         formatNamaLingkungan(item.namaLingkungan),
-        String(item.jumlahKk),
+        item.wilayah,
+        String(item.jumlahKkTotal),
+        String(item.kkWajibCount),
+        String(item.kkBebasCount),
+        String(item.targetKas),
         String(item.realisasiIuran),
-        item.statusSetoran
+        `${item.persentaseCapaian}%`,
+        item.statusLabel,
+        item.deskripsi
       ])
     })
 
     const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
     const link = document.createElement('a')
     link.href = encodeURI(csvContent)
-    link.download = `Rekap_Iuran_Kas_Lingkungan_${selectedYear}.csv`
+    link.download = `Rekap_Capaian_Kas_Lingkungan_${selectedYear}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -546,47 +683,130 @@ export default function ParokiBendaharaPage() {
         </div>
       </div>
 
-      {/* 3 Kartu Metrik Paroki (Jumlah Lingkungan, Jumlah KK, Realisasi Kas) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Lingkungan</div>
-              <div className="text-2xl font-black text-slate-900 mt-0.5">{allLingkungan.length} Lingkungan</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Paroki St. Clara Bekasi Utara</div>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-              <Building2 className="w-6 h-6" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Kepala Keluarga</div>
-              <div className="text-2xl font-black text-[#004085] mt-0.5">
-                {rekapCapaianLingkungan.grandTotalKk.toLocaleString('id-ID')} KK
+      {/* 4 Kartu Metrik & Pastoral Paroki */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Kas Terkumpul Paroki vs Target */}
+        <Card className="bg-white border-slate-200/90 rounded-2xl shadow-xs">
+          <CardContent className="p-4 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kas Paroki Terkumpul</span>
+              <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                <Coins className="w-5 h-5" />
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Data DAFU seluruh lingkungan</div>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-[#EBF2FC] text-[#004085] flex items-center justify-center shrink-0">
-              <Users className="w-6 h-6" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 rounded-2xl shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Kas Terkumpul</div>
-              <div className="text-2xl font-black text-emerald-800 mt-0.5">
+            <div className="mt-2">
+              <div className="text-xl sm:text-2xl font-black text-slate-900">
                 {formatRupiah(rekapCapaianLingkungan.grandTotalRealisasi)}
               </div>
-              <div className="text-[11px] text-emerald-700 font-medium mt-0.5">Dari transaksi kartu setoran</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Target: {formatRupiah(rekapCapaianLingkungan.grandTotalTarget)} ({rekapCapaianLingkungan.grandTotalPersentase}%)
+              </div>
+              {/* Progress Bar Global Paroki */}
+              <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2.5 overflow-hidden">
+                <div
+                  className="h-full bg-slate-800 rounded-full transition-all"
+                  style={{ width: `${Math.min(100, rekapCapaianLingkungan.grandTotalPersentase)}%` }}
+                />
+              </div>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-              <TrendingUp className="w-6 h-6" />
+          </CardContent>
+        </Card>
+
+        {/* 🔴 Butuh Perhatian Romo */}
+        <Card
+          onClick={() => {
+            setRekapFilterKategori('BUTUH_PERHATIAN')
+            document.getElementById('rekap-kas-section')?.scrollIntoView({ behavior: 'smooth' })
+          }}
+          className={`bg-white border-slate-200/90 hover:border-rose-300 transition-all rounded-2xl shadow-xs cursor-pointer group ${
+            rekapFilterKategori === 'BUTUH_PERHATIAN' ? 'ring-2 ring-rose-700/30 border-rose-300' : ''
+          }`}
+        >
+          <CardContent className="p-4 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-rose-800 uppercase tracking-wider">Butuh Perhatian Romo</span>
+              <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-700 flex items-center justify-center shrink-0 group-hover:bg-rose-100 transition-colors">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-xl sm:text-2xl font-black text-rose-900">
+                {rekapCapaianLingkungan.countButuhPerhatian}{' '}
+                <span className="text-xs font-semibold text-slate-500">Lingkungan</span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Capaian &lt; 35% atau belum ada setoran
+              </div>
+              <div className="text-[10px] text-rose-700 font-semibold mt-2.5 flex items-center gap-1">
+                <span>Klik untuk saring data</span>
+                <ChevronRight className="w-3 h-3" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 🟡 Perlu Follow-up */}
+        <Card
+          onClick={() => {
+            setRekapFilterKategori('PERLU_FOLLOWUP')
+            document.getElementById('rekap-kas-section')?.scrollIntoView({ behavior: 'smooth' })
+          }}
+          className={`bg-white border-slate-200/90 hover:border-amber-300 transition-all rounded-2xl shadow-xs cursor-pointer group ${
+            rekapFilterKategori === 'PERLU_FOLLOWUP' ? 'ring-2 ring-amber-700/30 border-amber-300' : ''
+          }`}
+        >
+          <CardContent className="p-4 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-amber-800 uppercase tracking-wider">Perlu Follow-up</span>
+              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-700 flex items-center justify-center shrink-0 group-hover:bg-amber-100 transition-colors">
+                <Clock className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-xl sm:text-2xl font-black text-amber-900">
+                {rekapCapaianLingkungan.countPerluFollowup}{' '}
+                <span className="text-xs font-semibold text-slate-500">Lingkungan</span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Capaian 35% – 69% (perlu diingatkan)
+              </div>
+              <div className="text-[10px] text-amber-700 font-semibold mt-2.5 flex items-center gap-1">
+                <span>Klik untuk saring data</span>
+                <ChevronRight className="w-3 h-3" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 🟢 Mandiri & Tertib */}
+        <Card
+          onClick={() => {
+            setRekapFilterKategori('TERTIB')
+            document.getElementById('rekap-kas-section')?.scrollIntoView({ behavior: 'smooth' })
+          }}
+          className={`bg-white border-slate-200/90 hover:border-emerald-300 transition-all rounded-2xl shadow-xs cursor-pointer group ${
+            rekapFilterKategori === 'TERTIB' ? 'ring-2 ring-emerald-700/30 border-emerald-300' : ''
+          }`}
+        >
+          <CardContent className="p-4 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Mandiri &amp; Tertib</span>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-700 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-xl sm:text-2xl font-black text-emerald-900">
+                {rekapCapaianLingkungan.countTertib}{' '}
+                <span className="text-xs font-semibold text-slate-500">Lingkungan</span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Capaian &ge; 70% s/d bulan {MONTH_NAMES[BULAN_BERJALAN_CURRENT - 1]}
+              </div>
+              <div className="text-[10px] text-emerald-700 font-semibold mt-2.5 flex items-center gap-1">
+                <span>Klik untuk saring data</span>
+                <ChevronRight className="w-3 h-3" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -594,64 +814,207 @@ export default function ParokiBendaharaPage() {
 
       {/* ============================================================== */}
       {/* SEKSI 1: TABEL REKAPITULASI IURAN KAS TIAP LINGKUNGAN */}
-      {/* (Nama Lingkungan, Jumlah KK, Realisasi Iuran, Status Setoran) */}
+      {/* (Nama Lingkungan, Jumlah KK, Target, Realisasi, Persentase & Status Romo) */}
       {/* ============================================================== */}
-      <Card className="bg-white border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
-        <CardHeader className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-base font-bold text-slate-900 font-serif">
-              Rekapitulasi Iuran Kas Tiap Lingkungan
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
-              Total akumulasi penerimaan iuran kas yang tercatat dari masing-masing lingkungan
-            </CardDescription>
+      <Card id="rekap-kas-section" className="bg-white border-slate-200/90 rounded-2xl shadow-xs overflow-hidden scroll-mt-6">
+        <CardHeader className="p-5 border-b border-slate-200 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base font-bold text-slate-900 font-serif">
+                  Rekapitulasi Capaian Iuran Kas Seluruh Lingkungan
+                </CardTitle>
+                <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                  {allLingkungan.length} Lingkungan
+                </span>
+              </div>
+              <CardDescription className="text-xs text-slate-500 mt-1">
+                Rumus: <strong>Target Kas</strong> = Jumlah KK Wajib &times; Rp 20.000 &times; {BULAN_BERJALAN_CURRENT} Bulan (KK Tidak Mampu dikecualikan dari beban target).
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportCapaianCsv}
+              className="border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl h-9 px-3 cursor-pointer shrink-0 self-start sm:self-auto"
+            >
+              <Download className="w-4 h-4 mr-1 text-slate-600" />
+              Unduh Rekap Kas
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleExportCapaianCsv}
-            className="border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl h-9 px-3 cursor-pointer shrink-0"
-          >
-            <Download className="w-4 h-4 mr-1 text-slate-600" />
-            Unduh Rekap Kas
-          </Button>
+
+          {/* Filter Kategori & Kontrol Pencarian / Pengurutan */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1 border-t border-slate-100">
+            {/* Tabs Filter Kategori Pastoral */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setRekapFilterKategori('ALL')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                  rekapFilterKategori === 'ALL'
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                Semua Lingkungan ({rekapCapaianLingkungan.list.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRekapFilterKategori('BUTUH_PERHATIAN')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                  rekapFilterKategori === 'BUTUH_PERHATIAN'
+                    ? 'bg-rose-900 text-white border-rose-900 shadow-xs'
+                    : 'bg-rose-50/70 text-rose-800 border-rose-200/80 hover:bg-rose-100/70'
+                }`}
+              >
+                🔴 Butuh Perhatian Romo ({rekapCapaianLingkungan.countButuhPerhatian})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRekapFilterKategori('PERLU_FOLLOWUP')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                  rekapFilterKategori === 'PERLU_FOLLOWUP'
+                    ? 'bg-amber-900 text-white border-amber-900 shadow-xs'
+                    : 'bg-amber-50/70 text-amber-800 border-amber-200/80 hover:bg-amber-100/70'
+                }`}
+              >
+                🟡 Perlu Follow-up ({rekapCapaianLingkungan.countPerluFollowup})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRekapFilterKategori('TERTIB')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                  rekapFilterKategori === 'TERTIB'
+                    ? 'bg-emerald-900 text-white border-emerald-900 shadow-xs'
+                    : 'bg-emerald-50/70 text-emerald-800 border-emerald-200/80 hover:bg-emerald-100/70'
+                }`}
+              >
+                🟢 Mandiri &amp; Tertib ({rekapCapaianLingkungan.countTertib})
+              </button>
+            </div>
+
+            {/* Pencarian Lingkungan & Sort */}
+            <div className="flex items-center gap-2">
+              <div className="relative w-full sm:w-56">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={rekapSearchText}
+                  onChange={(e) => setRekapSearchText(e.target.value)}
+                  placeholder="Cari lingkungan / wilayah..."
+                  className="pl-8 bg-white border-slate-300 text-slate-900 text-xs rounded-xl h-9"
+                />
+              </div>
+
+              <Select value={rekapSortBy} onValueChange={(val: any) => setRekapSortBy(val)}>
+                <SelectTrigger className="w-48 bg-white border-slate-300 text-slate-800 text-xs font-medium rounded-xl h-9">
+                  <SelectValue placeholder="Urutkan" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
+                  <SelectItem value="ATTENTION_FIRST">Prioritas Perhatian Romo</SelectItem>
+                  <SelectItem value="PERCENT_ASC">Capaian Terendah (0% - 100%)</SelectItem>
+                  <SelectItem value="PERCENT_DESC">Capaian Tertinggi (100% - 0%)</SelectItem>
+                  <SelectItem value="NOMINAL_DESC">Realisasi Terbesar</SelectItem>
+                  <SelectItem value="NAME_ASC">Nama Lingkungan (A-Z)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto max-h-96 overflow-y-auto">
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <Table className="text-xs">
-              <TableHeader className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200">
+              <TableHeader className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 shadow-2xs">
                 <TableRow>
                   <TableHead className="w-12 text-center font-bold text-slate-700">No</TableHead>
-                  <TableHead className="font-bold text-slate-700">Nama Lingkungan</TableHead>
+                  <TableHead className="w-48 font-bold text-slate-700">Lingkungan &amp; Wilayah</TableHead>
                   <TableHead className="w-32 text-center font-bold text-slate-700">Jumlah KK</TableHead>
-                  <TableHead className="w-52 text-right font-bold text-slate-700">Total Iuran Kas (Rp)</TableHead>
-                  <TableHead className="w-44 text-center font-bold text-slate-700">Status Setoran</TableHead>
+                  <TableHead className="w-36 text-right font-bold text-slate-700">Target Kas (Rp)</TableHead>
+                  <TableHead className="w-36 text-right font-bold text-slate-700">Realisasi Kas (Rp)</TableHead>
+                  <TableHead className="w-48 font-bold text-slate-700">Capaian Kas (%)</TableHead>
+                  <TableHead className="w-44 text-center font-bold text-slate-700">Status Pastoral</TableHead>
+                  <TableHead className="w-24 text-center font-bold text-slate-700">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-slate-100">
-                {rekapCapaianLingkungan.list.map((item, idx) => (
-                  <TableRow key={item.lingkunganId} className="hover:bg-slate-50/80 transition-colors">
-                    <TableCell className="text-center font-mono text-slate-500 font-semibold">{idx + 1}</TableCell>
-                    <TableCell className="font-bold text-slate-900">
-                      {formatNamaLingkungan(item.namaLingkungan)}
-                    </TableCell>
-                    <TableCell className="text-center font-bold text-slate-800">
-                      {item.jumlahKk} <span className="text-[11px] text-slate-500 font-normal">KK</span>
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-bold text-emerald-800">
-                      {item.realisasiIuran > 0 ? formatRupiah(item.realisasiIuran) : 'Rp 0'}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                        item.statusSetoran === 'Sudah Ada Setoran'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {item.statusSetoran}
-                      </span>
+                {filteredRekapList.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-32 text-center text-slate-500">
+                      Tidak ada lingkungan yang sesuai dengan kriteria filter saat ini.
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredRekapList.map((item, idx) => (
+                    <TableRow key={item.lingkunganId} className="hover:bg-slate-50/80 transition-colors">
+                      <TableCell className="text-center font-mono text-slate-500 font-semibold">{idx + 1}</TableCell>
+                      <TableCell>
+                        <div className="font-bold text-slate-900">
+                          {formatNamaLingkungan(item.namaLingkungan)}
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          Wilayah: {item.wilayah}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="font-bold text-slate-800">
+                          {item.jumlahKkTotal} <span className="text-[11px] text-slate-500 font-normal">KK</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium">
+                          {item.kkWajibCount} Wajib {item.kkBebasCount > 0 ? `• ${item.kkBebasCount} Bebas` : ''}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-slate-700 font-semibold">
+                        {formatRupiah(item.targetKas)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-bold text-slate-900">
+                        {item.realisasiIuran > 0 ? formatRupiah(item.realisasiIuran) : 'Rp 0'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-mono font-bold text-slate-800">{item.persentaseCapaian}%</span>
+                            <span className="text-[10px] text-slate-500">
+                              {item.realisasiIuran > 0 ? 'Tercatat' : 'Belum ada'}
+                            </span>
+                          </div>
+                          {/* Mini Progress Bar Halus & Elegan */}
+                          <div className={`w-full h-1.5 rounded-full overflow-hidden ${item.barBg}`}>
+                            <div
+                              className={`h-full rounded-full transition-all ${item.barClass}`}
+                              style={{ width: `${Math.min(100, Math.max(item.realisasiIuran > 0 ? 4 : 0, item.persentaseCapaian))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span
+                          title={item.deskripsi}
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${item.badgeClass}`}
+                        >
+                          {item.statusKategori === 'BUTUH_PERHATIAN' ? (
+                            <AlertCircle className="w-3 h-3 shrink-0 text-rose-700" />
+                          ) : item.statusKategori === 'PERLU_FOLLOWUP' ? (
+                            <Clock className="w-3 h-3 shrink-0 text-amber-700" />
+                          ) : (
+                            <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-700" />
+                          )}
+                          <span>{item.statusLabel}</span>
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSelectLingkunganForUmat(item.lingkunganId)}
+                          className="h-7 px-2.5 text-[11px] font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200/80 cursor-pointer"
+                          title="Lihat rincian kartu setoran umat lingkungan ini"
+                        >
+                          Lihat Umat
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
@@ -662,7 +1025,7 @@ export default function ParokiBendaharaPage() {
       {/* SEKSI 2: MONITORING KARTU SETORAN SEMUA LINGKUNGAN */}
       {/* (Data Umat, Kesimpulan "Orang ini sudah bayar", Lunas/Belum) */}
       {/* ============================================================== */}
-      <div className="space-y-4">
+      <div id="monitoring-kartu-umat-section" className="space-y-4 scroll-mt-6">
         {/* Filter Controls Bar */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -684,6 +1047,28 @@ export default function ParokiBendaharaPage() {
               Unduh CSV Umat
             </Button>
           </div>
+
+          {/* Active Filter Lingkungan Indicator */}
+          {selectedLingkunganFilter !== 'ALL' && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200/90 rounded-xl text-xs text-slate-700">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-slate-800"></span>
+                <span>
+                  Menampilkan rincian kartu setoran keluarga khusus di:{' '}
+                  <strong className="text-slate-900">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)}</strong>
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedLingkunganFilter('ALL')}
+                className="h-7 text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-200/60 font-semibold cursor-pointer self-start sm:self-auto"
+              >
+                Reset ke Semua Lingkungan
+              </Button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
             {/* Filter Lingkungan */}
