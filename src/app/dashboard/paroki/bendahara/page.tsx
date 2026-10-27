@@ -36,19 +36,58 @@ import {
   Clock,
   HeartHandshake,
   ArrowUpDown,
-  ChevronRight
+  ChevronRight,
+  Info
 } from 'lucide-react'
 
 // Iuran Bulanan Standar Kas Lingkungan (COA 4100)
 const STANDAR_IURAN_PER_BULAN = 20000
 const BULAN_BERJALAN_CURRENT = 9 // September
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
+
+type SumberSetoranType = 'SENDIRI' | 'PAROKI' | 'DANA_LINGKUNGAN' | 'ORANG_LAIN'
+
+interface SetoranDetail {
+  nominal: number
+  sumber: SumberSetoranType
+  penalangNama?: string
+}
+
+const JENIS_KARTU_OPTIONS = [
+  { code: '4100', name: 'Kas Lingkungan (KL) — COA 4100', labelShort: 'Iuran Kas Lingkungan' },
+  { code: '4110', name: 'Kolekte Ibadat Sabda — COA 4110', labelShort: 'Kolekte Ibadat Sabda' },
+  { code: '4120', name: 'Sumbangan Dahar Romo — COA 4120', labelShort: 'Dahar Romo' },
+  { code: '4200', name: 'Sumbangan ASAK — COA 4200', labelShort: 'ASAK' },
+  { code: '4300', name: 'Iuran Dana Kematian / St. Yusuf — COA 4300', labelShort: 'Dana Kematian / St. Yusuf' },
+  { code: '4400', name: 'Kolekte Misa Lingkungan — COA 4400', labelShort: 'Kolekte Misa Lingkungan' },
+  { code: '4500', name: 'Sumbangan Umat — COA 4500', labelShort: 'Sumbangan Umat' },
+  { code: '4600', name: 'Bantuan dari Paroki — COA 4600', labelShort: 'Bantuan dari Paroki' },
+  { code: '4700', name: 'Dana APP — COA 4700', labelShort: 'Dana APP' },
+  { code: '4800', name: 'Dana Aksi Natal — COA 4800', labelShort: 'Aksi Natal' },
+  { code: '4900', name: 'Penerimaan Lainnya — COA 4900', labelShort: 'Penerimaan Lainnya' }
+]
+
+function getDynamicJenisKartuOptions(): Array<{ code: string; name: string; labelShort: string }> {
+  try {
+    const master = getAllMasterCOA()
+    const penerimaanList = master.filter(c => c.kategori === 'PENERIMAAN')
+    if (penerimaanList.length > 0) {
+      return penerimaanList.map(c => ({
+        code: c.id,
+        name: `${c.nama_akun} — COA ${c.id}`,
+        labelShort: c.id === '4100' ? 'Iuran Kas Lingkungan' : c.nama_akun
+      }))
+    }
+  } catch (e) {}
+  return JENIS_KARTU_OPTIONS
+}
 
 export default function ParokiBendaharaPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [allLingkungan, setAllLingkungan] = useState<any[]>([])
 
-  // Active View Tab ('REKAP' = Rekap Kas 69 Lingkungan, 'KARTU' = Kartu Setoran Umat Jan-Des)
+  // Active View Tab ('REKAP' = Rekap Kas Lingkungan, 'KARTU' = Kartu Setoran)
   const [activeTab, setActiveTab] = useState<'REKAP' | 'KARTU'>('REKAP')
 
   // Rekapitulasi Lingkungan Filter & Sort State
@@ -56,12 +95,14 @@ export default function ParokiBendaharaPage() {
   const [rekapSearchText, setRekapSearchText] = useState('')
   const [rekapSortBy, setRekapSortBy] = useState<'ATTENTION_FIRST' | 'PERCENT_ASC' | 'PERCENT_DESC' | 'NOMINAL_DESC' | 'NAME_ASC'>('ATTENTION_FIRST')
 
-  // Selection & Filters for Monitoring Umat
+  // Selection & Filters for Kartu Setoran
   const [selectedYear, setSelectedYear] = useState<number>(2026)
   const [selectedCoa, setSelectedCoa] = useState<string>('4100')
   const [selectedLingkunganFilter, setSelectedLingkunganFilter] = useState<string>('ALL')
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [searchKk, setSearchKk] = useState<string>('')
+  const [showAllStatus, setShowAllStatus] = useState<boolean>(false)
+  const [kartuOptions] = useState<Array<{ code: string; name: string; labelShort: string }>>(() => getDynamicJenisKartuOptions())
 
   // Raw Data State
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
@@ -224,7 +265,17 @@ export default function ParokiBendaharaPage() {
     }
   }
 
-  // Filter journals for selected COA and Year
+  // Filter journals for Kas Lingkungan (4100) for Rekap Kas Paroki
+  const kasYearJournals = useMemo(() => {
+    return jurnalList.filter(j => {
+      const d = new Date(j.tanggal)
+      const matchesYear = d.getFullYear() === selectedYear
+      const matchesCoa = j.coa_kredit === '4100' || j.coa_debit === '4100'
+      return matchesYear && matchesCoa
+    })
+  }, [jurnalList, selectedYear])
+
+  // Filter journals for selected COA and Year (for Kartu Setoran)
   const coaYearJournals = useMemo(() => {
     return jurnalList.filter(j => {
       const d = new Date(j.tanggal)
@@ -234,9 +285,9 @@ export default function ParokiBendaharaPage() {
     })
   }, [jurnalList, selectedYear, selectedCoa])
 
-  // Build KK Payment Map: Key = kkId or (lingkunganId + nama_kk) -> { months: Set<number>, totalNominal: number }
+  // Build KK Payment Map: Key = kkId or (lingkunganId + nama_kk) -> { monthsDetail: Record<number, SetoranDetail>, totalNominal: number }
   const kkPaymentMap = useMemo(() => {
-    const map = new Map<string, { months: Set<number>; totalNominal: number }>()
+    const map = new Map<string, { monthsDetail: Record<number, SetoranDetail>; totalNominal: number }>()
 
     coaYearJournals.forEach(j => {
       const d = new Date(j.tanggal)
@@ -252,9 +303,47 @@ export default function ParokiBendaharaPage() {
         }
       }
 
+      let sumber: SumberSetoranType = 'SENDIRI'
+      let penalangNama: string | undefined = undefined
+      if (
+        j.sumber_setoran === 'DANA_LINGKUNGAN' ||
+        (j.keterangan || '').toLowerCase().includes('kas lingkungan') ||
+        (j.keterangan || '').toLowerCase().includes('dana lingkungan') ||
+        (j.keterangan || '').toLowerCase().includes('subsidi')
+      ) {
+        sumber = 'DANA_LINGKUNGAN'
+      } else if (
+        j.sumber_setoran === 'PAROKI' ||
+        (j.keterangan || '').toLowerCase().includes('talangan paroki') ||
+        (j.keterangan || '').toLowerCase().includes('ditalangi paroki')
+      ) {
+        sumber = 'PAROKI'
+      } else if (
+        j.sumber_setoran === 'ORANG_LAIN' ||
+        (j.keterangan || '').toLowerCase().includes('donasi') ||
+        (j.keterangan || '').toLowerCase().includes('ditalangi')
+      ) {
+        sumber = 'ORANG_LAIN'
+        const match = (j.keterangan || '').match(/\((?:Ditalangi|Donasi)\s+([^)]+)\)/i)
+        penalangNama = match ? match[1].trim() : (j.keterangan || undefined)
+      }
+
       if (kkKey) {
-        const cur = map.get(kkKey) || { months: new Set<number>(), totalNominal: 0 }
-        cur.months.add(month)
+        const cur = map.get(kkKey) || { monthsDetail: {}, totalNominal: 0 }
+        const existingMonth = cur.monthsDetail[month]
+        if (existingMonth) {
+          existingMonth.nominal += nominal
+          if (sumber !== 'SENDIRI') {
+            existingMonth.sumber = sumber
+            existingMonth.penalangNama = penalangNama
+          }
+        } else {
+          cur.monthsDetail[month] = {
+            nominal,
+            sumber,
+            penalangNama
+          }
+        }
         cur.totalNominal += nominal
         map.set(kkKey, cur)
       }
@@ -298,7 +387,7 @@ export default function ParokiBendaharaPage() {
 
       // Realisasi iuran kas lingkungan ini
       const dbUuid = getLingkunganDbUuid(ling.id)
-      const lingJournals = coaYearJournals.filter(j =>
+      const lingJournals = kasYearJournals.filter(j =>
         j.lingkungan_id === ling.id || j.lingkungan_id === dbUuid || j.lingkungan_id === `csv-${ling.id}`
       )
       const realisasiIuran = lingJournals.reduce((sum, j) => sum + (Number(j.nominal) || 0), 0)
@@ -369,7 +458,7 @@ export default function ParokiBendaharaPage() {
       countPerluFollowup,
       countTertib
     }
-  }, [allLingkungan, dafuByLingkungan, coaYearJournals])
+  }, [allLingkungan, dafuByLingkungan, kasYearJournals])
 
   // Filter & Urutkan Daftar Rekapitulasi Lingkungan
   const filteredRekapList = useMemo(() => {
@@ -402,14 +491,14 @@ export default function ParokiBendaharaPage() {
       })
   }, [rekapCapaianLingkungan.list, rekapFilterKategori, rekapSearchText, rekapSortBy])
 
-  // Aksi Klik Lihat Umat: Set filter dan pindah ke Tab 2 (Kartu Setoran Umat)
+  // Aksi Klik Lihat Umat: Set filter dan pindah ke Tab 2 (Kartu Setoran)
   const handleSelectLingkunganForUmat = (lingId: string) => {
     setSelectedLingkunganFilter(lingId)
     setActiveTab('KARTU')
   }
 
   // =========================================================================
-  // DETAIL MONITORING KARTU SETORAN SEMUA UMAT
+  // DETAIL KARTU SETORAN (SELARAS DENGAN BENDAHARA LINGKUNGAN)
   // =========================================================================
   const allUmatSetoranList = useMemo(() => {
     const rows: Array<{
@@ -417,14 +506,10 @@ export default function ParokiBendaharaPage() {
       lingkunganNama: string
       kk: KepalaKeluarga
       golongan: GolonganKeluarga
+      monthsDetail: Record<number, SetoranDetail>
       paidMonths: number[]
       totalBayar: number
-      kesimpulanStatus: {
-        label: string
-        badgeClass: string
-        color: string
-        isLunas: boolean
-      }
+      statusUmat: 'AKTIF' | 'PINDAH' | 'KELUAR'
     }> = []
 
     allLingkungan.forEach(ling => {
@@ -444,92 +529,61 @@ export default function ParokiBendaharaPage() {
       const kks = dafuByLingkungan[ling.id] || []
       kks.forEach(k => {
         const gol = getDummyGolonganForKk(k)
-        
+
         // Cek pembayaran KK ini
         const dbUuid = getLingkunganDbUuid(ling.id)
         const payInfo1 = kkPaymentMap.get(k.id)
         const payInfo2 = kkPaymentMap.get(`${ling.id}_${k.nama_kk.toLowerCase().trim()}`)
         const payInfo3 = kkPaymentMap.get(`${dbUuid}_${k.nama_kk.toLowerCase().trim()}`)
-        
-        const paidSet = new Set<number>()
+
+        const mergedMonths: Record<number, SetoranDetail> = {}
         let totalBayar = 0
-        if (payInfo1) {
-          payInfo1.months.forEach(m => paidSet.add(m))
-          totalBayar += payInfo1.totalNominal
-        }
-        if (payInfo2) {
-          payInfo2.months.forEach(m => paidSet.add(m))
-          totalBayar += payInfo2.totalNominal
-        }
-        if (payInfo3) {
-          payInfo3.months.forEach(m => paidSet.add(m))
-          totalBayar += payInfo3.totalNominal
+
+        const mergeFrom = (info?: { monthsDetail: Record<number, SetoranDetail>; totalNominal: number }) => {
+          if (!info) return
+          Object.entries(info.monthsDetail).forEach(([mStr, det]) => {
+            const m = Number(mStr)
+            if (!mergedMonths[m]) {
+              mergedMonths[m] = { ...det }
+            } else {
+              mergedMonths[m].nominal += det.nominal
+              if (det.sumber !== 'SENDIRI') {
+                mergedMonths[m].sumber = det.sumber
+                mergedMonths[m].penalangNama = det.penalangNama
+              }
+            }
+          })
+          totalBayar += info.totalNominal
         }
 
-        const paidMonths = Array.from(paidSet).sort((a, b) => a - b)
-        const paidCount = paidMonths.length
+        mergeFrom(payInfo1)
+        mergeFrom(payInfo2)
+        mergeFrom(payInfo3)
 
-        // Tentukan Kesimpulan Status (Warna Soft & Netral Elegan, tidak neon)
-        let kesimpulanStatus = {
-          label: 'Belum Bayar (Tunggakan 9 Bulan)',
-          badgeClass: 'bg-[#F6F3F3] text-[#6B5353] border-[#E4DCDC]',
-          color: 'text-slate-700',
-          isLunas: false
-        }
+        const paidMonths = Object.keys(mergedMonths).map(Number).sort((a, b) => a - b)
 
-        if (gol.golongan === 'Tidak Mampu') {
-          kesimpulanStatus = {
-            label: 'Bebas Iuran (Subsidi Paroki)',
-            badgeClass: 'bg-slate-100/80 text-slate-600 border-slate-200/80',
-            color: 'text-slate-600',
-            isLunas: true
-          }
-        } else if (paidCount >= 12) {
-          kesimpulanStatus = {
-            label: 'Lunas Penuh 1 Tahun (12/12 Bln)',
-            badgeClass: 'bg-[#F2F5F3] text-[#4E6358] border-[#DCE5DF]',
-            color: 'text-slate-800',
-            isLunas: true
-          }
-        } else if (paidCount >= BULAN_BERJALAN_CURRENT) {
-          kesimpulanStatus = {
-            label: `Lunas s/d Bulan Ini (${paidCount}/${BULAN_BERJALAN_CURRENT} Bln)`,
-            badgeClass: 'bg-[#F2F5F3] text-[#4E6358] border-[#DCE5DF]',
-            color: 'text-slate-800',
-            isLunas: true
-          }
-        } else if (paidCount > 0) {
-          const sisa = BULAN_BERJALAN_CURRENT - paidCount
-          kesimpulanStatus = {
-            label: `Bayar Sebagian (${paidCount}/${BULAN_BERJALAN_CURRENT} Bln - Kurang ${sisa} Bln)`,
-            badgeClass: 'bg-[#F6F4F0] text-[#6B5F4E] border-[#E5DFD5]',
-            color: 'text-slate-700',
-            isLunas: false
-          }
-        }
+        const combinedText = `${k.alamat || ''} ${k.nama_kk || ''}`.toLowerCase()
+        let statusUmat: 'AKTIF' | 'PINDAH' | 'KELUAR' = 'AKTIF'
+        if (combinedText.includes('pindah')) statusUmat = 'PINDAH'
+        else if (combinedText.includes('keluar')) statusUmat = 'KELUAR'
 
         rows.push({
           lingkunganId: ling.id,
           lingkunganNama: ling.nama_lingkungan,
           kk: k,
           golongan: gol,
+          monthsDetail: mergedMonths,
           paidMonths,
           totalBayar,
-          kesimpulanStatus
+          statusUmat
         })
       })
     })
 
-    // Filter berdasarkan status
     return rows.filter(item => {
-      if (statusFilter === 'LUNAS') {
-        if (!item.kesimpulanStatus.isLunas || item.golongan.golongan === 'Tidak Mampu') return false
-      } else if (statusFilter === 'SEBAGIAN') {
-        if (!item.kesimpulanStatus.label.startsWith('Bayar Sebagian')) return false
-      } else if (statusFilter === 'BELUM') {
-        if (!item.kesimpulanStatus.label.startsWith('Belum Bayar')) return false
-      } else if (statusFilter === 'BEBAS') {
-        if (item.golongan.golongan !== 'Tidak Mampu') return false
+      const isSearching = searchKk.trim().length > 0
+      if (item.statusUmat !== 'AKTIF' && item.totalBayar === 0 && !showAllStatus && !isSearching) {
+        return false
       }
 
       if (searchKk) {
@@ -542,7 +596,24 @@ export default function ParokiBendaharaPage() {
 
       return true
     })
-  }, [allLingkungan, dafuByLingkungan, kkPaymentMap, selectedLingkunganFilter, statusFilter, searchKk])
+  }, [allLingkungan, dafuByLingkungan, kkPaymentMap, selectedLingkunganFilter, searchKk, showAllStatus])
+
+  // Statistik Kartu Setoran (Jumlah KK yang Setor & Total Setoran Tahun Ini)
+  const kartuSetoranStats = useMemo(() => {
+    let totalKkCount = 0
+    let grandTotalSetoran = 0
+    allUmatSetoranList.forEach(item => {
+      if (item.totalBayar > 0) {
+        totalKkCount++
+        grandTotalSetoran += item.totalBayar
+      }
+    })
+    return { totalKkCount, grandTotalSetoran }
+  }, [allUmatSetoranList])
+
+  const selectedCoaObj = useMemo(() => {
+    return kartuOptions.find(c => c.code === selectedCoa) || kartuOptions[0] || { code: selectedCoa, name: `COA ${selectedCoa}`, labelShort: `COA ${selectedCoa}` }
+  }, [kartuOptions, selectedCoa])
 
   // Export Realisasi Kas CSV
   const handleExportCapaianCsv = () => {
@@ -593,34 +664,45 @@ export default function ParokiBendaharaPage() {
     document.body.removeChild(link)
   }
 
-  // Export Monitoring Kartu Setoran CSV
+  // Export Kartu Setoran Excel / CSV (12 Bulan Jan-Des selaras dengan Bendahara Lingkungan)
   const handleExportUmatCsv = () => {
-    const rows = [
-      ['MONITORING KARTU SETORAN SELURUH UMAT PAROKI'],
-      ['GEREJA ST CLARA - PAROKI BEKASI UTARA'],
-      [`Filter Lingkungan: ${selectedLingkunganFilter === 'ALL' ? 'Semua Lingkungan' : formatNamaLingkungan(allLingkungan.find(l => l.id === selectedLingkunganFilter)?.nama_lingkungan || '')}`],
-      [`Tahun: ${selectedYear}`],
-      [''],
-      ['No', 'Lingkungan', 'Nomor KK', 'Nama Kepala Keluarga', 'Golongan', 'Bulan Terbayar', 'Total Terbayar (Rp)', 'Kesimpulan Status Pembayaran']
-    ]
-
-    allUmatSetoranList.forEach((item, idx) => {
-      rows.push([
-        String(idx + 1),
-        formatNamaLingkungan(item.lingkunganNama),
-        item.kk.no_kk || '-',
-        item.kk.nama_kk,
-        item.golongan.golongan,
-        item.paidMonths.join(', ') || 'Belum ada',
-        String(item.totalBayar),
-        item.kesimpulanStatus.label
-      ])
+    const headers = ['No', 'Lingkungan', 'Nama Kepala Keluarga', ...SHORT_MONTHS, 'Total Setoran (Rp)']
+    const rows = allUmatSetoranList.map((item, idx) => {
+      let totalKk = 0
+      const monthCols = Array.from({ length: 12 }, (_, i) => {
+        const det = item.monthsDetail[i + 1]
+        const val = det ? det.nominal : 0
+        totalKk += val
+        return val
+      })
+      return [
+        idx + 1,
+        `"${formatNamaLingkungan(item.lingkunganNama)}"`,
+        `"${item.kk.nama_kk}"`,
+        ...monthCols,
+        totalKk
+      ]
     })
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const lingLabel = selectedLingkunganFilter === 'ALL'
+      ? 'Seluruh Lingkungan (69 Lingkungan)'
+      : formatNamaLingkungan(getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter))
+
+    const titleRows = [
+      ['GEREJA ST CLARA - PAROKI BEKASI UTARA'],
+      [`REKAP KARTU SETORAN: ${selectedCoaObj.name}`],
+      [`Tahun: ${selectedYear} — Lingkungan: ${lingLabel}`],
+      ['']
+    ]
+
+    const csvContent = 'data:text/csv;charset=utf-8,' +
+      titleRows.map(r => r.join(',')).join('\n') + '\n' +
+      headers.join(',') + '\n' +
+      rows.map(r => r.join(',')).join('\n')
+
     const link = document.createElement('a')
     link.href = encodeURI(csvContent)
-    link.download = `Monitoring_Kartu_Setoran_Umat_Paroki_${selectedYear}.csv`
+    link.download = `Kartu_Setoran_${selectedCoaObj.labelShort.replace(/\s+/g, '_')}_${selectedYear}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -640,14 +722,6 @@ export default function ParokiBendaharaPage() {
     PERCENT_DESC: 'Capaian Tertinggi (100% - 0%)',
     NOMINAL_DESC: 'Realisasi Terbesar',
     NAME_ASC: 'Nama Lingkungan (A-Z)'
-  }
-
-  const statusFilterLabels: Record<string, string> = {
-    ALL: 'Semua Status',
-    LUNAS: 'Sudah Lunas s/d Bulan Berjalan',
-    SEBAGIAN: 'Bayar Sebagian',
-    BELUM: 'Belum Bayar (Menunggak)',
-    BEBAS: 'Bebas Iuran (Keluarga Tidak Mampu)'
   }
 
   return (
@@ -830,7 +904,7 @@ export default function ParokiBendaharaPage() {
       </div>
 
       {/* ============================================================== */}
-      {/* SEGMENTED 2-TAB SWITCHER (REKAP KAS 69 LINGKUNGAN vs KARTU SETORAN UMAT) */}
+      {/* SEGMENTED 2-TAB SWITCHER (REKAP KAS LINGKUNGAN vs KARTU SETORAN) */}
       {/* ============================================================== */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
         <div className="inline-flex p-1 rounded-2xl bg-slate-100/90 border border-slate-200/80 w-fit">
@@ -844,7 +918,7 @@ export default function ParokiBendaharaPage() {
             }`}
           >
             <Building2 className="w-3.5 h-3.5 text-slate-500" />
-            <span>1. Rekap Kas 69 Lingkungan</span>
+            <span>Rekap Kas Lingkungan</span>
             <span className="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/80">
               {allLingkungan.length}
             </span>
@@ -860,7 +934,7 @@ export default function ParokiBendaharaPage() {
             }`}
           >
             <CreditCard className="w-3.5 h-3.5 text-slate-500" />
-            <span>2. Kartu Setoran Umat (Jan–Des)</span>
+            <span>Kartu Setoran</span>
             <span className="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/80 max-w-[140px] truncate">
               {selectedLingkunganFilter === 'ALL' ? 'Semua' : formatNamaLingkungan(getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)).replace('Lingkungan ', '')}
             </span>
@@ -869,8 +943,8 @@ export default function ParokiBendaharaPage() {
 
         <span className="text-[11px] text-slate-400">
           {activeTab === 'REKAP'
-            ? 'Klik "Lihat Kartu Umat →" pada baris lingkungan untuk membuka rincian setoran KK'
-            : 'Menampilkan matriks kartu setoran bulanan (Jan–Des) dan kesimpulan status pembayaran KK'}
+            ? 'Klik "Lihat Kartu Setoran →" pada baris lingkungan untuk membuka kartu setoran KK'
+            : 'Rekapitulasi kartu setoran bulanan per Kepala Keluarga'}
         </span>
       </div>
 
@@ -997,7 +1071,7 @@ export default function ParokiBendaharaPage() {
                     <TableHead className="w-36 text-right font-semibold text-slate-600">Realisasi Kas (Rp)</TableHead>
                     <TableHead className="w-48 font-semibold text-slate-600">Capaian Kas (%)</TableHead>
                     <TableHead className="w-44 text-center font-semibold text-slate-600">Status Pastoral</TableHead>
-                    <TableHead className="w-32 text-center font-semibold text-slate-600">Aksi</TableHead>
+                    <TableHead className="w-36 text-center font-semibold text-slate-600">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-100">
@@ -1072,9 +1146,9 @@ export default function ParokiBendaharaPage() {
                             size="sm"
                             onClick={() => handleSelectLingkunganForUmat(item.lingkunganId)}
                             className="h-7 px-2.5 text-[11px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200/80 cursor-pointer"
-                            title="Lihat rincian kartu setoran umat lingkungan ini"
+                            title="Lihat rincian kartu setoran lingkungan ini"
                           >
-                            Lihat Kartu Umat →
+                            Lihat Kartu Setoran →
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -1088,235 +1162,295 @@ export default function ParokiBendaharaPage() {
       )}
 
       {/* ============================================================== */}
-      {/* TAB 2: MONITORING KARTU SETORAN SEMUA LINGKUNGAN (JAN - DES) */}
+      {/* TAB 2: KARTU SETORAN (SAMA PERSIS DENGAN BENDAHARA LINGKUNGAN) */}
       {/* ============================================================== */}
       {activeTab === 'KARTU' && (
-        <div id="monitoring-kartu-umat-section" className="space-y-4 scroll-mt-6">
-          {/* Filter Controls Bar */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 font-serif">
-                  Monitoring Kartu Setoran Seluruh Umat (Matriks Jan – Des)
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Cek riwayat bulan terbayar (Jan–Des) dan kesimpulan status pembayaran setiap kepala keluarga.
-                </p>
+        <div id="monitoring-kartu-umat-section" className="space-y-6 scroll-mt-6">
+          {/* 1. FILTER BAR ATAS */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1">
+                {/* Filter Pilih Lingkungan */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700">Filter Lingkungan</Label>
+                  <Select value={selectedLingkunganFilter} onValueChange={(val) => setSelectedLingkunganFilter(val || 'ALL')}>
+                    <SelectTrigger className="bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm">
+                      <span className="truncate">
+                        {selectedLingkunganFilter === 'ALL'
+                          ? `Semua Lingkungan (${allLingkungan.length})`
+                          : formatNamaLingkungan(getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter))}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-72 text-xs">
+                      <SelectItem value="ALL" className="font-semibold">
+                        Semua Lingkungan ({allLingkungan.length} Lingkungan)
+                      </SelectItem>
+                      {allLingkungan.map(ling => (
+                        <SelectItem key={ling.id} value={ling.id}>
+                          {formatNamaLingkungan(ling.nama_lingkungan)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filter Jenis Setoran / Akun COA */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700">Jenis Setoran / Akun COA</Label>
+                  <Select value={selectedCoa} onValueChange={(val) => setSelectedCoa(val || '4100')}>
+                    <SelectTrigger className="bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm">
+                      <span className="truncate">{selectedCoaObj.name}</span>
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
+                      {kartuOptions.map((opt) => (
+                        <SelectItem key={opt.code} value={opt.code}>
+                          {opt.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filter Tahun Buku */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700">Tahun Buku</Label>
+                  <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(parseInt(val || '2026', 10))}>
+                    <SelectTrigger className="bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm">
+                      <span className="truncate">Tahun {selectedYear}</span>
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 text-slate-900 text-xs">
+                      {[2026, 2025, 2024].map((yr) => (
+                        <SelectItem key={yr} value={String(yr)}>
+                          Tahun {yr}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setActiveTab('REKAP')}
-                  className="border-slate-200/90 hover:bg-slate-50 text-slate-600 text-xs font-medium rounded-xl h-9 px-3 cursor-pointer shadow-2xs"
-                >
-                  ← Kembali ke Rekap 69 Lingkungan
-                </Button>
+
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleExportUmatCsv}
-                  className="border-slate-200/90 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl h-9 px-3.5 cursor-pointer shrink-0 shadow-2xs"
+                  className="border-slate-200/90 text-slate-700 hover:bg-slate-50 font-semibold rounded-xl h-11 px-4 text-xs cursor-pointer shadow-2xs flex items-center gap-1.5"
                 >
-                  <Download className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-                  Unduh CSV Umat
+                  <FileSpreadsheet className="w-4 h-4 text-slate-600" />
+                  Download Excel / CSV
                 </Button>
-              </div>
-            </div>
-
-            {/* Active Filter Lingkungan Indicator */}
-            {selectedLingkunganFilter !== 'ALL' && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-slate-600"></span>
-                  <span>
-                    Menampilkan rincian kartu setoran keluarga khusus di:{' '}
-                    <strong className="text-slate-900">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)}</strong>
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedLingkunganFilter('ALL')}
-                  className="h-7 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-medium cursor-pointer self-start sm:self-auto"
-                >
-                  Reset ke Semua Lingkungan
-                </Button>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
-              {/* Filter Lingkungan */}
-              <div className="space-y-1">
-                <Label className="text-[10px] uppercase font-semibold text-slate-500">Filter Lingkungan</Label>
-                <Select value={selectedLingkunganFilter} onValueChange={(val) => setSelectedLingkunganFilter(val || 'ALL')}>
-                  <SelectTrigger className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10">
-                    <span className="truncate">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganFilter)}</span>
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs max-h-72">
-                    <SelectItem value="ALL" className="font-semibold text-slate-800">
-                      Semua Lingkungan (69 Lingkungan)
-                    </SelectItem>
-                    {allLingkungan.map(ling => (
-                      <SelectItem key={ling.id} value={ling.id}>
-                        {formatNamaLingkungan(ling.nama_lingkungan)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Filter Status Pembayaran */}
-              <div className="space-y-1">
-                <Label className="text-[10px] uppercase font-semibold text-slate-500">Kesimpulan Status</Label>
-                <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || 'ALL')}>
-                  <SelectTrigger className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10">
-                    <span className="truncate">{statusFilterLabels[statusFilter] || 'Semua Status'}</span>
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200 text-slate-800 text-xs">
-                    <SelectItem value="ALL">Semua Status</SelectItem>
-                    <SelectItem value="LUNAS">Sudah Lunas s/d Bulan Berjalan</SelectItem>
-                    <SelectItem value="SEBAGIAN">Bayar Sebagian</SelectItem>
-                    <SelectItem value="BELUM">Belum Bayar (Menunggak)</SelectItem>
-                    <SelectItem value="BEBAS">Bebas Iuran (Keluarga Tidak Mampu)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Filter Tahun */}
-              <div className="space-y-1">
-                <Label className="text-[10px] uppercase font-semibold text-slate-500">Tahun Buku</Label>
-                <Input
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value, 10) || 2026)}
-                  className="bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs font-medium rounded-xl h-10 focus:bg-white"
-                />
-              </div>
-
-              {/* Pencarian Nama KK */}
-              <div className="space-y-1">
-                <Label className="text-[10px] uppercase font-semibold text-slate-500">Pencarian Umat / KK</Label>
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <Input
-                    value={searchKk}
-                    onChange={(e) => setSearchKk(e.target.value)}
-                    placeholder="Cari nama KK atau no KK..."
-                    className="pl-9 bg-slate-50/60 border-slate-200/90 text-slate-800 text-xs rounded-xl h-10 focus:bg-white"
-                  />
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Tabel Data Kartu Setoran Seluruh Umat */}
-          <Card className="bg-white border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden">
-            <div className="p-3.5 bg-slate-50/70 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-              <span>
-                Menampilkan <strong className="text-slate-800">{allUmatSetoranList.length}</strong> KK berdasarkan kriteria filter • Standar Iuran: <strong className="text-slate-700">Rp 20.000 / KK / Bulan</strong>
-              </span>
-              <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                <span className="text-slate-400">Keterangan Bulan:</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF]">
-                  ● Sudah Setor
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-50 text-slate-400 border border-slate-200">
-                  ○ Belum Setor
-                </span>
+          {/* 2. 2 SUMMARY METRIC BOXES */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Card 1: Jumlah KK yang Setor */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">Jumlah KK yang Setor</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5 font-serif">
+                {kartuSetoranStats.totalKkCount}
               </div>
             </div>
-            <div className="overflow-x-auto max-h-[550px] overflow-y-auto">
-              <Table className="text-xs">
-                <TableHeader className="bg-slate-50/90 sticky top-0 z-10 border-b border-slate-200/80">
-                  <TableRow>
-                    <TableHead className="w-12 text-center font-semibold text-slate-600">No</TableHead>
-                    <TableHead className="w-40 font-semibold text-slate-600">Lingkungan</TableHead>
-                    <TableHead className="w-48 font-semibold text-slate-600">Kepala Keluarga</TableHead>
-                    <TableHead className="w-28 font-semibold text-slate-600">Golongan</TableHead>
-                    <TableHead className="font-semibold text-slate-600">Matriks Kartu Setoran (Jan – Des)</TableHead>
-                    <TableHead className="w-32 text-right font-semibold text-slate-600">Total Terbayar</TableHead>
-                    <TableHead className="w-60 font-semibold text-slate-600">Kesimpulan Status Pembayaran</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-slate-100">
-                  {allUmatSetoranList.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="h-32 text-center text-slate-500">
-                        Tidak ada data setoran yang cocok dengan filter.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    allUmatSetoranList.slice(0, 100).map((item, idx) => (
-                      <TableRow key={`${item.lingkunganId}-${item.kk.id}`} className="hover:bg-slate-50/70 transition-colors">
-                        <TableCell className="text-center font-mono text-slate-400 font-medium">{idx + 1}</TableCell>
-                        <TableCell className="font-semibold text-slate-800">
-                          {formatNamaLingkungan(item.lingkunganNama)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-semibold text-slate-800">{item.kk.nama_kk}</div>
-                          {item.kk.no_kk && item.kk.no_kk.trim() !== '' && item.kk.no_kk.trim() !== '-' && (
-                            <div className="text-[11px] text-slate-400 font-mono">No. KK: {item.kk.no_kk}</div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span className={`inline-block px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${
-                            String(item.golongan.golongan) === 'Tidak Mampu'
-                              ? 'bg-[#F6F3F3] text-[#6B5353] border-[#E4DCDC]'
-                              : String(item.golongan.golongan).includes('Rentan') || String(item.golongan.golongan).includes('Prasejahtera')
-                              ? 'bg-[#F6F4F0] text-[#6B5F4E] border-[#E5DFD5]'
-                              : 'bg-slate-100/80 text-slate-600 border-slate-200/80'
-                          }`}>
-                            {item.golongan.golongan}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap items-center gap-1">
-                            {MONTH_NAMES.map((mName, mIdx) => {
-                              const monthNum = mIdx + 1
-                              const isPaid = item.paidMonths.includes(monthNum)
+
+            {/* Card 2: Total Setoran Tahun Ini */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">Total Setoran Tahun Ini</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5 font-serif">
+                {formatRupiah(kartuSetoranStats.grandTotalSetoran)}
+              </div>
+            </div>
+          </div>
+
+          {/* 3. KOTAK REKAP SETORAN */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+            {/* Header Kotak Rekap */}
+            <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200/60">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 font-serif">
+                    Rekap Setoran {selectedCoaObj.labelShort}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {kartuSetoranStats.grandTotalSetoran === 0
+                      ? `Belum ada setoran di tahun ${selectedYear}`
+                      : `${kartuSetoranStats.totalKkCount} KK telah menyetor di tahun ${selectedYear}`}
+                  </p>
+                </div>
+              </div>
+
+              {/* PANDUAN WARNA (LEGEND) - SOFT & ELEGANT */}
+              <div className="flex flex-wrap items-center gap-2 text-xs bg-slate-50/80 border border-slate-200/80 px-3 py-2 rounded-xl">
+                <span className="font-semibold text-slate-700 text-[11px] flex items-center gap-1">
+                  <Info className="w-3.5 h-3.5 text-slate-400" /> Keterangan:
+                </span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF] font-medium text-[10px]">
+                  <span className="w-2 h-2 rounded-full bg-[#637D6F]"></span>
+                  Bayar Sendiri
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F4F3F7] text-[#5B546E] border border-[#E0DDE8] font-medium text-[10px]">
+                  <span className="w-2 h-2 rounded-full bg-[#766D8F]"></span>
+                  Kas Lingkungan
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F6F4F0] text-[#6B5F4E] border border-[#E5DFD5] font-medium text-[10px]">
+                  <span className="w-2 h-2 rounded-full bg-[#8C7B65]"></span>
+                  Dari Donasi Umat Lain
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200/90 font-medium text-[10px]">
+                  <span>📌</span>
+                  Umat Pindah / Keluar
+                </div>
+              </div>
+            </div>
+
+            {/* Isi Kotak: Tabel Kartu Setoran 12 Bulan */}
+            <div className="p-5 space-y-4">
+              {/* Search Input for KK & Status Filter Controls */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="relative w-full sm:w-72">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      value={searchKk}
+                      onChange={(e) => setSearchKk(e.target.value)}
+                      placeholder="Cari nama Kepala Keluarga..."
+                      className="pl-9 bg-slate-50 border-slate-200 text-xs rounded-xl h-9 text-slate-900 focus:bg-white"
+                    />
+                  </div>
+
+                  <label className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-100/80 hover:bg-slate-100 border border-slate-200/90 px-2.5 py-1.5 rounded-xl cursor-pointer select-none transition">
+                    <input
+                      type="checkbox"
+                      checked={showAllStatus}
+                      onChange={(e) => setShowAllStatus(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-slate-300 text-slate-800 cursor-pointer"
+                    />
+                    <span>Tampilkan Umat Pindah / Keluar</span>
+                  </label>
+                </div>
+
+                <div className="text-xs text-slate-500 font-medium flex items-center gap-2">
+                  <Info className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Data setoran terakumulasi otomatis dari modul Jurnal Transaksi</span>
+                </div>
+              </div>
+
+              {/* Tabel 12 Bulan Kartu Setoran dengan Freeze Header Bulan (Sticky top & left) */}
+              <div className="border border-slate-200/90 rounded-xl overflow-auto max-h-[580px] shadow-2xs bg-white scrollbar-thin">
+                <table className="w-full text-xs text-left border-separate border-spacing-0">
+                  <thead className="bg-slate-50">
+                    <tr className="bg-slate-50">
+                      <th className="sticky top-0 left-0 z-40 bg-slate-50 w-12 min-w-[48px] max-w-[48px] text-center font-semibold text-slate-700 p-2.5 border-b border-r border-slate-200">
+                        No
+                      </th>
+                      <th className="sticky top-0 left-12 z-40 bg-slate-50 min-w-[220px] font-semibold text-slate-700 p-2.5 border-b border-r border-slate-200 shadow-2xs">
+                        Kepala Keluarga
+                      </th>
+                      {SHORT_MONTHS.map((m) => (
+                        <th key={m} className="sticky top-0 z-30 bg-slate-50 w-16 min-w-[64px] text-center font-semibold text-slate-700 p-2.5 border-b border-slate-200">
+                          {m}
+                        </th>
+                      ))}
+                      <th className="sticky top-0 z-30 bg-slate-50 w-28 min-w-[100px] text-right font-semibold text-slate-700 p-2.5 pr-3 border-b border-slate-200">
+                        Total (Rp)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-xs">
+                    {allUmatSetoranList.length === 0 ? (
+                      <tr>
+                        <td colSpan={15} className="h-32 text-center text-slate-500 p-4">
+                          Tidak ada data Kepala Keluarga yang sesuai dengan filter.
+                        </td>
+                      </tr>
+                    ) : (
+                      allUmatSetoranList.slice(0, 150).map((item, idx) => {
+                        let totalKk = 0
+
+                        return (
+                          <tr key={`${item.lingkunganId}-${item.kk.id}`} className="hover:bg-slate-50/80 transition group">
+                            <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 text-center font-mono text-slate-400 text-[11px] p-2 border-b border-r border-slate-100 w-12 min-w-[48px] max-w-[48px]">
+                              {idx + 1}
+                            </td>
+                            <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50 font-semibold text-slate-800 p-2 border-b border-r border-slate-200 shadow-2xs min-w-[220px]">
+                              <div className="flex flex-col">
+                                <div className="flex items-center flex-wrap gap-1.5">
+                                  <span>{item.kk.nama_kk}</span>
+                                  {item.statusUmat !== 'AKTIF' && (
+                                    <span className="text-[10px] font-medium px-2 py-0.5 rounded border border-slate-200 bg-slate-100 text-slate-600 inline-flex items-center gap-1 shrink-0">
+                                      <span>📌</span>
+                                      <span>{item.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}</span>
+                                    </span>
+                                  )}
+                                </div>
+                                {selectedLingkunganFilter === 'ALL' && (
+                                  <span className="text-[10px] font-normal text-slate-400 mt-0.5">
+                                    {formatNamaLingkungan(item.lingkunganNama)}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            {Array.from({ length: 12 }, (_, i) => {
+                              const mNum = i + 1
+                              const det = item.monthsDetail[mNum]
+                              const val = det ? det.nominal : 0
+                              const sumber = det ? det.sumber : 'SENDIRI'
+                              const penalang = det?.penalangNama
+                              totalKk += val
+
                               return (
-                                <span
-                                  key={monthNum}
-                                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
-                                    isPaid
-                                      ? 'bg-[#F2F5F3] text-[#4E6358] border-[#DCE5DF] font-semibold'
-                                      : 'bg-slate-50/80 text-slate-300 border-slate-200/60'
-                                  }`}
-                                >
-                                  {mName.slice(0, 3)}
-                                </span>
+                                <td key={mNum} className="text-center p-1.5 font-mono text-[11px] border-b border-slate-100">
+                                  {val > 0 ? (
+                                    <span
+                                      title={
+                                        sumber === 'ORANG_LAIN'
+                                          ? `Donasi Umat Lain: ${penalang || 'Donatur'} (${formatRupiah(val)})`
+                                          : sumber === 'PAROKI'
+                                          ? `Ditalangi Paroki (${formatRupiah(val)})`
+                                          : sumber === 'DANA_LINGKUNGAN'
+                                          ? `Dari Kas Lingkungan (${formatRupiah(val)})`
+                                          : `Bayar Sendiri (${formatRupiah(val)})`
+                                      }
+                                      className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${
+                                        sumber === 'ORANG_LAIN'
+                                          ? 'bg-[#F6F4F0] text-[#6B5F4E] border border-[#E5DFD5]'
+                                          : sumber === 'PAROKI'
+                                          ? 'bg-slate-100 text-slate-700 border border-slate-200/90'
+                                          : sumber === 'DANA_LINGKUNGAN'
+                                          ? 'bg-[#F4F3F7] text-[#5B546E] border border-[#E0DDE8]'
+                                          : 'bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF]'
+                                      }`}
+                                    >
+                                      <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
+                                      {sumber === 'ORANG_LAIN' && <span className="text-[10px] text-[#8C7B65] font-bold">★</span>}
+                                      {sumber === 'PAROKI' && <span className="text-[10px] text-slate-600 font-bold">✝</span>}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300 font-light select-none">—</span>
+                                  )}
+                                </td>
                               )
                             })}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-semibold text-slate-800">
-                          {item.totalBayar > 0 ? formatRupiah(item.totalBayar) : 'Rp 0'}
-                        </TableCell>
-                        <TableCell>
-                          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-medium ${item.kesimpulanStatus.badgeClass}`}>
-                            {item.kesimpulanStatus.isLunas ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#637D6F]" />
-                            ) : item.kesimpulanStatus.label.startsWith('Bayar Sebagian') ? (
-                              <Clock className="w-3.5 h-3.5 shrink-0 text-[#8C7B65]" />
-                            ) : (
-                              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#8C6D6D]" />
-                            )}
-                            <span>{item.kesimpulanStatus.label}</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-            {allUmatSetoranList.length > 100 && (
-              <div className="p-3 bg-slate-50 border-t border-slate-200/80 text-center text-xs text-slate-500">
-                Menampilkan 100 data pertama dari {allUmatSetoranList.length} data. Gunakan filter lingkungan atau status di atas untuk melihat data spesifik.
+                            <td className="text-right font-mono font-bold text-slate-800 pr-3 p-2 border-b border-slate-100">
+                              {totalKk > 0 ? totalKk.toLocaleString('id-ID') : <span className="text-slate-300 font-normal">—</span>}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </Card>
+              {allUmatSetoranList.length > 150 && (
+                <div className="p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/70 text-center text-xs text-slate-500">
+                  Menampilkan 150 data pertama dari {allUmatSetoranList.length} KK. Pilih filter Lingkungan spesifik atau cari nama KK di atas untuk melihat rincian lengkap.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

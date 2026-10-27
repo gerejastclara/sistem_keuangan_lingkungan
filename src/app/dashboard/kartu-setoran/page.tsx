@@ -740,8 +740,8 @@ export default function KartuSetoranPage() {
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-slate-700">Jenis Setoran / Akun COA</Label>
               <Select value={selectedCoa} onValueChange={(val) => setSelectedCoa(val || '4100')}>
-                <SelectTrigger className="bg-white border-slate-300 text-slate-900 font-bold rounded-xl h-11 text-xs sm:text-sm">
-                  <SelectValue />
+                <SelectTrigger className="bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-xs sm:text-sm">
+                  <span className="truncate">{selectedCoaObj.name}</span>
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900">
                   {kartuOptions.map((opt) => (
@@ -757,8 +757,8 @@ export default function KartuSetoranPage() {
             <div className="space-y-1.5 max-w-xs">
               <Label className="text-xs font-bold text-slate-700">Tahun Buku</Label>
               <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(parseInt(val || '2026', 10))}>
-                <SelectTrigger className="bg-white border-slate-300 text-slate-900 font-bold rounded-xl h-11 text-sm">
-                  <SelectValue />
+                <SelectTrigger className="bg-white border-slate-200/90 text-slate-900 font-semibold rounded-xl h-11 text-sm">
+                  <span className="truncate">Tahun {selectedYear}</span>
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-900">
                   {[2026, 2025, 2024].map((yr) => (
@@ -776,9 +776,9 @@ export default function KartuSetoranPage() {
               type="button"
               variant="outline"
               onClick={handleExportExcel}
-              className="border-slate-300 text-slate-700 hover:bg-slate-100 font-bold rounded-xl h-11 px-4 text-xs cursor-pointer shadow-2xs flex items-center gap-1.5"
+              className="border-slate-200/90 text-slate-700 hover:bg-slate-50 font-semibold rounded-xl h-11 px-4 text-xs cursor-pointer shadow-2xs flex items-center gap-1.5"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <FileSpreadsheet className="w-4 h-4 text-slate-600" />
               Download Excel / CSV
             </Button>
           </div>
@@ -790,13 +790,13 @@ export default function KartuSetoranPage() {
         {/* Card 1: Jumlah KK yang Setor */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
           <div className="text-xs font-medium text-slate-500">Jumlah KK yang Setor</div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5">{totalKkCount}</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5 font-serif">{totalKkCount}</div>
         </div>
 
         {/* Card 2: Total Setoran Tahun Ini */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
           <div className="text-xs font-medium text-slate-500">Total Setoran Tahun Ini</div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5">{formatRupiah(grandTotalSetoran)}</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5 font-serif">{formatRupiah(grandTotalSetoran)}</div>
         </div>
       </div>
 
@@ -809,7 +809,7 @@ export default function KartuSetoranPage() {
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="text-sm font-bold text-slate-900 font-serif">
                 Rekap Setoran {selectedCoaObj.labelShort}
               </h3>
               <p className="text-xs text-slate-400">
@@ -821,23 +821,23 @@ export default function KartuSetoranPage() {
           </div>
 
           {/* PANDUAN WARNA (LEGEND) */}
-          <div className="flex flex-wrap items-center gap-2.5 text-xs bg-slate-50/80 border border-slate-200/90 px-3 py-2 rounded-xl">
+          <div className="flex flex-wrap items-center gap-2 text-xs bg-slate-50/80 border border-slate-200/80 px-3 py-2 rounded-xl">
             <span className="font-semibold text-slate-700 text-[11px] flex items-center gap-1">
               <Info className="w-3.5 h-3.5 text-slate-400" /> Keterangan:
             </span>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-medium text-[10px]">
-              <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF] font-medium text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-[#637D6F]"></span>
               Bayar Sendiri
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-50/80 text-purple-800 border border-purple-200/80 font-medium text-[10px]">
-              <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F4F3F7] text-[#5B546E] border border-[#E0DDE8] font-medium text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-[#766D8F]"></span>
               Kas Lingkungan
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200/80 font-medium text-[10px]">
-              <span className="w-2 h-2 rounded-full bg-amber-600"></span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F6F4F0] text-[#6B5F4E] border border-[#E5DFD5] font-medium text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-[#8C7B65]"></span>
               Dari Donasi Umat Lain
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-300 font-medium text-[10px]">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200/90 font-medium text-[10px]">
               <span>📌</span>
               Umat Pindah / Keluar
             </div>
@@ -991,22 +991,22 @@ export default function KartuSetoranPage() {
                                         nominal: val,
                                         penalang: penalang || 'Umat Donatur (Anonim/N/N)'
                                       })}
-                                      className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none cursor-pointer bg-amber-50 text-amber-800 border border-amber-200/80 hover:bg-amber-100 transition shadow-2xs"
+                                      className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none cursor-pointer bg-[#F6F4F0] text-[#6B5F4E] border border-[#E5DFD5] hover:bg-[#EFECE6] transition shadow-2xs"
                                     >
                                       <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
-                                      <span className="text-[10px] text-amber-600 font-bold">★</span>
+                                      <span className="text-[10px] text-[#8C7B65] font-bold">★</span>
                                     </button>
 
                                     {/* Pop up kecil / hover card note info donatur */}
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/donasi:flex flex-col z-50 w-52 p-2.5 rounded-xl bg-slate-900 text-white shadow-xl text-left pointer-events-none animate-fadeIn border border-slate-700/80">
                                       <div className="flex items-center justify-between gap-1 mb-1 border-b border-slate-800 pb-1">
-                                        <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                                        <span className="text-[10px] font-bold text-[#D6C5A9] uppercase tracking-wider flex items-center gap-1">
                                           <span>★</span> Donasi Umat Lain
                                         </span>
                                         <span className="text-[9px] text-slate-400 font-mono">{SHORT_MONTHS[mNum - 1]}</span>
                                       </div>
                                       <div className="text-xs font-semibold text-slate-100 leading-tight">
-                                        Ditalangi oleh: <span className="text-amber-200 font-bold">{penalang === 'N/N' ? 'N/N (Umat Anonim)' : (penalang || 'Donatur')}</span>
+                                        Ditalangi oleh: <span className="text-[#E5DFD5] font-bold">{penalang === 'N/N' ? 'N/N (Umat Anonim)' : (penalang || 'Donatur')}</span>
                                       </div>
                                       <div className="text-[10px] text-slate-400 mt-1 flex justify-between items-center">
                                         <span>Nominal:</span>
@@ -1027,14 +1027,14 @@ export default function KartuSetoranPage() {
                                     }
                                     className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${
                                       sumber === 'PAROKI'
-                                        ? 'bg-sky-50 text-sky-800 border border-sky-200/80'
+                                        ? 'bg-slate-100 text-slate-700 border border-slate-200/90'
                                         : sumber === 'DANA_LINGKUNGAN'
-                                        ? 'bg-purple-50/80 text-purple-800 border border-purple-200/80'
-                                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
+                                        ? 'bg-[#F4F3F7] text-[#5B546E] border border-[#E0DDE8]'
+                                        : 'bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF]'
                                     }`}
                                   >
                                     <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
-                                    {sumber === 'PAROKI' && <span className="text-[10px] text-sky-600 font-bold">✝</span>}
+                                    {sumber === 'PAROKI' && <span className="text-[10px] text-slate-600 font-bold">✝</span>}
                                   </span>
                                 )
                               ) : (
@@ -1079,12 +1079,12 @@ export default function KartuSetoranPage() {
                                 }
                                 className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${
                                   sumber === 'ORANG_LAIN'
-                                    ? 'bg-amber-50 text-amber-800 border border-amber-200/80'
+                                    ? 'bg-[#F6F4F0] text-[#6B5F4E] border border-[#E5DFD5]'
                                     : sumber === 'PAROKI'
-                                    ? 'bg-sky-50 text-sky-800 border border-sky-200/80'
+                                    ? 'bg-slate-100 text-slate-700 border border-slate-200/90'
                                     : sumber === 'DANA_LINGKUNGAN'
-                                    ? 'bg-purple-50/80 text-purple-800 border border-purple-200/80'
-                                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
+                                    ? 'bg-[#F4F3F7] text-[#5B546E] border border-[#E0DDE8]'
+                                    : 'bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF]'
                                 }`}
                               >
                                 <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
