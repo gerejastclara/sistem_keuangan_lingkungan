@@ -36,6 +36,7 @@ interface TalanganMutasiItem {
   nama_akun: string
   keterangan: string
   nama_kk?: string
+  penalang?: string
   sumber_kas: 'KAS' | 'BANK'
   debit: number
   kredit: number
@@ -202,6 +203,19 @@ export default function BukuBesarDanaTalanganPage() {
     const defaultNoBukti = `${prefix}/${String(idx + 1).padStart(3, '0')}/${mStr}/${yStr}`
     const finalNoBukti = j.no_bukti && j.no_bukti.trim() ? j.no_bukti : defaultNoBukti
 
+    // Deteksi pihak yang menalangi / donatur jika ada
+    let penalangNama: string | undefined = undefined
+    const match = (j.keterangan || '').match(/\((?:Ditalangi|Donasi)\s+([^)]+)\)/i)
+    if (match) {
+      penalangNama = match[1].trim()
+    } else if (j.sumber_setoran === 'ORANG_LAIN') {
+      penalangNama = 'Donatur Umat Lain'
+    } else if (j.sumber_setoran === 'PAROKI' || (j.keterangan || '').toLowerCase().includes('talangan paroki') || (j.keterangan || '').toLowerCase().includes('ditalangi paroki')) {
+      penalangNama = 'Dewan Paroki'
+    } else if (j.sumber_setoran === 'DANA_LINGKUNGAN' || (j.keterangan || '').toLowerCase().includes('kas lingkungan')) {
+      penalangNama = 'Kas Lingkungan'
+    }
+
     allMutasiItems.push({
       id: j.id,
       tanggal: j.tanggal,
@@ -210,6 +224,7 @@ export default function BukuBesarDanaTalanganPage() {
       nama_akun: namaAkun,
       keterangan: j.keterangan || (debit > 0 ? 'Penyaluran Dana Talangan' : 'Pelunasan Dana Talangan'),
       nama_kk: j.kepala_keluarga?.nama_kk,
+      penalang: penalangNama,
       sumber_kas: isKas ? 'KAS' : 'BANK',
       debit: debit,
       kredit: kredit,
@@ -227,7 +242,8 @@ export default function BukuBesarDanaTalanganPage() {
       searchQuery === '' ||
       item.keterangan.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.no_bukti.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.nama_kk && item.nama_kk.toLowerCase().includes(searchQuery.toLowerCase()))
+      (item.nama_kk && item.nama_kk.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.penalang && item.penalang.toLowerCase().includes(searchQuery.toLowerCase()))
 
     return matchesYear && matchesMonth && matchesAkun && matchesSearch
   })
@@ -242,7 +258,7 @@ export default function BukuBesarDanaTalanganPage() {
   }
 
   const handleExportCsv = () => {
-    const headers = ['No', 'Tanggal', 'No. Bukti', 'Kode COA', 'Nama Akun', 'Keterangan', 'Umat / KK', 'Media Kas', 'Debit (Rp)', 'Kredit (Rp)', 'Saldo (Rp)']
+    const headers = ['No', 'Tanggal', 'No. Bukti', 'Kode COA', 'Nama Akun', 'Keterangan', 'Umat / KK', 'Ditalangi Oleh / Donatur', 'Media Kas', 'Debit (Rp)', 'Kredit (Rp)', 'Saldo (Rp)']
     const rows = filteredMutasiItems.map((item, idx) => [
       idx + 1,
       item.tanggal,
@@ -251,6 +267,7 @@ export default function BukuBesarDanaTalanganPage() {
       `"${item.nama_akun}"`,
       `"${item.keterangan.replace(/"/g, '""')}"`,
       `"${item.nama_kk || 'Umum'}"`,
+      `"${item.penalang || '-'}"`,
       item.sumber_kas,
       item.debit,
       item.kredit,
@@ -509,11 +526,19 @@ export default function BukuBesarDanaTalanganPage() {
                     </TableCell>
                     <TableCell>
                       <div className="font-semibold text-slate-900">{item.keterangan}</div>
-                      {item.nama_kk && (
-                        <div className="text-[11px] text-slate-500 font-normal mt-0.5">
-                          Umat: <span className="font-medium text-slate-700">{item.nama_kk}</span>
-                        </div>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        {item.nama_kk && (
+                          <span className="text-[10px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-medium">
+                            Umat: <span className="font-semibold text-slate-800">{item.nama_kk}</span>
+                          </span>
+                        )}
+                        {item.penalang && (
+                          <span className="text-[10px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-medium flex items-center gap-1">
+                            <span>★ Ditalangi:</span>
+                            <span className="font-bold">{item.penalang === 'N/N' ? 'N/N (Umat Anonim)' : item.penalang}</span>
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-center font-mono">
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">
