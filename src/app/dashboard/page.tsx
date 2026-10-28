@@ -1928,16 +1928,6 @@ export default function DashboardOverviewPage() {
                               <Eye className="w-3.5 h-3.5 mr-1" />
                               Detail
                             </Button>
-
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteKk(kk.id, kk.nama_kk)}
-                              className="h-8 w-8 p-0 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg cursor-pointer"
-                              title="Hapus KK"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
                           </TableCell>
                         </TableRow>
 
