@@ -390,15 +390,41 @@ export default function JurnalPage() {
     setTimeout(() => setSuccessToast(null), 4000)
   }
 
-  // Filter journals by selected month and year
-  const filteredJournals = jurnalList.filter((j) => {
-    const d = new Date(j.tanggal)
-    const matchYear = isNaN(d.getFullYear()) || d.getFullYear() === selectedYear
-    if (selectedMonth === 'ALL') {
-      return matchYear
-    }
-    return d.getMonth() + 1 === selectedMonth && matchYear
-  })
+  // Helper pengurutan kronologis (Bulan Januari awal -> Desember akhir, Saldo Awal selalu paling atas)
+  const sortJournalsChronologically = (a: JurnalTransaksi, b: JurnalTransaksi) => {
+    const isSaA = Boolean(a.no_bukti?.startsWith('[SA/') || (a.keterangan || '').includes('[SALDO_AWAL]'))
+    const isSaB = Boolean(b.no_bukti?.startsWith('[SA/') || (b.keterangan || '').includes('[SALDO_AWAL]'))
+    if (isSaA && !isSaB) return -1
+    if (!isSaA && isSaB) return 1
+
+    const dA = new Date(a.tanggal)
+    const dB = new Date(b.tanggal)
+    const ymA = isNaN(dA.getMonth()) ? 0 : dA.getFullYear() * 12 + dA.getMonth()
+    const ymB = isNaN(dB.getMonth()) ? 0 : dB.getFullYear() * 12 + dB.getMonth()
+    if (ymA !== ymB) return ymA - ymB
+
+    const timeA = isNaN(dA.getTime()) ? 0 : dA.getTime()
+    const timeB = isNaN(dB.getTime()) ? 0 : dB.getTime()
+    if (timeA !== timeB) return timeA - timeB
+
+    const numA = parseInt((a.no_bukti || '').split('/')[1] || '0', 10)
+    const numB = parseInt((b.no_bukti || '').split('/')[1] || '0', 10)
+    if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numA - numB
+
+    return (a.no_bukti || '').localeCompare(b.no_bukti || '')
+  }
+
+  // Filter journals by selected month and year (diurutkan kronologis dari Januari awal -> Desember)
+  const filteredJournals = jurnalList
+    .filter((j) => {
+      const d = new Date(j.tanggal)
+      const matchYear = isNaN(d.getFullYear()) || d.getFullYear() === selectedYear
+      if (selectedMonth === 'ALL') {
+        return matchYear
+      }
+      return d.getMonth() + 1 === selectedMonth && matchYear
+    })
+    .sort(sortJournalsChronologically)
 
   // Calculate Metrics for selected month or full year
   let totalBulanMasuk = 0
@@ -594,6 +620,12 @@ export default function JurnalPage() {
       kepala_keluarga: kkObj ? { id: kkObj.id, lingkungan_id: dbLingkunganId, nama_kk: kkObj.nama_kk, alamat: kkObj.alamat, is_biduk: kkObj.is_biduk } : undefined
     }
 
+    if (kkObj && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`tx_kk_${createdId}`, JSON.stringify({ id: kkObj.id, nama_kk: kkObj.nama_kk }))
+      } catch (e) {}
+    }
+
     setJurnalList(prev => [newTx, ...prev])
     setSubmitting(false)
 
@@ -672,7 +704,7 @@ export default function JurnalPage() {
     document.body.removeChild(link)
   }
 
-  // Filtered transactions for the table list (diurutkan nomor dokumen dari awal 001 di atas ke bawah)
+  // Filtered transactions for the table list (diurutkan kronologis dari bulan Januari awal -> Desember, lalu nomor dokumen)
   const displayedTableJournals = filteredJournals
     .filter(j => {
       if (filterArusView === 'ALL') return true
@@ -687,13 +719,7 @@ export default function JurnalPage() {
       const matchNom = String(j.nominal || '').includes(q)
       return matchDoc || matchKet || matchKk || matchNom
     })
-    .sort((a, b) => {
-      // Urutkan nomor dokumen dari paling awal (001) ke bawah (002, 003...)
-      const numA = parseInt((a.no_bukti || '').split('/')[1] || '0', 10)
-      const numB = parseInt((b.no_bukti || '').split('/')[1] || '0', 10)
-      if (numA && numB && numA !== numB) return numA - numB
-      return new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime()
-    })
+    .sort(sortJournalsChronologically)
 
   if (loading) {
     return (

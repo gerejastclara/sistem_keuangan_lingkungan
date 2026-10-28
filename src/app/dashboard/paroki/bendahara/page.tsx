@@ -323,9 +323,12 @@ export default function ParokiBendaharaPage() {
     const map = new Map<string, { monthsDetail: Record<number, SetoranDetail>; totalNominal: number }>()
 
     coaYearJournals.forEach(j => {
+      if (j.no_bukti?.startsWith('[SA/') || (j.keterangan || '').includes('[SALDO_AWAL]')) return
       const d = new Date(j.tanggal)
       const month = d.getMonth() + 1
-      const nominal = Number(j.nominal) || 0
+      const rawNominal = Number(j.nominal) || 0
+      const isPengurangan = j.tipe_arus === 'KELUAR' || (j.coa_debit === selectedCoa && j.coa_kredit !== selectedCoa)
+      const nominal = isPengurangan ? -Math.abs(rawNominal) : Math.abs(rawNominal)
 
       let kkKey = j.kk_id
       if (!kkKey || kkKey === 'umum') {
@@ -423,7 +426,12 @@ export default function ParokiBendaharaPage() {
       const lingJournals = kasYearJournals.filter(j =>
         j.lingkungan_id === ling.id || j.lingkungan_id === dbUuid || j.lingkungan_id === `csv-${ling.id}`
       )
-      const realisasiIuran = lingJournals.reduce((sum, j) => sum + (Number(j.nominal) || 0), 0)
+      const realisasiIuran = lingJournals.reduce((sum, j) => {
+        if (j.no_bukti?.startsWith('[SA/') || (j.keterangan || '').includes('[SALDO_AWAL]')) return sum
+        const rawNom = Number(j.nominal) || 0
+        const isPengurangan = j.tipe_arus === 'KELUAR' || (j.coa_debit === '4100' && j.coa_kredit !== '4100')
+        return sum + (isPengurangan ? -Math.abs(rawNom) : Math.abs(rawNom))
+      }, 0)
       grandTotalRealisasi += realisasiIuran
 
       const persentaseCapaian = targetKas > 0 ? Number(((realisasiIuran / targetKas) * 100).toFixed(1)) : 0
@@ -1493,6 +1501,13 @@ export default function ParokiBendaharaPage() {
                                       {sumber === 'ORANG_LAIN' && <span className="text-[10px] text-[#8C7B65] font-bold">★</span>}
                                       {sumber === 'PAROKI' && <span className="text-[10px] text-slate-600 font-bold">✝</span>}
                                     </span>
+                                  ) : val < 0 ? (
+                                    <span
+                                      title={`Pengurangan / Pengembalian Setoran (${formatRupiah(Math.abs(val))})`}
+                                      className="inline-flex items-center justify-center gap-0.5 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none bg-[#F6F3F3] text-[#6B5353] border border-[#E4DCDC]"
+                                    >
+                                      <span>-{Math.abs(val) >= 1000 ? `${Math.abs(val) / 1000}k` : Math.abs(val)}</span>
+                                    </span>
                                   ) : (
                                     <span className="text-slate-300 font-light select-none">—</span>
                                   )}
@@ -1500,7 +1515,15 @@ export default function ParokiBendaharaPage() {
                               )
                             })}
                             <td className="text-right font-mono font-bold text-slate-800 pr-3 p-2 border-b border-slate-100">
-                              {totalKk > 0 ? totalKk.toLocaleString('id-ID') : <span className="text-slate-300 font-normal">—</span>}
+                              {totalKk > 0 ? (
+                                totalKk.toLocaleString('id-ID')
+                              ) : totalKk < 0 ? (
+                                <span className="text-[#6B5353]">-{Math.abs(totalKk).toLocaleString('id-ID')}</span>
+                              ) : Object.keys(item.monthsDetail).length > 0 ? (
+                                <span className="text-slate-500">0</span>
+                              ) : (
+                                <span className="text-slate-300 font-normal">—</span>
+                              )}
                             </td>
                           </tr>
                         )

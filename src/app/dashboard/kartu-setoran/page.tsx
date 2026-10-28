@@ -313,7 +313,7 @@ export default function KartuSetoranPage() {
           } catch (e) {}
 
           const reconciled = reconcileJournals(list, dbUuid, targetLingkunganId, supabaseSuccess)
-          list = reconciled.filter(j => j.tipe_arus === 'MASUK')
+          list = reconciled.filter(j => !(j.no_bukti?.startsWith('[SA/') || (j.keterangan || '').includes('[SALDO_AWAL]')))
 
           // Sinkronkan KK dari local cache tx_kk jika belum ada
           list.forEach(j => {
@@ -427,7 +427,9 @@ export default function KartuSetoranPage() {
     }
 
     const kkId = effectiveKkId || 'umum'
-    const nom = Number(j.nominal) || 0
+    const rawNom = Number(j.nominal) || 0
+    const isPengurangan = j.tipe_arus === 'KELUAR' || (j.coa_debit === selectedCoa && j.coa_kredit !== selectedCoa)
+    const nom = isPengurangan ? -Math.abs(rawNom) : Math.abs(rawNom)
 
     if (!setoranMap.has(kkId)) {
       setoranMap.set(kkId, {})
@@ -1081,6 +1083,13 @@ export default function KartuSetoranPage() {
                                     {sumber === 'PAROKI' && <span className="text-[10px] text-slate-600 font-bold">✝</span>}
                                   </span>
                                 )
+                              ) : val < 0 ? (
+                                <span
+                                  title={`Pengurangan / Pengembalian Setoran (${formatRupiah(Math.abs(val))})`}
+                                  className="inline-flex items-center justify-center gap-0.5 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none bg-[#F6F3F3] text-[#6B5353] border border-[#E4DCDC]"
+                                >
+                                  <span>-{Math.abs(val) >= 1000 ? `${Math.abs(val) / 1000}k` : Math.abs(val)}</span>
+                                </span>
                               ) : (
                                 <span className="text-slate-300 font-light select-none">—</span>
                               )}
@@ -1088,7 +1097,15 @@ export default function KartuSetoranPage() {
                           )
                         })}
                         <td className="text-right font-mono font-bold text-slate-900 pr-3 p-2 border-b border-slate-100">
-                          {totalKk > 0 ? totalKk.toLocaleString('id-ID') : <span className="text-slate-300 font-normal">—</span>}
+                          {totalKk > 0 ? (
+                            totalKk.toLocaleString('id-ID')
+                          ) : totalKk < 0 ? (
+                            <span className="text-[#6B5353]">-{Math.abs(totalKk).toLocaleString('id-ID')}</span>
+                          ) : Object.keys(months).length > 0 ? (
+                            <span className="text-slate-500">0</span>
+                          ) : (
+                            <span className="text-slate-300 font-normal">—</span>
+                          )}
                         </td>
                       </tr>
                     )
