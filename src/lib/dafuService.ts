@@ -89,9 +89,10 @@ export async function fetchKkListFromDb(
  */
 export async function fetchAllParishKksWithGolongan(
   supabase: SupabaseClient,
-  forceRefresh: boolean = false
+  forceRefresh: boolean = false,
+  includeMoved: boolean = false
 ): Promise<ParishKkItem[]> {
-  if (!forceRefresh && cachedParishKks && (Date.now() - lastParishFetchTime < PARISH_CACHE_TTL)) {
+  if (!forceRefresh && !includeMoved && cachedParishKks && (Date.now() - lastParishFetchTime < PARISH_CACHE_TTL)) {
     return cachedParishKks
   }
 
@@ -167,7 +168,15 @@ export async function fetchAllParishKksWithGolongan(
       if (!k || !k.id) return
       const kIdClean = k.id.toLowerCase().trim()
       const kNameClean = (k.nama_kk || '').toLowerCase().trim()
-      if (deletedSet.has(kIdClean) || deletedSet.has(kNameClean)) return
+      const kAlamatClean = (k.alamat || '').toLowerCase().trim()
+      const isMarkedMoved =
+        deletedSet.has(kIdClean) ||
+        deletedSet.has(kNameClean) ||
+        kAlamatClean.includes('[pindah]') ||
+        kAlamatClean.includes('[keluar]') ||
+        kAlamatClean === 'pindah / keluar'
+
+      if (!includeMoved && isMarkedMoved) return
 
       processedKkIds.add(k.id)
 
@@ -190,10 +199,14 @@ export async function fetchAllParishKksWithGolongan(
         currentGol = 'Sejahtera'
       }
 
+      const finalAlamat = isMarkedMoved && !kAlamatClean.includes('pindah') && !kAlamatClean.includes('keluar')
+        ? `${k.alamat || ''} [PINDAH]`.trim()
+        : (k.alamat || undefined)
+
       parishItems.push({
         id: k.id,
         nama_kk: k.nama_kk,
-        alamat: k.alamat || undefined,
+        alamat: finalAlamat,
         lingkunganId: lingInfo.uuid || k.lingkungan_id,
         lingkunganNama: lingInfo.nama,
         wilayah: lingInfo.wilayah,
@@ -214,14 +227,25 @@ export async function fetchAllParishKksWithGolongan(
     approvals.forEach((appr) => {
       if (appr.status !== 'APPROVED') return
       const kkId = appr.kk_id || `kk-appr-${appr.id}`
-
-      if (deletedSet.has(kkId.toLowerCase()) || deletedSet.has((appr.nama_kk || '').toLowerCase().trim())) return
+      const apprNameLower = (appr.nama_kk || '').toLowerCase().trim()
+      const apprUuid = getLingkunganDbUuid(appr.lingkungan_id)
 
       if (appr.action_type === 'HAPUS_KK') {
-        const idx = parishItems.findIndex(p => p.id === kkId || p.id === appr.kk_id)
-        if (idx !== -1) parishItems.splice(idx, 1)
+        for (let i = parishItems.length - 1; i >= 0; i--) {
+          const p = parishItems[i]
+          const sameLing = p.lingkunganId === appr.lingkungan_id || (apprUuid && p.lingkunganId === apprUuid)
+          if (p.id === kkId || p.id === appr.kk_id || (sameLing && (p.nama_kk || '').toLowerCase().trim() === apprNameLower)) {
+            if (includeMoved) {
+              p.alamat = `${p.alamat || ''} [PINDAH]`.trim()
+            } else {
+              parishItems.splice(i, 1)
+            }
+          }
+        }
         return
       }
+
+      if (!includeMoved && (deletedSet.has(kkId.toLowerCase()) || deletedSet.has(apprNameLower))) return
 
       const targetUuid = getLingkunganDbUuid(appr.lingkungan_id)
       const lingInfo = lingMap.get(targetUuid) || lingMap.get(appr.lingkungan_id) || {
@@ -256,12 +280,14 @@ export async function fetchAllParishKksWithGolongan(
 
     parishItems.sort((a, b) => a.nama_kk.localeCompare(b.nama_kk))
 
-    cachedParishKks = parishItems
-    lastParishFetchTime = Date.now()
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.setItem('cached_parish_kks', JSON.stringify(parishItems))
-      } catch (e) {}
+    if (!includeMoved) {
+      cachedParishKks = parishItems
+      lastParishFetchTime = Date.now()
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('cached_parish_kks', JSON.stringify(parishItems))
+        } catch (e) {}
+      }
     }
     return parishItems
   } catch (err) {

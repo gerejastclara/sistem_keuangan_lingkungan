@@ -154,8 +154,8 @@ export default function ParokiBendaharaPage() {
       const masterList = getAllMasterLingkungan()
       setAllLingkungan(masterList)
 
-      // 1. Load All DAFU KKs per Lingkungan directly from Supabase Cloud
-      const parishKks = await fetchAllParishKksWithGolongan(supabase)
+      // 1. Load All DAFU KKs per Lingkungan directly from Supabase Cloud (termasuk umat pindah untuk Kartu Setoran)
+      const parishKks = await fetchAllParishKksWithGolongan(supabase, true, true)
       const dafuMap: Record<string, KepalaKeluarga[]> = {}
       masterList.forEach(ling => {
         const targetUuid = getLingkunganDbUuid(ling.id)

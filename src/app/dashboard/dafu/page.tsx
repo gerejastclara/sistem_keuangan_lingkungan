@@ -1000,6 +1000,66 @@ function DafuFormContent() {
     const existingAlamat = (deleteKkModalItem.alamat || '').trim()
     const dbUuid = getLingkunganDbUuid(lingkunganId)
 
+    // Jika yang menghapus adalah Sekretaris Lingkungan, wajib melalui alur Approval ke Sekretaris Paroki terlebih dahulu
+    if (userRole === 'SEKRETARIS') {
+      try {
+        const foundKk = kkList.find(k => k.id === cleanId || (k.nama_kk || '').toLowerCase().trim() === cleanName.toLowerCase())
+        const existingMembers = anggotaMap[cleanId] || (foundKk ? getDummyAnggotaForKk(foundKk) : [])
+        const existingGol = golonganMap[cleanId]?.golongan || (foundKk ? getDummyGolonganForKk(foundKk).golongan : 'Sejahtera')
+
+        await createDafuApproval({
+          lingkungan_id: lingkunganId || '',
+          nama_lingkungan: lingkunganName || 'Lingkungan',
+          kk_id: cleanId,
+          action_type: 'HAPUS_KK',
+          nama_kk: cleanName,
+          alamat: existingAlamat || null,
+          is_biduk: foundKk?.is_biduk ?? true,
+          golongan: existingGol,
+          kriteria_catatan: 'Pengajuan Hapus / Pindah Anggota Keluarga',
+          anggota_keluarga: existingMembers.map(m => ({
+            id: m.id,
+            nama: m.nama,
+            peran: m.peran,
+            is_kaj: m.is_kaj,
+            keterangan: m.keterangan || undefined
+          })),
+          submitted_by: `Sekretaris ${formatNamaLingkungan(lingkunganName || '')}`
+        })
+
+        const latest = await fetchDafuApprovals()
+        const targetUuid = getLingkunganDbUuid(lingkunganId || '')
+        const lNorm = (lingkunganName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+        const matched = (latest || []).filter(a => {
+          const aUuid = getLingkunganDbUuid(a.lingkungan_id)
+          const aNorm = (a.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+          return (
+            lingkunganId === 'all' ||
+            a.lingkungan_id === lingkunganId ||
+            (targetUuid && aUuid && targetUuid === aUuid) ||
+            (lNorm && aNorm && (lNorm === aNorm || lNorm.includes(aNorm) || aNorm.includes(lNorm)))
+          )
+        })
+        setLingkunganApprovals(matched)
+        setPendingApprovals(matched.filter(a => a.status === 'PENDING'))
+        setApprovalTabFilter('PENDING')
+      } catch (e) {
+        console.warn('Error submitting HAPUS_KK approval:', e)
+      }
+
+      setDeletingKk(false)
+      setDeleteKkModalItem(null)
+      setSuccessMessage(`Pengajuan penghapusan Kepala Keluarga "${cleanName}" berhasil dikirim ke Sekretaris Paroki. Data akan otomatis terhapus dari DAFU Sekretaris, Bendahara, & Paroki serta berstatus "Pindah" di Kartu Setoran setelah disetujui.`)
+      setTimeout(() => setSuccessMessage(null), 6000)
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('dafuApprovalUpdated'))
+        window.dispatchEvent(new Event('storage'))
+      }
+      return
+    }
+
+    // Jika Sekretaris Paroki menghapus langsung:
     // 1. Immediately store into custom_kks_deleted_store AND kartu_setoran_umat_status (set as PINDAH)
     if (typeof window !== 'undefined') {
       try {
@@ -1753,10 +1813,16 @@ function DafuFormContent() {
                         <TableCell>
                           <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${
                             item.action_type === 'TAMBAH_KK'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200 font-bold'
+                              ? 'bg-[#F2F5F3] text-[#4E6358] border-[#DCE5DF] font-bold'
+                              : item.action_type === 'HAPUS_KK'
+                              ? 'bg-[#F6F2F2] text-[#6B5353] border-[#E3D8D8] font-bold'
                               : 'bg-slate-100 text-slate-700 border-slate-200'
                           }`}>
-                            {item.action_type === 'TAMBAH_KK' ? '+ Tambah KK' : '✎ Ubah KK'}
+                            {item.action_type === 'TAMBAH_KK'
+                              ? '+ Tambah KK'
+                              : item.action_type === 'HAPUS_KK'
+                              ? '✕ Hapus KK'
+                              : '✎ Ubah KK'}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -2500,14 +2566,22 @@ function DafuFormContent() {
               <div className="w-8 h-8 rounded-full bg-[#F6F2F2] border border-[#E3D8D8] flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-4 h-4 text-[#6B5353]" />
               </div>
-              Hapus Anggota / Kepala Keluarga
+              {userRole === 'SEKRETARIS' ? 'Ajukan Penghapusan Anggota / KK' : 'Hapus Anggota / Kepala Keluarga'}
             </DialogTitle>
             <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Apakah Anda yakin ingin menghapus anggota / Kepala Keluarga{' '}
+              Apakah Anda yakin ingin {userRole === 'SEKRETARIS' ? 'mengajukan penghapusan' : 'menghapus'} anggota / Kepala Keluarga{' '}
               <strong className="text-slate-900">{deleteKkModalItem?.nama}</strong>?
             </p>
             <div className="mt-2.5 p-3 rounded-xl bg-[#F6F2F2] border border-[#E3D8D8] text-[11px] text-[#6B5353] leading-relaxed">
-              Data ini akan langsung terhapus dari <strong>DAFU Sekretaris</strong> dan <strong>DAFU Bendahara</strong>, namun riwayatnya tetap tersimpan di <strong>Kartu Setoran</strong> dengan tanda status <strong>Pindah</strong>.
+              {userRole === 'SEKRETARIS' ? (
+                <>
+                  Sesuai alur sistem, pengajuan penghapusan ini akan dikirim ke <strong>Sekretaris Paroki</strong> untuk disetujui terlebih dahulu. Setelah disetujui (Approved), data akan otomatis terhapus dari <strong>DAFU Sekretaris</strong>, <strong>DAFU Bendahara</strong>, dan <strong>DAFU Paroki</strong>, serta tetap tercatat di <strong>Kartu Setoran</strong> dengan status <strong>Pindah</strong>.
+                </>
+              ) : (
+                <>
+                  Data ini akan langsung terhapus dari <strong>DAFU Sekretaris</strong>, <strong>DAFU Bendahara</strong>, dan <strong>DAFU Paroki</strong>, namun riwayatnya tetap tersimpan di <strong>Kartu Setoran</strong> dengan tanda status <strong>Pindah</strong>.
+                </>
+              )}
             </div>
           </DialogHeader>
 
@@ -2529,7 +2603,9 @@ function DafuFormContent() {
               disabled={deletingKk}
               className="bg-[#7A5C5C] hover:bg-[#6B5353] text-white font-semibold text-xs rounded-xl cursor-pointer px-4"
             >
-              {deletingKk ? 'Menghapus...' : 'Ya, Hapus Anggota'}
+              {deletingKk
+                ? 'Memproses...'
+                : (userRole === 'SEKRETARIS' ? 'Ya, Ajukan Hapus ke Paroki' : 'Ya, Hapus Anggota')}
             </Button>
           </DialogFooter>
         </DialogContent>

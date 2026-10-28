@@ -81,6 +81,8 @@ export default function CoaSaldoPage() {
   const [editingCoaType, setEditingCoaType] = useState<'DEBIT' | 'KREDIT'>('DEBIT')
   const [editingCoaCat, setEditingCoaCat] = useState<'KAS' | 'PENERIMAAN' | 'PENGELUARAN'>('PENGELUARAN')
   const [editingCoaDesc, setEditingCoaDesc] = useState('')
+  const [deleteCoaModalItem, setDeleteCoaModalItem] = useState<{ id: string; nama: string } | null>(null)
+  const [systemNoticeMsg, setSystemNoticeMsg] = useState<string | null>(null)
 
   // Format currency helper
   const formatCurrencyString = (val: number): string => {
@@ -256,7 +258,7 @@ export default function CoaSaldoPage() {
   const handleAddCOA = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newCoaCode.trim() || !newCoaName.trim()) {
-      alert('Kode akun dan nama akun wajib diisi!')
+      setSystemNoticeMsg('Kode akun dan nama akun wajib diisi!')
       return
     }
 
@@ -301,7 +303,7 @@ export default function CoaSaldoPage() {
   const handleSaveEditCOA = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingCoaCode || !editingCoaName.trim()) {
-      alert('Nama akun COA wajib diisi!')
+      setSystemNoticeMsg('Nama akun COA wajib diisi!')
       return
     }
 
@@ -331,10 +333,13 @@ export default function CoaSaldoPage() {
     setTimeout(() => setSuccessMsg(null), 3500)
   }
 
-  const handleDeleteCOA = async (id: string, nama: string) => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus akun COA ${id} - ${nama}?\n\nPerhatian: Pastikan akun ini belum pernah dipakai di jurnal transaksi!`)) {
-      return
-    }
+  const handleDeleteCOA = (id: string, nama: string) => {
+    setDeleteCoaModalItem({ id, nama })
+  }
+
+  const handleConfirmDeleteCOA = async () => {
+    if (!deleteCoaModalItem) return
+    const { id, nama } = deleteCoaModalItem
 
     // 1. Hapus dari local storage
     const updatedList = deleteCustomCOA(id)
@@ -345,6 +350,7 @@ export default function CoaSaldoPage() {
       await supabase.from('coa').delete().eq('id', id)
     } catch (err) {}
 
+    setDeleteCoaModalItem(null)
     setIsEditCoaOpen(false)
     setSuccessMsg(`Akun COA ${id} - ${nama} berhasil dihapus!`)
     setTimeout(() => setSuccessMsg(null), 3500)
@@ -895,6 +901,65 @@ export default function CoaSaldoPage() {
               </div>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Konfirmasi Hapus COA (Sistem Pop-up) */}
+      <Dialog open={!!deleteCoaModalItem} onOpenChange={(o) => !o && setDeleteCoaModalItem(null)}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#F6F2F2] border border-[#E3D8D8] flex items-center justify-center shrink-0">
+                <Trash2 className="w-4 h-4 text-[#6B5353]" />
+              </div>
+              Hapus Akun COA
+            </DialogTitle>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Apakah Anda yakin ingin menghapus akun COA <strong className="text-slate-900">{deleteCoaModalItem?.id} — {deleteCoaModalItem?.nama}</strong>?
+            </p>
+            <div className="mt-2 p-2.5 rounded-xl bg-[#F6F2F2] border border-[#E3D8D8] text-[11px] text-[#6B5353]">
+              Perhatian: Pastikan akun ini belum pernah dipakai di jurnal transaksi.
+            </div>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteCoaModalItem(null)}
+              className="text-xs font-semibold text-slate-700 border-slate-300 rounded-xl cursor-pointer px-4"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleConfirmDeleteCOA}
+              className="bg-[#7A5C5C] hover:bg-[#6B5353] text-white font-semibold text-xs rounded-xl cursor-pointer px-4"
+            >
+              Ya, Hapus Akun
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Pemberitahuan Sistem */}
+      <Dialog open={!!systemNoticeMsg} onOpenChange={(o) => !o && setSystemNoticeMsg(null)}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">Pemberitahuan Sistem</DialogTitle>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">{systemNoticeMsg}</p>
+          </DialogHeader>
+          <DialogFooter className="pt-3">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setSystemNoticeMsg(null)}
+              className="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs rounded-xl cursor-pointer px-5"
+            >
+              Mengerti
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

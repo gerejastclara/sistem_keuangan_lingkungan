@@ -181,6 +181,12 @@ export function ensureDummyKksForLingkungan(
       if (isApproved && appr.action_type === 'HAPUS_KK') {
         combinedMap.delete(kkId)
         if (appr.kk_id) combinedMap.delete(appr.kk_id)
+        const apprNameLower = (appr.nama_kk || '').toLowerCase().trim()
+        for (const [mKey, mVal] of Array.from(combinedMap.entries())) {
+          if ((mVal.nama_kk || '').toLowerCase().trim() === apprNameLower) {
+            combinedMap.delete(mKey)
+          }
+        }
         return
       }
 

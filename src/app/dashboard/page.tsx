@@ -26,7 +26,7 @@ import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData
 import { SearchableMemberSelect } from '@/components/ui/SearchableMemberSelect'
 import { SekretarisParokiDashboard } from '@/components/dashboard/SekretarisParokiDashboard'
 import { ParokiOverviewDashboard } from '@/components/dashboard/ParokiOverviewDashboard'
-import { fetchDafuApprovals, removeDafuApproval, type DafuApprovalItem } from '@/lib/dafuApproval'
+import { fetchDafuApprovals, removeDafuApproval, createDafuApproval, type DafuApprovalItem } from '@/lib/dafuApproval'
 import { DafuComparisonModal } from '@/components/dafu/DafuComparisonModal'
 import { EditDafuApprovalModal } from '@/components/dafu/EditDafuApprovalModal'
 import {
@@ -619,6 +619,59 @@ export default function DashboardOverviewPage() {
     const existingAlamat = (deleteKkModalItem.alamat || '').trim()
     const dbUuid = getLingkunganDbUuid(lingkunganId)
 
+    if (userRole === 'SEKRETARIS') {
+      try {
+        const foundKk = kkList.find(k => k.id === cleanId || (k.nama_kk || '').toLowerCase().trim() === cleanName.toLowerCase())
+        const existingMembers = anggotaMap[cleanId] || (foundKk ? getDummyAnggotaForKk(foundKk) : [])
+        const existingGol = golonganMap[cleanId]?.golongan || (foundKk ? getDummyGolonganForKk(foundKk).golongan : 'Sejahtera')
+
+        await createDafuApproval({
+          lingkungan_id: lingkunganId || '',
+          nama_lingkungan: lingkunganName || 'Lingkungan',
+          kk_id: cleanId,
+          action_type: 'HAPUS_KK',
+          nama_kk: cleanName,
+          alamat: existingAlamat || null,
+          is_biduk: foundKk?.is_biduk ?? true,
+          golongan: existingGol,
+          kriteria_catatan: 'Pengajuan Hapus / Pindah Anggota Keluarga',
+          anggota_keluarga: existingMembers.map(m => ({
+            id: m.id,
+            nama: m.nama,
+            peran: m.peran,
+            is_kaj: m.is_kaj,
+            keterangan: m.keterangan || undefined
+          })),
+          submitted_by: `Sekretaris ${formatNamaLingkungan(lingkunganName || '')}`
+        })
+
+        const latest = await fetchDafuApprovals()
+        const targetUuid = getLingkunganDbUuid(lingkunganId || '')
+        const lNorm = (lingkunganName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+        const matched = (latest || []).filter(a => {
+          const aUuid = getLingkunganDbUuid(a.lingkungan_id)
+          const aNorm = (a.nama_lingkungan || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+          return (
+            lingkunganId === 'all' ||
+            a.lingkungan_id === lingkunganId ||
+            (targetUuid && aUuid && targetUuid === aUuid) ||
+            (lNorm && aNorm && (lNorm === aNorm || lNorm.includes(aNorm) || aNorm.includes(lNorm)))
+          )
+        })
+        setLingkunganApprovals(matched)
+        setPendingApprovals(matched.filter(a => a.status === 'PENDING'))
+        setApprovalTabFilter('PENDING')
+      } catch (e) {}
+
+      setDeletingKk(false)
+      setDeleteKkModalItem(null)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('dafuApprovalUpdated'))
+        window.dispatchEvent(new Event('storage'))
+      }
+      return
+    }
+
     if (typeof window !== 'undefined') {
       try {
         const rawAll = localStorage.getItem('custom_kks_deleted_store')
@@ -738,7 +791,6 @@ export default function DashboardOverviewPage() {
       window.dispatchEvent(new Event('dafuDataUpdated'))
     } catch (err) {
       console.error('Failed to delete approval:', err)
-      alert('Gagal menghapus pengajuan. Silakan coba lagi.')
     } finally {
       setDeletingApproval(false)
     }
@@ -2749,14 +2801,22 @@ export default function DashboardOverviewPage() {
               <div className="w-8 h-8 rounded-full bg-[#F6F2F2] border border-[#E3D8D8] flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-4 h-4 text-[#6B5353]" />
               </div>
-              Hapus Anggota / Kepala Keluarga
+              {(userRole as string) === 'SEKRETARIS' ? 'Ajukan Penghapusan Anggota / KK' : 'Hapus Anggota / Kepala Keluarga'}
             </DialogTitle>
             <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Apakah Anda yakin ingin menghapus anggota / Kepala Keluarga{' '}
+              Apakah Anda yakin ingin {(userRole as string) === 'SEKRETARIS' ? 'mengajukan penghapusan' : 'menghapus'} anggota / Kepala Keluarga{' '}
               <strong className="text-slate-900">{deleteKkModalItem?.nama}</strong>?
             </p>
             <div className="mt-2.5 p-3 rounded-xl bg-[#F6F2F2] border border-[#E3D8D8] text-[11px] text-[#6B5353] leading-relaxed">
-              Data ini akan langsung terhapus dari <strong>DAFU Sekretaris</strong> dan <strong>DAFU Bendahara</strong>, namun riwayatnya tetap tersimpan di <strong>Kartu Setoran</strong> dengan tanda status <strong>Pindah</strong>.
+              {(userRole as string) === 'SEKRETARIS' ? (
+                <>
+                  Sesuai alur sistem, pengajuan penghapusan ini akan dikirim ke <strong>Sekretaris Paroki</strong> untuk disetujui terlebih dahulu. Setelah disetujui (Approved), data akan otomatis terhapus dari <strong>DAFU Sekretaris</strong>, <strong>DAFU Bendahara</strong>, dan <strong>DAFU Paroki</strong>, serta tetap tercatat di <strong>Kartu Setoran</strong> dengan status <strong>Pindah</strong>.
+                </>
+              ) : (
+                <>
+                  Data ini akan langsung terhapus dari <strong>DAFU Sekretaris</strong>, <strong>DAFU Bendahara</strong>, dan <strong>DAFU Paroki</strong>, namun riwayatnya tetap tersimpan di <strong>Kartu Setoran</strong> dengan tanda status <strong>Pindah</strong>.
+                </>
+              )}
             </div>
           </DialogHeader>
 
@@ -2778,7 +2838,9 @@ export default function DashboardOverviewPage() {
               disabled={deletingKk}
               className="bg-[#7A5C5C] hover:bg-[#6B5353] text-white font-semibold text-xs rounded-xl cursor-pointer px-4"
             >
-              {deletingKk ? 'Menghapus...' : 'Ya, Hapus Anggota'}
+              {deletingKk
+                ? 'Memproses...'
+                : ((userRole as string) === 'SEKRETARIS' ? 'Ya, Ajukan Hapus ke Paroki' : 'Ya, Hapus Anggota')}
             </Button>
           </DialogFooter>
         </DialogContent>

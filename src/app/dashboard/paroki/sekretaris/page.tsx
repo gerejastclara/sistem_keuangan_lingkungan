@@ -88,8 +88,8 @@ export default function ParokiSekretariatPage() {
       })
       setPengurusList(pList)
 
-      // 2. Load DAFU for all Lingkungan directly from Supabase Cloud
-      const parishKks = await fetchAllParishKksWithGolongan(supabase)
+      // 2. Load DAFU for all Lingkungan directly from Supabase Cloud (hanya umat aktif, yang sudah disetujui hapus otomatis hilang)
+      const parishKks = await fetchAllParishKksWithGolongan(supabase, true, false)
       const dMap: Record<string, KepalaKeluarga[]> = {}
       masterList.forEach(ling => {
         const targetUuid = getLingkunganDbUuid(ling.id)
@@ -127,12 +127,14 @@ export default function ParokiSekretariatPage() {
     window.addEventListener('storage', handleSync)
     window.addEventListener('pengurusUpdated', handleSync)
     window.addEventListener('dafuDataUpdated', handleSync)
+    window.addEventListener('dafuApprovalUpdated', handleSync)
     window.addEventListener('lingkunganChanged', handleSync)
 
     return () => {
       window.removeEventListener('storage', handleSync)
       window.removeEventListener('pengurusUpdated', handleSync)
       window.removeEventListener('dafuDataUpdated', handleSync)
+      window.removeEventListener('dafuApprovalUpdated', handleSync)
       window.removeEventListener('lingkunganChanged', handleSync)
     }
   }, [])

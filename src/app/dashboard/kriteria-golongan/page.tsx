@@ -198,10 +198,14 @@ export default function KriteriaGolonganPage() {
     setIsModalOpen(true)
   }
 
+  const [deleteKriteriaModalItem, setDeleteKriteriaModalItem] = useState<{ id: string; nama: string } | null>(null)
+  const [isResetDefaultModalOpen, setIsResetDefaultModalOpen] = useState(false)
+  const [systemNoticeMsg, setSystemNoticeMsg] = useState<string | null>(null)
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
     if (!isParoki) {
-      alert('Akses ditolak: Hanya akun Paroki yang berwenang mengubah kriteria golongan.')
+      setSystemNoticeMsg('Akses ditolak: Hanya akun Paroki yang berwenang mengubah kriteria golongan.')
       return
     }
     if (!formNama.trim()) return
@@ -266,31 +270,39 @@ export default function KriteriaGolonganPage() {
 
   const handleDelete = (id: string, nama: string) => {
     if (!isParoki) {
-      alert('Akses ditolak: Hanya akun Paroki yang berwenang menghapus kriteria golongan.')
+      setSystemNoticeMsg('Akses ditolak: Hanya akun Paroki yang berwenang menghapus kriteria golongan.')
       return
     }
-    if (confirm(`Hapus parameter klasifikasi golongan "${nama}"?`)) {
-      const updatedList = items.filter((it) => it.id !== id)
-      const supabase = createClient()
-      saveKriteriaGolonganList(updatedList, supabase)
-      setItems(updatedList)
-      setSuccessMessage(`Parameter golongan "${nama}" telah dihapus.`)
-      setTimeout(() => setSuccessMessage(null), 3000)
-    }
+    setDeleteKriteriaModalItem({ id, nama })
+  }
+
+  const handleConfirmDeleteKriteria = () => {
+    if (!deleteKriteriaModalItem) return
+    const { id, nama } = deleteKriteriaModalItem
+    const updatedList = items.filter((it) => it.id !== id)
+    const supabase = createClient()
+    saveKriteriaGolonganList(updatedList, supabase)
+    setItems(updatedList)
+    setDeleteKriteriaModalItem(null)
+    setSuccessMessage(`Parameter golongan "${nama}" telah dihapus.`)
+    setTimeout(() => setSuccessMessage(null), 3000)
   }
 
   const handleResetToDefault = () => {
     if (!isParoki) {
-      alert('Akses ditolak: Hanya akun Paroki yang berwenang mereset kriteria golongan.')
+      setSystemNoticeMsg('Akses ditolak: Hanya akun Paroki yang berwenang mereset kriteria golongan.')
       return
     }
-    if (confirm('Kembalikan parameter klasifikasi ke 4 standar baku resmi Pedoman DUPRAS KAJ 2025?')) {
-      const supabase = createClient()
-      const def = resetKriteriaGolonganDefault(supabase)
-      setItems(def)
-      setSuccessMessage('Parameter kriteria telah dikembalikan ke 4 standar baku Pedoman DUPRAS KAJ 2025.')
-      setTimeout(() => setSuccessMessage(null), 3000)
-    }
+    setIsResetDefaultModalOpen(true)
+  }
+
+  const handleConfirmResetToDefault = () => {
+    const supabase = createClient()
+    const def = resetKriteriaGolonganDefault(supabase)
+    setItems(def)
+    setIsResetDefaultModalOpen(false)
+    setSuccessMessage('Parameter kriteria telah dikembalikan ke 4 standar baku Pedoman DUPRAS KAJ 2025.')
+    setTimeout(() => setSuccessMessage(null), 3000)
   }
 
   return (
@@ -784,6 +796,88 @@ export default function KriteriaGolonganPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Konfirmasi Hapus Parameter Kriteria */}
+      <Dialog open={!!deleteKriteriaModalItem} onOpenChange={(o) => !o && setDeleteKriteriaModalItem(null)}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">Hapus Parameter Klasifikasi</DialogTitle>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Apakah Anda yakin ingin menghapus parameter klasifikasi golongan <strong>{deleteKriteriaModalItem?.nama}</strong>?
+            </p>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteKriteriaModalItem(null)}
+              className="text-xs font-semibold text-slate-700 border-slate-300 rounded-xl cursor-pointer px-4"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleConfirmDeleteKriteria}
+              className="bg-[#7A5C5C] hover:bg-[#6B5353] text-white font-semibold text-xs rounded-xl cursor-pointer px-4"
+            >
+              Ya, Hapus Parameter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Konfirmasi Reset Parameter Baku */}
+      <Dialog open={isResetDefaultModalOpen} onOpenChange={setIsResetDefaultModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">Kembalikan Parameter Baku</DialogTitle>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Kembalikan parameter klasifikasi ke 4 standar baku resmi Pedoman DUPRAS KAJ 2025?
+            </p>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsResetDefaultModalOpen(false)}
+              className="text-xs font-semibold text-slate-700 border-slate-300 rounded-xl cursor-pointer px-4"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleConfirmResetToDefault}
+              className="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs rounded-xl cursor-pointer px-4"
+            >
+              Ya, Kembalikan Standar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Pemberitahuan Sistem */}
+      <Dialog open={!!systemNoticeMsg} onOpenChange={(o) => !o && setSystemNoticeMsg(null)}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">Pemberitahuan Sistem</DialogTitle>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">{systemNoticeMsg}</p>
+          </DialogHeader>
+          <DialogFooter className="pt-3">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setSystemNoticeMsg(null)}
+              className="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs rounded-xl cursor-pointer px-5"
+            >
+              Mengerti
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -247,12 +247,51 @@ async function syncApprovedItemToStoresAndDb(
 ): Promise<void> {
   const supabase = createClient()
   const kkId = item.kk_id || `kk-appr-${item.id}`
+  const cleanId = (item.kk_id || kkId || '').trim()
+  const cleanName = (item.nama_kk || '').trim()
+  const dbUuid = getLingkunganDbUuid(item.lingkungan_id) || item.lingkungan_id
   const targetGol = finalGolongan || item.golongan
   const targetCatatan = finalCatatan !== undefined ? finalCatatan : item.kriteria_catatan
 
   // 1. Sync to browser localStorage caches
   try {
     if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('cached_parish_kks')
+
+      if (item.action_type === 'HAPUS_KK') {
+        // Tandai di custom_kks_deleted_store agar langsung hilang dari DAFU Sekretaris, Bendahara, & Paroki
+        const rawDel = localStorage.getItem('custom_kks_deleted_store')
+        const delList: string[] = rawDel ? JSON.parse(rawDel) : []
+        const toAdd = [
+          cleanId,
+          cleanId.toLowerCase(),
+          kkId,
+          kkId.toLowerCase(),
+          cleanName,
+          cleanName.toLowerCase(),
+          cleanId.replace('kk-appr-', ''),
+          `kk-appr-${cleanId}`
+        ]
+        toAdd.forEach(entry => {
+          if (entry && !delList.includes(entry)) delList.push(entry)
+        })
+        localStorage.setItem('custom_kks_deleted_store', JSON.stringify(delList))
+        if (item.lingkungan_id) localStorage.setItem(`custom_kks_deleted_${item.lingkungan_id}`, JSON.stringify(delList))
+        if (dbUuid) localStorage.setItem(`custom_kks_deleted_${dbUuid}`, JSON.stringify(delList))
+
+        // Tandai status Pindah di Kartu Setoran
+        const markPindah = (key: string) => {
+          const rawS = localStorage.getItem(key)
+          const mapS = rawS ? JSON.parse(rawS) : {}
+          if (cleanId) mapS[cleanId] = 'PINDAH'
+          if (kkId) mapS[kkId] = 'PINDAH'
+          if (cleanName) mapS[cleanName.toLowerCase()] = 'PINDAH'
+          localStorage.setItem(key, JSON.stringify(mapS))
+        }
+        if (item.lingkungan_id) markPindah(`kartu_setoran_umat_status_${item.lingkungan_id}`)
+        if (dbUuid) markPindah(`kartu_setoran_umat_status_${dbUuid}`)
+      }
+
       const newKkObj = {
         id: kkId,
         lingkungan_id: item.lingkungan_id,
@@ -262,10 +301,16 @@ async function syncApprovedItemToStoresAndDb(
         jumlah_anggota: Array.isArray(item.anggota_keluarga) && item.anggota_keluarga.length > 0 ? item.anggota_keluarga.length : 1
       }
 
+      const filterOutKk = (k: any) =>
+        k &&
+        k.id !== kkId &&
+        k.id !== item.kk_id &&
+        (k.nama_kk || '').toLowerCase().trim() !== cleanName.toLowerCase()
+
       // custom_kks_all_store
       const rawAll = localStorage.getItem('custom_kks_all_store')
       let allKks: any[] = rawAll ? JSON.parse(rawAll) : []
-      allKks = allKks.filter(k => k.id !== kkId && k.id !== item.kk_id)
+      allKks = allKks.filter(filterOutKk)
       if (item.action_type !== 'HAPUS_KK') {
         allKks.push(newKkObj)
       }
@@ -274,14 +319,24 @@ async function syncApprovedItemToStoresAndDb(
       // custom_kks_[lingkungan_id]
       const rawLing = localStorage.getItem(`custom_kks_${item.lingkungan_id}`)
       let lingKks: any[] = rawLing ? JSON.parse(rawLing) : []
-      lingKks = lingKks.filter(k => k.id !== kkId && k.id !== item.kk_id)
+      lingKks = lingKks.filter(filterOutKk)
       if (item.action_type !== 'HAPUS_KK') {
         lingKks.push(newKkObj)
       }
       localStorage.setItem(`custom_kks_${item.lingkungan_id}`, JSON.stringify(lingKks))
 
+      if (dbUuid && dbUuid !== item.lingkungan_id) {
+        const rawUuid = localStorage.getItem(`custom_kks_${dbUuid}`)
+        let uuidKks: any[] = rawUuid ? JSON.parse(rawUuid) : []
+        uuidKks = uuidKks.filter(filterOutKk)
+        if (item.action_type !== 'HAPUS_KK') {
+          uuidKks.push(newKkObj)
+        }
+        localStorage.setItem(`custom_kks_${dbUuid}`, JSON.stringify(uuidKks))
+      }
+
       // custom_anggota_all_store
-      if (Array.isArray(item.anggota_keluarga) && item.anggota_keluarga.length > 0) {
+      if (item.action_type !== 'HAPUS_KK' && Array.isArray(item.anggota_keluarga) && item.anggota_keluarga.length > 0) {
         const rawAng = localStorage.getItem('custom_anggota_all_store')
         const angStore = rawAng ? JSON.parse(rawAng) : {}
         angStore[kkId] = item.anggota_keluarga.map((m, idx) => ({
@@ -296,20 +351,23 @@ async function syncApprovedItemToStoresAndDb(
       }
 
       // custom_golongan_all_store
-      const rawGol = localStorage.getItem('custom_golongan_all_store')
-      const golStore = rawGol ? JSON.parse(rawGol) : {}
-      golStore[kkId] = {
-        id: `gol-${kkId}`,
-        kk_id: kkId,
-        lingkungan_id: item.lingkungan_id,
-        golongan: targetGol,
-        kriteria_catatan: targetCatatan,
-        updated_by_role: 'SEKRETARIS_PAROKI',
-        updated_at: new Date().toISOString()
+      if (item.action_type !== 'HAPUS_KK') {
+        const rawGol = localStorage.getItem('custom_golongan_all_store')
+        const golStore = rawGol ? JSON.parse(rawGol) : {}
+        golStore[kkId] = {
+          id: `gol-${kkId}`,
+          kk_id: kkId,
+          lingkungan_id: item.lingkungan_id,
+          golongan: targetGol,
+          kriteria_catatan: targetCatatan,
+          updated_by_role: 'SEKRETARIS_PAROKI',
+          updated_at: new Date().toISOString()
+        }
+        localStorage.setItem('custom_golongan_all_store', JSON.stringify(golStore))
       }
-      localStorage.setItem('custom_golongan_all_store', JSON.stringify(golStore))
 
       window.dispatchEvent(new Event('dafuDataUpdated'))
+      window.dispatchEvent(new Event('storage'))
     }
   } catch (e) {
     console.warn('Error syncing approved DAFU stores:', e)
@@ -318,7 +376,6 @@ async function syncApprovedItemToStoresAndDb(
   // 2. Sync to Supabase PostgreSQL database tables
   try {
     if (item.action_type !== 'HAPUS_KK') {
-      const dbUuid = getLingkunganDbUuid(item.lingkungan_id) || item.lingkungan_id
       const dbKkId = item.kk_id || toDeterministicUuid('kk', `appr-${item.id}`)
 
       await supabase.from('kepala_keluarga').upsert({
@@ -349,10 +406,21 @@ async function syncApprovedItemToStoresAndDb(
         updated_by_role: 'SEKRETARIS_PAROKI',
         updated_at: new Date().toISOString()
       }, { onConflict: 'kk_id' })
-    } else if (item.action_type === 'HAPUS_KK' && item.kk_id) {
-      await supabase.from('anggota_keluarga').delete().eq('kk_id', item.kk_id)
-      await supabase.from('golongan_keluarga').delete().eq('kk_id', item.kk_id)
-      await supabase.from('kepala_keluarga').delete().eq('id', item.kk_id)
+    } else if (item.action_type === 'HAPUS_KK') {
+      // Tandai kepala_keluarga di Supabase dengan [PINDAH] agar hilang dari DAFU Sekretaris, Bendahara, & Paroki
+      // namun tetap muncul di Kartu Setoran dengan status Pindah (dan riwayat jurnal_transaksi tetap terjaga)
+      const existingAlamat = (item.alamat || '').trim()
+      const newAlamat = existingAlamat.toLowerCase().includes('[pindah]')
+        ? existingAlamat
+        : `${existingAlamat} [PINDAH]`.trim()
+
+      const isUuidStr = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
+      if (cleanId && isUuidStr(cleanId)) {
+        await supabase.from('kepala_keluarga').update({ alamat: newAlamat }).eq('id', cleanId)
+      }
+      if (cleanName && dbUuid) {
+        await supabase.from('kepala_keluarga').update({ alamat: newAlamat }).eq('lingkungan_id', dbUuid).ilike('nama_kk', cleanName)
+      }
     }
   } catch (e) {
     console.warn('Error syncing approved DAFU item to database:', e)

@@ -294,7 +294,8 @@ export default function MatchingDataExcelPage() {
         const rawJson: any[] = XLSX.utils.sheet_to_json(sheet)
 
         if (!rawJson || rawJson.length === 0) {
-          alert('File Excel kosong atau tidak memiliki baris data.')
+          setAlertSuccess('File Excel kosong atau tidak memiliki baris data.')
+          setTimeout(() => setAlertSuccess(null), 4000)
           return
         }
 
@@ -336,7 +337,8 @@ export default function MatchingDataExcelPage() {
         runMatchingAlgorithm(parsed, file.name)
       } catch (err) {
         console.error('Error parsing Excel:', err)
-        alert('Gagal membaca file Excel. Pastikan format file adalah .xlsx atau .xls yang valid.')
+        setAlertSuccess('Gagal membaca file Excel. Pastikan format file adalah .xlsx atau .xls yang valid.')
+        setTimeout(() => setAlertSuccess(null), 4000)
       }
     }
 
@@ -462,7 +464,8 @@ export default function MatchingDataExcelPage() {
   // 7. Export Full Matching & Reconciliation Report (.xlsx)
   const handleExportMatchingReport = () => {
     if (matchingResults.length === 0) {
-      alert('Belum ada data matching untuk diekspor.')
+      setAlertSuccess('Belum ada data matching untuk diekspor.')
+      setTimeout(() => setAlertSuccess(null), 4000)
       return
     }
 

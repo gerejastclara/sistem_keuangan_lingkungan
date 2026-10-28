@@ -1277,11 +1277,7 @@ export default function KartuSetoranPage() {
               {allPindahKeluarList.length > 0 ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (confirm('Apakah Anda yakin ingin mengembalikan SEMUA umat ini menjadi Aktif kembali?')) {
-                      handleRestoreAllUmat()
-                    }
-                  }}
+                  onClick={() => handleRestoreAllUmat()}
                   className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
                 >
                   Kembalikan Semua ke Aktif

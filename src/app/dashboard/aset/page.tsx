@@ -79,6 +79,8 @@ export default function AsetPage() {
   const [submitting, setSubmitting] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [successToast, setSuccessToast] = useState<string | null>(null)
+  const [deleteAsetModalItem, setDeleteAsetModalItem] = useState<{ id: string; nama: string } | null>(null)
+  const [systemNoticeMsg, setSystemNoticeMsg] = useState<string | null>(null)
 
   // Currency helper
   const formatCurrency = (val: number): string => {
@@ -232,7 +234,7 @@ export default function AsetPage() {
   const handleSaveAset = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!namaBarang.trim()) {
-      alert('Nama barang wajib diisi!')
+      setSystemNoticeMsg('Nama barang wajib diisi!')
       return
     }
 
@@ -314,7 +316,7 @@ export default function AsetPage() {
   const handleUpdateAset = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingAset || !editNama.trim()) {
-      alert('Nama barang wajib diisi!')
+      setSystemNoticeMsg('Nama barang wajib diisi!')
       return
     }
 
@@ -363,8 +365,13 @@ export default function AsetPage() {
     setTimeout(() => setSuccessToast(null), 3500)
   }
 
-  const handleDeleteAset = async (id: string, nama: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus aset "${nama}"?`)) return
+  const handleDeleteAset = (id: string, nama: string) => {
+    setDeleteAsetModalItem({ id, nama })
+  }
+
+  const handleConfirmDeleteAset = async () => {
+    if (!deleteAsetModalItem) return
+    const { id, nama } = deleteAsetModalItem
 
     try {
       await supabase.from('aset').delete().eq('id', id)
@@ -382,6 +389,7 @@ export default function AsetPage() {
     }
 
     setAsetList(prev => prev.filter(a => a.id !== id))
+    setDeleteAsetModalItem(null)
     setSuccessToast(`Aset "${nama}" berhasil dihapus dari inventaris!`)
     setTimeout(() => setSuccessToast(null), 3500)
   }
@@ -833,6 +841,62 @@ export default function AsetPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Konfirmasi Hapus Aset (Sistem Pop-up) */}
+      <Dialog open={!!deleteAsetModalItem} onOpenChange={(o) => !o && setDeleteAsetModalItem(null)}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#F6F2F2] border border-[#E3D8D8] flex items-center justify-center shrink-0">
+                <Trash2 className="w-4 h-4 text-[#6B5353]" />
+              </div>
+              Hapus Aset Inventaris
+            </DialogTitle>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Apakah Anda yakin ingin menghapus aset <strong className="text-slate-900">{deleteAsetModalItem?.nama}</strong> dari daftar inventaris?
+            </p>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteAsetModalItem(null)}
+              className="text-xs font-semibold text-slate-700 border-slate-300 rounded-xl cursor-pointer px-4"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleConfirmDeleteAset}
+              className="bg-[#7A5C5C] hover:bg-[#6B5353] text-white font-semibold text-xs rounded-xl cursor-pointer px-4"
+            >
+              Ya, Hapus Aset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Pemberitahuan Sistem */}
+      <Dialog open={!!systemNoticeMsg} onOpenChange={(o) => !o && setSystemNoticeMsg(null)}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">Pemberitahuan Sistem</DialogTitle>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">{systemNoticeMsg}</p>
+          </DialogHeader>
+          <DialogFooter className="pt-3">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setSystemNoticeMsg(null)}
+              className="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs rounded-xl cursor-pointer px-5"
+            >
+              Mengerti
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

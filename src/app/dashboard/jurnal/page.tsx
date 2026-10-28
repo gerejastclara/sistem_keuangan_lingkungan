@@ -115,6 +115,9 @@ export default function JurnalPage() {
   // Double Entry Modal & Posting Modal
   const [isDeModalOpen, setIsDeModalOpen] = useState(false)
   const [postingLoading, setPostingLoading] = useState(false)
+  const [deleteTxModalItem, setDeleteTxModalItem] = useState<{ id: string; noBukti: string; keterangan: string; nominal: number } | null>(null)
+  const [deletingTx, setDeletingTx] = useState(false)
+  const [systemNoticeMsg, setSystemNoticeMsg] = useState<string | null>(null)
 
   const isParoki = userProfile?.role === 'PAROKI' || (typeof document !== 'undefined' && (document.cookie.includes('demo_user_role=PAROKI') || document.cookie.includes('demo_user_username=paroki')))
 
@@ -430,7 +433,7 @@ export default function JurnalPage() {
     } else if (res.total === 0) {
       setSuccessToast('Semua transaksi sudah sinkron dengan database.')
     } else {
-      alert('Belum berhasil tersambung ke Supabase. Pastikan NEXT_PUBLIC_SUPABASE_ANON_KEY di .env.local telah diisi.')
+      setSystemNoticeMsg('Belum berhasil tersambung ke Supabase. Pastikan NEXT_PUBLIC_SUPABASE_ANON_KEY di .env.local telah diisi.')
     }
     setTimeout(() => setSuccessToast(null), 4000)
   }
@@ -549,15 +552,15 @@ export default function JurnalPage() {
   const handleSaveTransaction = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!step1Arus) {
-      alert('Pilih Uang Masuk atau Uang Keluar pada Langkah 1.')
+      setSystemNoticeMsg('Pilih Uang Masuk atau Uang Keluar pada Langkah 1.')
       return
     }
     if (!step2Jenis) {
-      alert('Pilih jenis transaksi pada Langkah 2.')
+      setSystemNoticeMsg('Pilih jenis transaksi pada Langkah 2.')
       return
     }
     if (step4NominalNumeric <= 0) {
-      alert('Masukkan jumlah uang yang valid (> 0) pada Langkah 4.')
+      setSystemNoticeMsg('Masukkan jumlah uang yang valid (> 0) pada Langkah 4.')
       return
     }
 
@@ -702,25 +705,52 @@ export default function JurnalPage() {
     setTimeout(() => setSuccessToast(null), 3500)
   }
 
-  const handleDeleteTransaction = async (id: string, isPosted: boolean) => {
+  const handleDeleteTransaction = (id: string, isPosted: boolean) => {
     if (isPosted) {
-      alert('Transaksi ini sudah dikunci (Posted) dan tidak dapat dihapus!')
+      setSystemNoticeMsg('Transaksi ini sudah dikunci (Posted) dan tidak dapat dihapus!')
       return
     }
 
-    if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini dari jurnal?')) return
+    const found = jurnalList.find(j => j.id === id)
+    setDeleteTxModalItem({
+      id,
+      noBukti: found?.no_bukti || 'Dokumen Transaksi',
+      keterangan: cleanDisplayKeterangan(found?.keterangan) || (found?.tipe_arus === 'MASUK' ? 'Penerimaan Kas' : 'Pengeluaran Kas'),
+      nominal: Number(found?.nominal) || 0
+    })
+  }
+
+  const handleConfirmDeleteTransaction = async () => {
+    if (!deleteTxModalItem) return
+    setDeletingTx(true)
+    const id = deleteTxModalItem.id
 
     try {
       await supabase.from('jurnal_transaksi').delete().eq('id', id)
     } catch (e) {}
 
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(`tx_kk_${id}`)
+      } catch (e) {}
+    }
+
     setJurnalList(prev => prev.filter(j => j.id !== id))
+    setDeletingTx(false)
+    setDeleteTxModalItem(null)
+    setSuccessToast(`Transaksi "${deleteTxModalItem.noBukti}" berhasil dihapus dari jurnal.`)
+    setTimeout(() => setSuccessToast(null), 3500)
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('customJournalsUpdated'))
+      window.dispatchEvent(new Event('storage'))
+    }
   }
 
   // Export transactions to Excel (CSV)
   const handleExportExcel = () => {
     if (filteredJournals.length === 0) {
-      alert('Tidak ada transaksi pada periode ini untuk diekspor.')
+      setSystemNoticeMsg('Tidak ada transaksi pada periode ini untuk diekspor.')
       return
     }
 
@@ -1732,6 +1762,85 @@ export default function JurnalPage() {
               className="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl"
             >
               Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL KONFIRMASI HAPUS TRANSAKSI JURNAL (SISTEM POP-UP) */}
+      <Dialog open={!!deleteTxModalItem} onOpenChange={(o) => !o && !deletingTx && setDeleteTxModalItem(null)}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#F6F2F2] border border-[#E3D8D8] flex items-center justify-center shrink-0">
+                <Trash2 className="w-4 h-4 text-[#6B5353]" />
+              </div>
+              Hapus Transaksi Jurnal
+            </DialogTitle>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Apakah Anda yakin ingin menghapus transaksi ini dari jurnal?
+            </p>
+            {deleteTxModalItem && (
+              <div className="mt-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">No. Dokumen:</span>
+                  <span className="font-mono font-bold text-slate-900">{deleteTxModalItem.noBukti}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Keterangan:</span>
+                  <span className="font-semibold text-slate-800 truncate max-w-[200px]">{deleteTxModalItem.keterangan}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Nominal:</span>
+                  <span className="font-mono font-bold text-[#6B5353]">{formatRupiah(deleteTxModalItem.nominal)}</span>
+                </div>
+              </div>
+            )}
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteTxModalItem(null)}
+              disabled={deletingTx}
+              className="text-xs font-semibold text-slate-700 border-slate-300 rounded-xl cursor-pointer px-4"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleConfirmDeleteTransaction}
+              disabled={deletingTx}
+              className="bg-[#7A5C5C] hover:bg-[#6B5353] text-white font-semibold text-xs rounded-xl cursor-pointer px-4"
+            >
+              {deletingTx ? 'Menghapus...' : 'Ya, Hapus Transaksi'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL PEMBERITAHUAN SISTEM */}
+      <Dialog open={!!systemNoticeMsg} onOpenChange={(o) => !o && setSystemNoticeMsg(null)}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              Pemberitahuan Sistem
+            </DialogTitle>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              {systemNoticeMsg}
+            </p>
+          </DialogHeader>
+          <DialogFooter className="pt-3">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setSystemNoticeMsg(null)}
+              className="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs rounded-xl cursor-pointer px-5"
+            >
+              Mengerti
             </Button>
           </DialogFooter>
         </DialogContent>

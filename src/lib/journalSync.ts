@@ -25,8 +25,7 @@ export function purgeAllObsoleteLocalStorageCache() {
           k.startsWith('custom_anggota_') ||
           k.startsWith('custom_golongan_') ||
           k.startsWith('profil_manual_') ||
-          k.startsWith('pengurus_manual_') ||
-          k.startsWith('dafu_approvals_store'))
+          k.startsWith('pengurus_manual_'))
       ) {
         keysToRemove.push(k)
       }

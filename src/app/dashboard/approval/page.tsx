@@ -205,9 +205,13 @@ export default function DafuApprovalPage() {
     const verifiedGolongan = selectedGolonganMap[item.id] || item.golongan
     const ok = await approveDafuItem(item.id, 'Sekretaris Paroki', verifiedGolongan)
     if (ok) {
-      setActionSuccessMsg(`Permohonan "${item.nama_kk}" dari ${item.nama_lingkungan} telah BERHASIL DISETUJUI dengan Status Golongan "${verifiedGolongan}"! Data tersimpan di database.`)
+      if (item.action_type === 'HAPUS_KK') {
+        setActionSuccessMsg(`Permohonan penghapusan "${item.nama_kk}" dari ${item.nama_lingkungan} telah BERHASIL DISETUJUI! Data telah dihapus dari DAFU Sekretaris, Bendahara, & Paroki, dan otomatis berstatus "Pindah" di Kartu Setoran.`)
+      } else {
+        setActionSuccessMsg(`Permohonan "${item.nama_kk}" dari ${item.nama_lingkungan} telah BERHASIL DISETUJUI dengan Status Golongan "${verifiedGolongan}"! Data tersimpan di database.`)
+      }
       await loadData()
-      setTimeout(() => setActionSuccessMsg(null), 4000)
+      setTimeout(() => setActionSuccessMsg(null), 5000)
     }
   }
 
