@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 import { UserProfile, JurnalTransaksi, KepalaKeluarga, COA } from '@/lib/types'
-import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
+import { ensureDummyKksForLingkungan, getDummyKkListForLingkungan } from '@/lib/dummyData'
 import { getAllMasterCOA, MasterCOAItem } from '@/lib/masterCoa'
 import { formatRupiah, formatDateIndo, MONTH_NAMES } from '@/lib/utils'
 import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getLingkunganDbUuid } from '@/lib/constants'
@@ -208,7 +208,31 @@ export default function JurnalPage() {
 
           const dbKks = kks || []
           const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, targetLingkunganNama || 'Lingkungan', dbKks)
-          setKkList(finalKks)
+          const activeNames = new Set(finalKks.map(k => (k.nama_kk || '').toLowerCase().trim()))
+
+          // Sertakan juga KK yang sudah dihapus/pindah dari DAFU (dengan penanda [PINDAH])
+          // agar Bendahara tetap bisa memilih nama KK tersebut saat menginput jurnal Uang Keluar (pengembalian/mutasi iuran umat pindah)
+          const combinedForJournal = new Map<string, KepalaKeluarga>()
+          finalKks.forEach(k => combinedForJournal.set((k.nama_kk || '').toLowerCase().trim(), k))
+
+          const baselineKks = getDummyKkListForLingkungan(targetLingkunganId, targetLingkunganNama || 'Lingkungan')
+          ;[...dbKks, ...baselineKks].forEach((k: KepalaKeluarga) => {
+            if (!k || !k.nama_kk) return
+            const norm = k.nama_kk.toLowerCase().trim()
+            if (norm.includes('test12') || norm.includes('test 12') || norm === 'dimas') return
+            if (!combinedForJournal.has(norm)) {
+              const isMoved = !activeNames.has(norm) || (k.alamat || '').toLowerCase().includes('[pindah]')
+              combinedForJournal.set(norm, {
+                ...k,
+                alamat: isMoved && !(k.alamat || '').toLowerCase().includes('[pindah]')
+                  ? `${k.alamat || ''} [PINDAH]`.trim()
+                  : k.alamat
+              })
+            }
+          })
+
+          const sortedAllKks = Array.from(combinedForJournal.values()).sort((a, b) => a.nama_kk.localeCompare(b.nama_kk))
+          setKkList(sortedAllKks)
 
           // Load Profil for Pengurus directly from Supabase (sole source of truth)
           const { data: profil } = await supabase
@@ -1199,18 +1223,29 @@ export default function JurnalPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-64">
                     <SelectItem value="umum">-- Tidak spesifik / umum (Kolektif) --</SelectItem>
-                    {kkList.map((kk) => (
-                      <SelectItem key={kk.id} value={kk.id}>
-                        <div className="text-left py-0.5">
-                          <div className="font-semibold text-slate-900">{kk.nama_kk}</div>
-                          {kk.alamat && (
-                            <div className="text-[11px] text-slate-500 truncate max-w-md">
-                              {kk.alamat}
+                    {kkList.map((kk) => {
+                      const isPindah = (kk.alamat || '').toLowerCase().includes('[pindah]') || (kk.alamat || '').toLowerCase().includes('[keluar]')
+                      const cleanAlamat = (kk.alamat || '').replace(/\[pindah\]/gi, '').replace(/\[keluar\]/gi, '').trim()
+                      return (
+                        <SelectItem key={kk.id} value={kk.id}>
+                          <div className="text-left py-0.5">
+                            <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                              <span>{kk.nama_kk}</span>
+                              {isPindah && (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-[#F6F2F2] text-[#6B5353] border border-[#E3D8D8]">
+                                  Umat Pindah
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
+                            {cleanAlamat && (
+                              <div className="text-[11px] text-slate-500 truncate max-w-md">
+                                {cleanAlamat}
+                              </div>
+                            )}
+                          </div>
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
                 <p className="text-[11px] text-slate-500 italic leading-relaxed pt-0.5">
