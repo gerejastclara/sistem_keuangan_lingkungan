@@ -1833,8 +1833,8 @@ function DafuFormContent() {
                                 Dalam Pengajuan
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF]">
+                                <CheckCircle2 className="w-3 h-3 text-[#4E6358]" />
                                 Disetujui Paroki
                               </span>
                             )}
@@ -1844,8 +1844,8 @@ function DafuFormContent() {
                               </span>
                             </div>
                             {wasEditedByParoki && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                                <Sparkles className="w-2.5 h-2.5" />
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/90">
+                                <Sparkles className="w-2.5 h-2.5 text-slate-500" />
                                 Diedit Paroki
                               </span>
                             )}
@@ -1908,10 +1908,10 @@ function DafuFormContent() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => setComparisonModalItem(item)}
-                                  className="h-7 px-2.5 text-[11px] font-bold text-amber-900 bg-amber-50 hover:bg-amber-100/80 border-amber-300 rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer"
+                                  className="h-7 px-2.5 text-[11px] font-semibold text-slate-700 bg-white hover:bg-slate-100 border-slate-200/90 rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer"
                                   title="Lihat Perubahan Sebelum & Sesudah Edit oleh Sekretaris Paroki"
                                 >
-                                  <Sparkles className="w-3 h-3 text-amber-600" />
+                                  <Sparkles className="w-3 h-3 text-slate-500" />
                                   <span>Sebelum vs Sesudah</span>
                                 </Button>
                               ) : (

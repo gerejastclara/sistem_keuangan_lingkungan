@@ -336,34 +336,34 @@ export default function DafuApprovalPage() {
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
             <button
               onClick={() => setStatusFilter('ALL')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer shrink-0 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer shrink-0 border ${
                 statusFilter === 'ALL'
-                  ? 'bg-[#16233F] text-white shadow-2xs font-semibold'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                  ? 'bg-slate-200/80 text-slate-800 border-slate-300/80 shadow-2xs font-semibold'
+                  : 'bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               Semua ({scopedApprovals.length})
             </button>
             <button
               onClick={() => setStatusFilter('PENDING')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer shrink-0 flex items-center gap-1.5 border ${
                 statusFilter === 'PENDING'
-                  ? 'bg-[#16233F] text-white shadow-2xs font-semibold'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                  ? 'bg-slate-200/80 text-slate-800 border-slate-300/80 shadow-2xs font-semibold'
+                  : 'bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <Clock className="w-3.5 h-3.5 text-slate-500" />
               Menunggu Approval ({pendingList.length})
             </button>
             <button
               onClick={() => setStatusFilter('APPROVED')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer shrink-0 flex items-center gap-1.5 border ${
                 statusFilter === 'APPROVED'
-                  ? 'bg-[#16233F] text-white shadow-2xs font-semibold'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                  ? 'bg-[#F2F5F3] text-[#4E6358] border-[#DCE5DF] shadow-2xs font-semibold'
+                  : 'bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
-              <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#4E6358]" />
               Disetujui ({approvedList.length})
             </button>
           </div>
@@ -428,13 +428,13 @@ export default function DafuApprovalPage() {
                 <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#F8F9FA] border-b border-slate-200/80">
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Lingkungan Badge */}
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#16233F] text-white font-semibold text-xs shadow-2xs">
-                      <Building2 className="w-3.5 h-3.5 text-[#A9834F]" />
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200/90 font-semibold text-xs shadow-2xs">
+                      <Building2 className="w-3.5 h-3.5 text-slate-500" />
                       <span>{item.nama_lingkungan}</span>
                     </div>
 
                     {/* Wilayah Badge */}
-                    <span className="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-200/70 text-slate-700 border border-slate-300/50">
+                    <span className="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-100 text-slate-600 border border-slate-200/80">
                       {getWilayahForLingkungan(item.nama_lingkungan)}
                     </span>
 
@@ -445,15 +445,15 @@ export default function DafuApprovalPage() {
 
                     {/* Status Badge - Soft Neutral */}
                     <span className="text-[11px] px-2.5 py-0.5 rounded-md font-medium flex items-center gap-1.5 border border-slate-200 bg-white text-slate-700 shadow-2xs">
-                      {isPending && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
-                      {isApproved && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />}
+                      {isPending && <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />}
+                      {isApproved && <span className="w-1.5 h-1.5 rounded-full bg-[#4E6358]" />}
                       {isPending ? 'Menunggu Approval' : 'Disetujui'}
                     </span>
 
                     {/* Paroki Edit Badge if edited */}
                     {isApproved && (item.is_edited_by_paroki || item.data_sebelum_edit) && (
-                      <span className="text-[11px] px-2.5 py-0.5 rounded-md font-semibold flex items-center gap-1 border border-amber-200 bg-amber-50 text-amber-800 shadow-2xs">
-                        <Sparkles className="w-3 h-3 text-amber-600" />
+                      <span className="text-[11px] px-2.5 py-0.5 rounded-md font-semibold flex items-center gap-1 border border-slate-200/90 bg-slate-100 text-slate-700 shadow-2xs">
+                        <Sparkles className="w-3 h-3 text-slate-500" />
                         <span>Disesuaikan Paroki</span>
                       </span>
                     )}
@@ -626,7 +626,7 @@ export default function DafuApprovalPage() {
                       onClick={() => handleApprove(item)}
                       className="w-full sm:w-auto h-9 px-5 text-xs font-semibold text-white bg-slate-700 hover:bg-slate-800 rounded-xl cursor-pointer shadow-2xs flex items-center justify-center gap-1.5 transition"
                     >
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 text-slate-200" />
                       <span>Setujui Langsung (Approve)</span>
                     </Button>
                   </div>
@@ -634,9 +634,9 @@ export default function DafuApprovalPage() {
 
                 {/* For Approved items with Paroki Edits */}
                 {isApproved && (item.is_edited_by_paroki || item.data_sebelum_edit) && (
-                  <div className="p-3.5 bg-amber-50/50 border-t border-amber-200/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2 text-amber-900 font-medium">
-                      <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                  <div className="p-3.5 bg-slate-50/80 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-slate-600 font-medium">
+                      <Sparkles className="w-4 h-4 text-slate-400 shrink-0" />
                       <span>Data pengajuan ini telah disesuaikan sebelum disetujui.</span>
                     </div>
                     <Button
@@ -644,10 +644,10 @@ export default function DafuApprovalPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => setComparisonModalItem(item)}
-                      className="h-8 px-3 text-xs font-semibold bg-white border-amber-300 text-amber-900 hover:bg-amber-100/80 rounded-xl cursor-pointer shadow-2xs flex items-center gap-1.5"
+                      className="h-8 px-3 text-xs font-semibold bg-white border-slate-200/90 text-slate-700 hover:bg-slate-100 hover:text-slate-900 rounded-xl cursor-pointer shadow-2xs flex items-center gap-1.5"
                     >
                       <span>Lihat Sebelum &amp; Sesudah Edit</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
                     </Button>
                   </div>
                 )}

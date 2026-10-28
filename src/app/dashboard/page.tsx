@@ -1593,8 +1593,8 @@ export default function DashboardOverviewPage() {
                                   Dalam Pengajuan
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF] px-2 py-0.5 rounded-full">
+                                  <CheckCircle2 className="w-2.5 h-2.5 text-[#4E6358]" />
                                   Sudah Disetujui
                                 </span>
                               )}
@@ -1602,10 +1602,10 @@ export default function DashboardOverviewPage() {
                                 <button
                                   type="button"
                                   onClick={() => setComparisonModalItem(item)}
-                                  className="inline-flex items-center gap-1 text-[10px] font-semibold bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-full cursor-pointer transition shadow-2xs"
+                                  className="inline-flex items-center gap-1 text-[10px] font-semibold bg-slate-100 hover:bg-slate-200/80 text-slate-700 border border-slate-200/90 px-2 py-0.5 rounded-full cursor-pointer transition shadow-2xs"
                                   title="Klik untuk melihat sebelum dan sesudah edit oleh Paroki"
                                 >
-                                  <Sparkles className="w-2.5 h-2.5 text-blue-600" />
+                                  <Sparkles className="w-2.5 h-2.5 text-slate-500" />
                                   <span>Diedit Paroki (Lihat Perubahan)</span>
                                 </button>
                               )}
@@ -1614,7 +1614,7 @@ export default function DashboardOverviewPage() {
                           <TableCell>
                             <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${
                               item.action_type === 'TAMBAH_KK'
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 font-bold'
+                                ? 'bg-[#F2F5F3] text-[#4E6358] border-[#DCE5DF] font-bold'
                                 : 'bg-slate-100 text-slate-700 border-slate-200'
                             }`}>
                               {item.action_type === 'TAMBAH_KK' ? '+ Tambah KK' : '✎ Ubah KK'}
@@ -1663,7 +1663,7 @@ export default function DashboardOverviewPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setComparisonModalItem(item)}
-                                className="h-7 px-2 text-[11px] font-semibold bg-white border-blue-200 text-blue-800 hover:bg-blue-50 rounded-lg cursor-pointer shadow-2xs"
+                                className="h-7 px-2 text-[11px] font-semibold bg-white border-slate-200/90 text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer shadow-2xs"
                               >
                                 Sebelum vs Sesudah
                               </Button>
@@ -1699,7 +1699,7 @@ export default function DashboardOverviewPage() {
                   onClick={() => setStatusApprovalKkFilter('ALL')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                     statusApprovalKkFilter === 'ALL'
-                      ? 'bg-slate-800 text-white shadow-2xs'
+                      ? 'bg-slate-200/90 text-slate-800 border border-slate-300/80 shadow-2xs'
                       : 'text-slate-600 hover:bg-slate-200/60'
                   }`}
                 >
@@ -1710,7 +1710,7 @@ export default function DashboardOverviewPage() {
                   onClick={() => setStatusApprovalKkFilter('PENDING')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
                     statusApprovalKkFilter === 'PENDING'
-                      ? 'bg-slate-200 text-slate-800 border border-slate-300 font-bold shadow-2xs'
+                      ? 'bg-slate-200/90 text-slate-800 border border-slate-300/80 font-bold shadow-2xs'
                       : 'text-slate-600 hover:bg-slate-200/60'
                   }`}
                 >
@@ -1722,8 +1722,8 @@ export default function DashboardOverviewPage() {
                   onClick={() => setStatusApprovalKkFilter('APPROVED')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
                     statusApprovalKkFilter === 'APPROVED'
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'text-emerald-800 hover:bg-emerald-50'
+                      ? 'bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF] font-bold shadow-2xs'
+                      : 'text-[#4E6358] hover:bg-[#F2F5F3]/60'
                   }`}
                 >
                   <CheckCircle2 className="w-3 h-3" />

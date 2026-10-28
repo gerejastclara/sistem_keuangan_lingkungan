@@ -432,13 +432,13 @@ export function EditDafuApprovalModal({
             size="sm"
             onClick={handleSave}
             disabled={saving}
-            className="w-full sm:w-auto text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+            className="w-full sm:w-auto text-xs font-semibold text-white bg-slate-700 hover:bg-slate-800 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
           >
             {saving ? (
               <span>Menyimpan...</span>
             ) : isParoki ? (
               <>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-slate-200" />
                 <span>Simpan Perubahan & Setujui Data</span>
               </>
             ) : (
