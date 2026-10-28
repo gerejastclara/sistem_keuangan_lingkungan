@@ -706,7 +706,7 @@ export default function KartuSetoranPage() {
         return val
       })
       const statusNote = kk.statusUmat && kk.statusUmat !== 'AKTIF'
-        ? ` [${kk.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}${kk.isLunas ? ' - Lunas' : ' - Setoran di Tengah'}]`
+        ? ` [${kk.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}]`
         : ''
       return [idx + 1, `"${kk.nama_kk}${statusNote}"`, ...monthCols, totalKk]
     })
@@ -866,8 +866,8 @@ export default function KartuSetoranPage() {
               <span className="w-2 h-2 rounded-full bg-[#8C7B65]"></span>
               Dari Donasi Umat Lain
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200/90 font-medium text-[10px]">
-              <span>📌</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F6F2F2] text-[#6B5353] border border-[#DECFCF] font-medium text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-[#9E7B7B]"></span>
               Umat Pindah / Keluar
             </div>
           </div>
@@ -913,9 +913,9 @@ export default function KartuSetoranPage() {
                   <button
                     type="button"
                     onClick={() => setIsManageModalOpen(true)}
-                    className="px-2.5 py-1.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                    className="px-2.5 py-1.5 rounded-xl border border-[#DECFCF] bg-[#F6F2F2] hover:bg-[#EFE9E9] text-[#6B5353] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                   >
-                    <span>📌</span>
+                    <Users className="w-3.5 h-3.5 text-[#6B5353]" />
                     <span>Kelola / Pulihkan Umat ({allPindahKeluarList.length})</span>
                   </button>
                 )}
@@ -965,42 +965,44 @@ export default function KartuSetoranPage() {
                   {filteredKkList.map((kk, idx) => {
                     const months = setoranMap.get(kk.id) || {}
                     let totalKk = 0
+                    const isPindahKeluar = Boolean(kk.statusUmat && kk.statusUmat !== 'AKTIF')
 
                     return (
-                      <tr key={kk.id} className="hover:bg-slate-50/90 transition group">
-                        <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 text-center font-mono text-slate-500 text-[11px] p-2 border-b border-r border-slate-100 w-12 min-w-[48px] max-w-[48px]">
+                      <tr
+                        key={kk.id}
+                        className={`transition group ${
+                          isPindahKeluar
+                            ? 'bg-[#F6F2F2]/70 hover:bg-[#EFE9E9]/90'
+                            : 'hover:bg-slate-50/90'
+                        }`}
+                      >
+                        <td
+                          className={`sticky left-0 z-10 text-center font-mono text-[11px] p-2 border-b border-r w-12 min-w-[48px] max-w-[48px] transition-colors ${
+                            isPindahKeluar
+                              ? 'bg-[#F6F2F2] group-hover:bg-[#EFE9E9] text-[#6B5353] border-b-[#E4DCDC] border-r-[#E4DCDC] border-l-[3px] border-l-[#9E7B7B]'
+                              : 'bg-white group-hover:bg-slate-50 text-slate-500 border-slate-100'
+                          }`}
+                        >
                           {idx + 1}
                         </td>
-                        <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50 font-bold text-slate-900 p-2 border-b border-r border-slate-300 shadow-xs min-w-[220px]">
-                          <div className="flex items-center flex-wrap gap-1.5 justify-between">
-                            <div className="flex items-center flex-wrap gap-1.5">
-                              <span>{kk.nama_kk}</span>
-                              {kk.statusUmat && kk.statusUmat !== 'AKTIF' && (
-                                <span
-                                  className="text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-300 bg-slate-100 text-slate-800 inline-flex items-center gap-1 shrink-0"
-                                  title={
-                                    kk.isLunas
-                                      ? `Umat ${kk.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}, sudah membayar lunas 12 bulan`
-                                      : `Umat ${kk.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}, setoran tercatat di tengah tahun (${kk.paidMonthsCount} bulan)`
-                                  }
-                                >
-                                  <span>📌</span>
-                                  <span>
-                                    {kk.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}
-                                    {kk.isLunas ? ' (Lunas)' : ' (Setoran di Tengah)'}
-                                  </span>
-                                </span>
-                              )}
-                            </div>
+                        <td
+                          className={`sticky left-12 z-10 font-bold p-2 border-b border-r shadow-xs min-w-[220px] transition-colors ${
+                            isPindahKeluar
+                              ? 'bg-[#F6F2F2] group-hover:bg-[#EFE9E9] text-[#6B5353] border-b-[#E4DCDC] border-r-[#DECFCF]'
+                              : 'bg-white group-hover:bg-slate-50 text-slate-900 border-b-slate-100 border-r-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate">{kk.nama_kk}</span>
 
                             {/* Dropdown status kecil untuk bendahara */}
-                            <div className={`transition shrink-0 ${kk.statusUmat && kk.statusUmat !== 'AKTIF' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                            <div className={`transition shrink-0 ${isPindahKeluar ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                               <select
                                 value={kk.statusUmat || 'AKTIF'}
                                 onChange={(e) => handleSetUmatStatus(kk.id, kk.nama_kk, e.target.value as any)}
-                                className={`text-[10px] rounded px-1.5 py-0.5 border cursor-pointer font-semibold transition ${
-                                  kk.statusUmat && kk.statusUmat !== 'AKTIF'
-                                    ? 'bg-slate-100 border-slate-300 text-slate-900 shadow-2xs'
+                                className={`text-[10px] rounded-md px-1.5 py-0.5 border cursor-pointer font-medium transition ${
+                                  isPindahKeluar
+                                    ? 'bg-[#EFE9E9] border-[#DECFCF] text-[#6B5353]'
                                     : 'bg-slate-50 border-slate-200 text-slate-600'
                                 }`}
                                 title="Ubah status umat: Aktif, Pindah, atau Keluar"

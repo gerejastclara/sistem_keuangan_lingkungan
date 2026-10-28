@@ -1332,8 +1332,8 @@ export default function ParokiBendaharaPage() {
                   <span className="w-2 h-2 rounded-full bg-[#8C7B65]"></span>
                   Dari Donasi Umat Lain
                 </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200/90 font-medium text-[10px]">
-                  <span>📌</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F6F2F2] text-[#6B5353] border border-[#DECFCF] font-medium text-[10px]">
+                  <span className="w-2 h-2 rounded-full bg-[#9E7B7B]"></span>
                   Umat Pindah / Keluar
                 </div>
               </div>
@@ -1415,20 +1415,39 @@ export default function ParokiBendaharaPage() {
                     ) : (
                       allUmatSetoranList.slice(0, 150).map((item, idx) => {
                         let totalKk = 0
+                        const isPindahKeluar = item.statusUmat !== 'AKTIF'
 
                         return (
-                          <tr key={`${item.lingkunganId}-${item.kk.id}`} className="hover:bg-slate-50/80 transition group">
-                            <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 text-center font-mono text-slate-400 text-[11px] p-2 border-b border-r border-slate-100 w-12 min-w-[48px] max-w-[48px]">
+                          <tr
+                            key={`${item.lingkunganId}-${item.kk.id}`}
+                            className={`transition group ${
+                              isPindahKeluar
+                                ? 'bg-[#F6F2F2]/70 hover:bg-[#EFE9E9]/90'
+                                : 'hover:bg-slate-50/80'
+                            }`}
+                          >
+                            <td
+                              className={`sticky left-0 z-10 text-center font-mono text-[11px] p-2 border-b border-r w-12 min-w-[48px] max-w-[48px] transition-colors ${
+                                isPindahKeluar
+                                  ? 'bg-[#F6F2F2] group-hover:bg-[#EFE9E9] text-[#6B5353] border-b-[#E4DCDC] border-r-[#E4DCDC] border-l-[3px] border-l-[#9E7B7B]'
+                                  : 'bg-white group-hover:bg-slate-50 text-slate-400 border-slate-100'
+                              }`}
+                            >
                               {idx + 1}
                             </td>
-                            <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50 font-semibold text-slate-800 p-2 border-b border-r border-slate-200 shadow-2xs min-w-[220px]">
+                            <td
+                              className={`sticky left-12 z-10 font-semibold p-2 border-b border-r shadow-2xs min-w-[220px] transition-colors ${
+                                isPindahKeluar
+                                  ? 'bg-[#F6F2F2] group-hover:bg-[#EFE9E9] text-[#6B5353] border-b-[#E4DCDC] border-r-[#DECFCF]'
+                                  : 'bg-white group-hover:bg-slate-50 text-slate-800 border-b-slate-100 border-r-slate-200'
+                              }`}
+                            >
                               <div className="flex flex-col">
-                                <div className="flex items-center flex-wrap gap-1.5">
-                                  <span>{item.kk.nama_kk}</span>
-                                  {item.statusUmat !== 'AKTIF' && (
-                                    <span className="text-[10px] font-medium px-2 py-0.5 rounded border border-slate-200 bg-slate-100 text-slate-600 inline-flex items-center gap-1 shrink-0">
-                                      <span>📌</span>
-                                      <span>{item.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}</span>
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="truncate">{item.kk.nama_kk}</span>
+                                  {isPindahKeluar && (
+                                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-[#DECFCF] bg-[#EFE9E9] text-[#6B5353] shrink-0">
+                                      {item.statusUmat === 'KELUAR' ? 'Keluar' : 'Pindah'}
                                     </span>
                                   )}
                                 </div>
