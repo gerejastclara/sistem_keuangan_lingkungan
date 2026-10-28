@@ -20,6 +20,7 @@ export interface ParishKkItem {
   kriteria_catatan?: string
   is_biduk?: boolean
   jumlah_anggota?: number
+  anggota_keluarga?: AnggotaKeluarga[]
 }
 
 // In-memory & sessionStorage cache for ultra-fast parish-wide switches without flickering
@@ -99,10 +100,12 @@ export async function fetchAllParishKksWithGolongan(
   try {
     // 1. Fetch all KKs with pagination in parallel
     // 2. Fetch all Golongan with pagination in parallel
-    // 3. Fetch DAFU Approvals from DB or local
+    // 3. Fetch Anggota Keluarga with parallel pagination
+    // 4. Fetch DAFU Approvals from DB or local
     const [
       kk1, kk2, kk3, kk4,
       gol1, gol2, gol3, gol4,
+      a1, a2, a3, a4, a5, a6, a7, a8, a9, a10,
       approvalsRes
     ] = await Promise.all([
       supabase.from('kepala_keluarga').select('id, lingkungan_id, nama_kk, alamat, is_biduk').range(0, 999),
@@ -113,6 +116,16 @@ export async function fetchAllParishKksWithGolongan(
       supabase.from('golongan_keluarga').select('id, kk_id, lingkungan_id, golongan, kriteria_catatan, updated_by_role, updated_at').range(1000, 1999),
       supabase.from('golongan_keluarga').select('id, kk_id, lingkungan_id, golongan, kriteria_catatan, updated_by_role, updated_at').range(2000, 2999),
       supabase.from('golongan_keluarga').select('id, kk_id, lingkungan_id, golongan, kriteria_catatan, updated_by_role, updated_at').range(3000, 3999),
+      supabase.from('anggota_keluarga').select('id, kk_id, nama, peran, is_kaj, keterangan').range(0, 999),
+      supabase.from('anggota_keluarga').select('id, kk_id, nama, peran, is_kaj, keterangan').range(1000, 1999),
+      supabase.from('anggota_keluarga').select('id, kk_id, nama, peran, is_kaj, keterangan').range(2000, 2999),
+      supabase.from('anggota_keluarga').select('id, kk_id, nama, peran, is_kaj, keterangan').range(3000, 3999),
+      supabase.from('anggota_keluarga').select('id, kk_id, nama, peran, is_kaj, keterangan').range(4000, 4999),
+      supabase.from('anggota_keluarga').select('id, kk_id, nama, peran, is_kaj, keterangan').range(5000, 5999),
+      supabase.from('anggota_keluarga').select('id, kk_id, nama, peran, is_kaj, keterangan').range(6000, 6999),
+      supabase.from('anggota_keluarga').select('id, kk_id, nama, peran, is_kaj, keterangan').range(7000, 7999),
+      supabase.from('anggota_keluarga').select('id, kk_id, nama, peran, is_kaj, keterangan').range(8000, 8999),
+      supabase.from('anggota_keluarga').select('id, kk_id, nama, peran, is_kaj, keterangan').range(9000, 9999),
       supabase.from('dafu_approvals').select('*').limit(500)
     ])
 
@@ -130,13 +143,29 @@ export async function fetchAllParishKksWithGolongan(
       ...(gol4.data || [])
     ]
 
+    const rawAnggotas: any[] = [
+      ...(a1.data || []),
+      ...(a2.data || []),
+      ...(a3.data || []),
+      ...(a4.data || []),
+      ...(a5.data || []),
+      ...(a6.data || []),
+      ...(a7.data || []),
+      ...(a8.data || []),
+      ...(a9.data || []),
+      ...(a10.data || [])
+    ]
+
     // Read local overrides & cached approvals
     let localGolonganStore: Record<string, any> = {}
+    let localAnggotaStore: Record<string, any[]> = {}
     let deletedSet = new Set<string>()
     if (typeof window !== 'undefined') {
       try {
         const rawG = localStorage.getItem('custom_golongan_all_store')
         if (rawG) localGolonganStore = JSON.parse(rawG)
+        const rawA = localStorage.getItem('custom_anggota_all_store')
+        if (rawA) localAnggotaStore = JSON.parse(rawA)
         const rawDel = localStorage.getItem('custom_kks_deleted_store')
         if (rawDel) {
           const parsedDel = JSON.parse(rawDel)
@@ -149,6 +178,22 @@ export async function fetchAllParishKksWithGolongan(
     const golMap = new Map<string, any>()
     rawGols.forEach((g: any) => {
       if (g && g.kk_id) golMap.set(g.kk_id, g)
+    })
+
+    // Anggota Map (indexed by kk_id)
+    const anggotaMap = new Map<string, any[]>()
+    rawAnggotas.forEach((m: any) => {
+      if (m && m.kk_id) {
+        if (!anggotaMap.has(m.kk_id)) anggotaMap.set(m.kk_id, [])
+        anggotaMap.get(m.kk_id)!.push(m)
+      }
+    })
+
+    // Merge custom_anggota_all_store from localStorage
+    Object.entries(localAnggotaStore).forEach(([kkId, members]) => {
+      if (Array.isArray(members) && members.length > 0) {
+        anggotaMap.set(kkId, members)
+      }
     })
 
     // Master Lingkungan Lookup Map
@@ -203,6 +248,18 @@ export async function fetchAllParishKksWithGolongan(
         ? `${k.alamat || ''} [PINDAH]`.trim()
         : (k.alamat || undefined)
 
+      let members = anggotaMap.get(k.id)
+      if (!members || members.length === 0) {
+        members = [{
+          id: `mem-${k.id}-1`,
+          kk_id: k.id,
+          nama: k.nama_kk,
+          peran: 'Kepala Keluarga',
+          is_kaj: k.is_biduk ?? true,
+          keterangan: 'Kepala Keluarga'
+        }]
+      }
+
       parishItems.push({
         id: k.id,
         nama_kk: k.nama_kk,
@@ -212,7 +269,9 @@ export async function fetchAllParishKksWithGolongan(
         wilayah: lingInfo.wilayah,
         golongan: currentGol,
         kriteria_catatan: catatan,
-        is_biduk: k.is_biduk ?? true
+        is_biduk: k.is_biduk ?? true,
+        jumlah_anggota: members.length,
+        anggota_keluarga: members
       })
     })
 
@@ -257,11 +316,31 @@ export async function fetchAllParishKksWithGolongan(
       const existingIdx = parishItems.findIndex(p => p.id === kkId || p.id === appr.kk_id)
       const golItem = localGolonganStore[kkId]?.golongan || appr.golongan || 'Sejahtera'
 
+      const apprMembers = Array.isArray(appr.anggota_keluarga) && appr.anggota_keluarga.length > 0
+        ? appr.anggota_keluarga.map((m: any, idx: number) => ({
+            id: m.id || `mem-${kkId}-${idx}`,
+            kk_id: kkId,
+            nama: m.nama,
+            peran: m.peran || 'Anggota',
+            is_kaj: m.is_kaj !== false,
+            keterangan: m.keterangan || undefined
+          }))
+        : [{
+            id: `mem-${kkId}-1`,
+            kk_id: kkId,
+            nama: appr.nama_kk,
+            peran: 'Kepala Keluarga',
+            is_kaj: appr.is_biduk ?? true,
+            keterangan: 'Kepala Keluarga'
+          }]
+
       if (existingIdx !== -1) {
         parishItems[existingIdx].nama_kk = appr.nama_kk
         parishItems[existingIdx].alamat = appr.alamat || parishItems[existingIdx].alamat
         parishItems[existingIdx].golongan = golItem
         parishItems[existingIdx].kriteria_catatan = appr.kriteria_catatan || parishItems[existingIdx].kriteria_catatan
+        parishItems[existingIdx].jumlah_anggota = apprMembers.length
+        parishItems[existingIdx].anggota_keluarga = apprMembers
       } else {
         parishItems.push({
           id: kkId,
@@ -273,7 +352,8 @@ export async function fetchAllParishKksWithGolongan(
           golongan: golItem,
           kriteria_catatan: appr.kriteria_catatan || undefined,
           is_biduk: appr.is_biduk ?? true,
-          jumlah_anggota: Array.isArray(appr.anggota_keluarga) ? appr.anggota_keluarga.length : 1
+          jumlah_anggota: apprMembers.length,
+          anggota_keluarga: apprMembers
         })
       }
     })
@@ -338,17 +418,45 @@ export async function fetchLingkunganKksWithGolongan(
     const dbKks: any[] = kkRes.data || []
     const dbGols: any[] = golRes.data || []
 
+    const validKkIds = dbKks.map(k => k.id).filter(isUuid)
+    let dbAnggotas: any[] = []
+    if (validKkIds.length > 0) {
+      try {
+        const { data: aData } = await supabase
+          .from('anggota_keluarga')
+          .select('id, kk_id, nama, peran, is_kaj, keterangan')
+          .in('kk_id', validKkIds)
+        if (aData) dbAnggotas = aData
+      } catch (e) {}
+    }
+
     let localGolonganStore: Record<string, any> = {}
+    let localAnggotaStore: Record<string, any[]> = {}
     if (typeof window !== 'undefined') {
       try {
         const rawG = localStorage.getItem('custom_golongan_all_store')
         if (rawG) localGolonganStore = JSON.parse(rawG)
+        const rawA = localStorage.getItem('custom_anggota_all_store')
+        if (rawA) localAnggotaStore = JSON.parse(rawA)
       } catch (e) {}
     }
 
     const golMap = new Map<string, any>()
     dbGols.forEach(g => {
       if (g && g.kk_id) golMap.set(g.kk_id, g)
+    })
+
+    const anggotaMap = new Map<string, any[]>()
+    dbAnggotas.forEach(m => {
+      if (m && m.kk_id) {
+        if (!anggotaMap.has(m.kk_id)) anggotaMap.set(m.kk_id, [])
+        anggotaMap.get(m.kk_id)!.push(m)
+      }
+    })
+    Object.entries(localAnggotaStore).forEach(([kkId, members]) => {
+      if (Array.isArray(members) && members.length > 0) {
+        anggotaMap.set(kkId, members)
+      }
     })
 
     const items: ParishKkItem[] = dbKks.map(k => {
@@ -359,6 +467,19 @@ export async function fetchLingkunganKksWithGolongan(
         g = obj.golongan
         catatan = obj.kriteria_catatan
       }
+
+      let members = anggotaMap.get(k.id)
+      if (!members || members.length === 0) {
+        members = [{
+          id: `mem-${k.id}-1`,
+          kk_id: k.id,
+          nama: k.nama_kk,
+          peran: 'Kepala Keluarga',
+          is_kaj: k.is_biduk ?? true,
+          keterangan: 'Kepala Keluarga'
+        }]
+      }
+
       return {
         id: k.id,
         nama_kk: k.nama_kk,
@@ -368,7 +489,9 @@ export async function fetchLingkunganKksWithGolongan(
         wilayah: lingWilayah,
         golongan: g || 'Sejahtera',
         kriteria_catatan: catatan,
-        is_biduk: k.is_biduk ?? true
+        is_biduk: k.is_biduk ?? true,
+        jumlah_anggota: members.length,
+        anggota_keluarga: members
       }
     })
 

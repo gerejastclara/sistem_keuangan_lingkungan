@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { getAllMasterLingkungan, formatNamaLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier } from '@/lib/constants'
 import { getPengurusForLingkungan, PengurusLingkungan } from '@/lib/pengurusData'
 import { ensureDummyKksForLingkungan, getDummyAnggotaForKk, getDummyGolonganForKk, santaClaraStats } from '@/lib/dummyData'
-import { fetchAllParishKksWithGolongan } from '@/lib/dafuService'
+import { fetchAllParishKksWithGolongan, ParishKkItem } from '@/lib/dafuService'
 import { KepalaKeluarga, AnggotaKeluarga, GolonganKeluarga } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -44,16 +44,25 @@ export default function ParokiSekretariatPage() {
   const [filterStatusPengurus, setFilterStatusPengurus] = useState<string>('ALL')
 
   // Tab 2: State DAFU Monitoring
-  const [selectedLingkunganDafu, setSelectedLingkunganDafu] = useState<string>('ALL')
+  const [selectedLingkunganDafu, setSelectedLingkunganDafu] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('selected_lingkungan_id')
+      if (saved && saved !== 'undefined' && saved !== 'null') {
+        return saved
+      }
+    }
+    return 'ALL'
+  })
   const [searchKk, setSearchKk] = useState('')
   const [filterGolongan, setFilterGolongan] = useState<string>('ALL')
-  const [dafuDataMap, setDafuDataMap] = useState<Record<string, KepalaKeluarga[]>>({})
+  const [dafuDataMap, setDafuDataMap] = useState<Record<string, ParishKkItem[]>>({})
   
   // Dialog Detail Anggota Keluarga
   const [selectedKkDetail, setSelectedKkDetail] = useState<{
-    kk: KepalaKeluarga
+    kk: ParishKkItem
     lingkunganName: string
-    golongan: GolonganKeluarga
+    golongan: string
+    catatan?: string
     anggota: AnggotaKeluarga[]
   } | null>(null)
 
@@ -88,9 +97,9 @@ export default function ParokiSekretariatPage() {
       })
       setPengurusList(pList)
 
-      // 2. Load DAFU for all Lingkungan directly from Supabase Cloud (hanya umat aktif, yang sudah disetujui hapus otomatis hilang)
+      // 2. Load DAFU for all Lingkungan directly from Supabase Cloud (with real members & golongan)
       const parishKks = await fetchAllParishKksWithGolongan(supabase, true, false)
-      const dMap: Record<string, KepalaKeluarga[]> = {}
+      const dMap: Record<string, ParishKkItem[]> = {}
       masterList.forEach(ling => {
         const targetUuid = getLingkunganDbUuid(ling.id)
         const targetNorm = ling.nama_lingkungan.toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -98,14 +107,7 @@ export default function ParokiSekretariatPage() {
           k.lingkunganId === ling.id ||
           k.lingkunganId === targetUuid ||
           k.lingkunganNama.toLowerCase().replace(/[^a-z0-9]/g, '') === targetNorm
-        ).map(p => ({
-          id: p.id,
-          lingkungan_id: p.lingkunganId,
-          nama_kk: p.nama_kk,
-          alamat: p.alamat || '',
-          is_biduk: p.is_biduk ?? true,
-          jumlah_anggota: p.jumlah_anggota || 1
-        }))
+        )
         dMap[ling.id] = kksForLing
       })
       setDafuDataMap(dMap)
@@ -124,20 +126,40 @@ export default function ParokiSekretariatPage() {
       loadAllParokiData()
     }
 
+    const handleLingkunganSync = () => {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('selected_lingkungan_id')
+        if (saved && saved !== 'undefined' && saved !== 'null') {
+          setSelectedLingkunganDafu(saved)
+        }
+      }
+      loadAllParokiData()
+    }
+
     window.addEventListener('storage', handleSync)
     window.addEventListener('pengurusUpdated', handleSync)
     window.addEventListener('dafuDataUpdated', handleSync)
     window.addEventListener('dafuApprovalUpdated', handleSync)
-    window.addEventListener('lingkunganChanged', handleSync)
+    window.addEventListener('lingkunganChanged', handleLingkunganSync)
 
     return () => {
       window.removeEventListener('storage', handleSync)
       window.removeEventListener('pengurusUpdated', handleSync)
       window.removeEventListener('dafuDataUpdated', handleSync)
       window.removeEventListener('dafuApprovalUpdated', handleSync)
-      window.removeEventListener('lingkunganChanged', handleSync)
+      window.removeEventListener('lingkunganChanged', handleLingkunganSync)
     }
   }, [])
+
+  const handleLingkunganDafuChange = (val: string | null) => {
+    const nextVal = val || 'ALL'
+    setSelectedLingkunganDafu(nextVal)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('selected_lingkungan_id', nextVal)
+      window.dispatchEvent(new Event('lingkunganChanged'))
+      window.dispatchEvent(new Event('storage'))
+    }
+  }
 
   // Sync to Sheet Action
   const handleSyncToSheet = async () => {
@@ -179,13 +201,36 @@ export default function ParokiSekretariatPage() {
 
   // Flattened & Filtered DAFU List
   const { allFlattenedKks, filteredKks, dafuStats } = useMemo(() => {
-    const list: Array<{ kk: KepalaKeluarga; lingkunganId: string; lingkunganNama: string }> = []
+    const list: Array<{
+      kk: ParishKkItem
+      lingkunganId: string
+      lingkunganNama: string
+      anggota: AnggotaKeluarga[]
+      golongan: string
+    }> = []
 
     Object.entries(dafuDataMap).forEach(([lingId, kks]) => {
       const foundL = allLingkungan.find(l => l.id === lingId)
       const lName = foundL ? foundL.nama_lingkungan : lingId
       kks.forEach(k => {
-        list.push({ kk: k, lingkunganId: lingId, lingkunganNama: lName })
+        const members: AnggotaKeluarga[] = (k.anggota_keluarga && k.anggota_keluarga.length > 0)
+          ? k.anggota_keluarga
+          : [{
+              id: `mem-${k.id}-1`,
+              kk_id: k.id,
+              nama: k.nama_kk,
+              peran: 'Kepala Keluarga',
+              is_kaj: k.is_biduk ?? true,
+              keterangan: 'Kepala Keluarga'
+            }]
+        const gol = k.golongan || 'Sejahtera'
+        list.push({
+          kk: k,
+          lingkunganId: lingId,
+          lingkunganNama: lName,
+          anggota: members,
+          golongan: gol
+        })
       })
     })
 
@@ -204,15 +249,20 @@ export default function ParokiSekretariatPage() {
         return false
       }
       if (filterGolongan !== 'ALL') {
-        const gol = getDummyGolonganForKk(item.kk).golongan
-        if (gol !== filterGolongan) return false
+        const itemGol = item.golongan
+        if (filterGolongan === 'Rentan') {
+          if (!itemGol.includes('Rentan') && !itemGol.includes('Prasejahtera')) return false
+        } else if (itemGol !== filterGolongan) {
+          return false
+        }
       }
       if (searchKk) {
         const q = searchKk.toLowerCase()
         const matchName = item.kk.nama_kk.toLowerCase().includes(q)
-        const matchNo = (item.kk.no_kk || '').toLowerCase().includes(q)
+        const matchAlamat = (item.kk.alamat || '').toLowerCase().includes(q)
         const matchLing = item.lingkunganNama.toLowerCase().includes(q)
-        if (!matchName && !matchNo && !matchLing) return false
+        const matchMember = item.anggota.some(m => (m.nama || '').toLowerCase().includes(q))
+        if (!matchName && !matchAlamat && !matchLing && !matchMember) return false
       }
       return true
     })
@@ -227,9 +277,8 @@ export default function ParokiSekretariatPage() {
     let kajCount = 0
 
     relevantList.forEach(item => {
-      const anggota = getDummyAnggotaForKk(item.kk)
-      totalJiwa += anggota.length
-      const golStr = String(getDummyGolonganForKk(item.kk).golongan)
+      totalJiwa += item.anggota.length
+      const golStr = String(item.golongan)
       if (golStr === 'Tidak Mampu') tidakMampu++
       else if (golStr.includes('Rentan') || golStr.includes('Prasejahtera')) rentan++
       else if (golStr === 'Menengah') menengah++
@@ -296,19 +345,19 @@ export default function ParokiSekretariatPage() {
       [`Filter Lingkungan: ${selectedLingkunganDafu === 'ALL' ? 'Semua Lingkungan' : formatNamaLingkungan(allLingkungan.find(l => l.id === selectedLingkunganDafu)?.nama_lingkungan || '')}`],
       [`Tanggal Unduh: ${new Date().toLocaleDateString('id-ID')}`],
       [''],
-      ['No', 'Lingkungan', 'Nomor KK', 'Nama Kepala Keluarga', 'Golongan', 'Jumlah Anggota', 'Status Keanggotaan']
+      ['No', 'Lingkungan', 'Nama Kepala Keluarga', 'Alamat', 'Golongan', 'Jumlah Jiwa', 'Susunan Anggota Keluarga', 'Status Keanggotaan']
     ]
 
     filteredKks.forEach((item, idx) => {
-      const anggota = getDummyAnggotaForKk(item.kk)
-      const gol = getDummyGolonganForKk(item.kk).golongan
+      const susunan = item.anggota.map(m => `${m.nama} (${m.peran})`).join('; ')
       rows.push([
         String(idx + 1),
         formatNamaLingkungan(item.lingkunganNama),
-        item.kk.no_kk || '-',
         item.kk.nama_kk,
-        gol,
-        String(anggota.length),
+        item.kk.alamat || '-',
+        item.golongan,
+        String(item.anggota.length),
+        susunan,
         item.kk.is_biduk !== false ? 'Warga KAJ' : 'Non-KAJ'
       ])
     })
@@ -617,7 +666,7 @@ export default function ParokiSekretariatPage() {
               {/* Dropdown Pemilihan Lingkungan */}
               <div className="w-full sm:w-64 space-y-1">
                 <Label className="text-[10px] uppercase font-bold text-slate-500">Pilih Lingkungan</Label>
-                <Select value={selectedLingkunganDafu} onValueChange={(val) => setSelectedLingkunganDafu(val || 'ALL')}>
+                <Select value={selectedLingkunganDafu} onValueChange={handleLingkunganDafuChange}>
                   <SelectTrigger className="bg-white border-slate-300 text-slate-900 text-xs font-semibold rounded-xl h-10">
                     <span className="truncate">{getNamaLingkunganFromAnyIdentifier(selectedLingkunganDafu)}</span>
                   </SelectTrigger>
@@ -691,11 +740,11 @@ export default function ParokiSekretariatPage() {
                   <TableRow>
                     <TableHead className="w-12 text-center font-bold text-slate-700">No</TableHead>
                     <TableHead className="w-44 font-bold text-slate-700">Lingkungan</TableHead>
-                    <TableHead className="font-bold text-slate-700">Kepala Keluarga</TableHead>
-                    <TableHead className="w-32 font-bold text-slate-700">Nomor KK</TableHead>
+                    <TableHead className="w-56 font-bold text-slate-700">Kepala Keluarga</TableHead>
+                    <TableHead className="font-bold text-slate-700">Alamat</TableHead>
                     <TableHead className="w-32 font-bold text-slate-700">Golongan</TableHead>
-                    <TableHead className="w-24 text-center font-bold text-slate-700">Jumlah Jiwa</TableHead>
-                    <TableHead className="w-28 text-center font-bold text-slate-700">Status KAJ</TableHead>
+                    <TableHead className="w-32 text-center font-bold text-slate-700">Jumlah Jiwa</TableHead>
+                    <TableHead className="w-24 text-center font-bold text-slate-700">Status KAJ</TableHead>
                     <TableHead className="w-16 text-center font-bold text-slate-700">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -708,13 +757,27 @@ export default function ParokiSekretariatPage() {
                     </TableRow>
                   ) : (
                     filteredKks.slice(0, 100).map((item, idx) => {
-                      const gol = getDummyGolonganForKk(item.kk)
-                      const anggota = getDummyAnggotaForKk(item.kk)
+                      const memberRolesSummary = item.anggota
+                        .map(m => m.peran)
+                        .reduce((acc: string[], role) => {
+                          const count = item.anggota.filter(m => m.peran === role).length
+                          const label = count > 1 ? `${count} ${role}` : role
+                          if (!acc.includes(label)) acc.push(label)
+                          return acc
+                        }, [])
+                        .slice(0, 3)
+                        .join(', ')
 
                       return (
                         <TableRow
                           key={`${item.lingkunganId}-${item.kk.id}`}
-                          onClick={() => setSelectedKkDetail({ kk: item.kk, lingkunganName: item.lingkunganNama, golongan: gol, anggota })}
+                          onClick={() => setSelectedKkDetail({
+                            kk: item.kk,
+                            lingkunganName: item.lingkunganNama,
+                            golongan: item.golongan,
+                            catatan: item.kk.kriteria_catatan,
+                            anggota: item.anggota
+                          })}
                           className="hover:bg-blue-50/50 cursor-pointer transition-colors"
                         >
                           <TableCell className="text-center font-mono text-slate-500 font-semibold">{idx + 1}</TableCell>
@@ -723,18 +786,25 @@ export default function ParokiSekretariatPage() {
                           </TableCell>
                           <TableCell>
                             <div className="font-semibold text-slate-900">{item.kk.nama_kk}</div>
-                            {item.kk.no_kk && item.kk.no_kk !== '-' && (
-                              <div className="text-[11px] text-slate-500 font-mono mt-0.5">No. KK: {item.kk.no_kk}</div>
-                            )}
+                            <div className="text-[11px] text-slate-500 font-medium">
+                              {item.anggota.length} Anggota Keluarga
+                            </div>
                           </TableCell>
-                          <TableCell className="font-mono text-slate-600">{item.kk.no_kk && item.kk.no_kk !== '-' ? item.kk.no_kk : '-'}</TableCell>
+                          <TableCell className="text-slate-600 text-xs">
+                            <div className="line-clamp-2 max-w-xs">{item.kk.alamat || '-'}</div>
+                          </TableCell>
                           <TableCell>
                             <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                              {gol.golongan}
+                              {item.golongan}
                             </span>
                           </TableCell>
-                          <TableCell className="text-center font-semibold text-slate-800">
-                            {anggota.length} <span className="text-[10px] text-slate-500 font-normal">Jiwa</span>
+                          <TableCell className="text-center">
+                            <div className="font-bold text-slate-800">{item.anggota.length} <span className="text-[11px] text-slate-500 font-normal">Jiwa</span></div>
+                            {memberRolesSummary && (
+                              <div className="text-[10px] text-slate-500 truncate max-w-[130px] mx-auto mt-0.5">
+                                {memberRolesSummary}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="text-center">
                             {item.kk.is_biduk !== false ? (
@@ -787,8 +857,8 @@ export default function ParokiSekretariatPage() {
               Rincian Keluarga: {selectedKkDetail?.kk.nama_kk}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              No. KK: {selectedKkDetail?.kk.no_kk || '-'} • Golongan:{' '}
-              <strong className="text-slate-800">{selectedKkDetail?.golongan.golongan}</strong>
+              Golongan: <strong className="text-slate-800">{selectedKkDetail?.golongan}</strong>
+              {selectedKkDetail?.catatan && <span> • Catatan: {selectedKkDetail.catatan}</span>}
             </DialogDescription>
           </DialogHeader>
 
