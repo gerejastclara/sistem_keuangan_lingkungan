@@ -17,6 +17,7 @@ export function purgeAllObsoleteLocalStorageCache() {
       const k = localStorage.key(i)
       if (
         k &&
+        !k.startsWith('custom_kks_deleted') &&
         (k.startsWith('custom_journals_') ||
           k === 'custom_journals_all_store' ||
           k.startsWith('custom_kks_') ||
@@ -25,8 +26,6 @@ export function purgeAllObsoleteLocalStorageCache() {
           k.startsWith('custom_golongan_') ||
           k.startsWith('profil_manual_') ||
           k.startsWith('pengurus_manual_') ||
-          k.startsWith('tx_kk_') ||
-          k.startsWith('kartu_setoran_') ||
           k.startsWith('dafu_approvals_store'))
       ) {
         keysToRemove.push(k)

@@ -112,10 +112,12 @@ export function ensureDummyKksForLingkungan(
     } catch (e) {}
   }
 
-  const isDeleted = (id?: string | null, name?: string | null): boolean => {
-    if (!id && !name) return false
+  const isDeleted = (id?: string | null, name?: string | null, alamat?: string | null): boolean => {
+    if (!id && !name && !alamat) return false
     const idClean = (id || '').toLowerCase().trim()
     const nameClean = (name || '').toLowerCase().trim()
+    const alamatClean = (alamat || '').toLowerCase().trim()
+    if (alamatClean.includes('[pindah]') || alamatClean.includes('[keluar]') || alamatClean === 'pindah / keluar') return true
     if (idClean && deletedSet.has(idClean)) return true
     if (nameClean && deletedSet.has(nameClean)) return true
     if (idClean && idClean.startsWith('kk-appr-') && deletedSet.has(idClean.replace('kk-appr-', ''))) return true
@@ -136,7 +138,7 @@ export function ensureDummyKksForLingkungan(
         k.nama_kk.toLowerCase().trim() !== 'dimas' &&
         !k.nama_kk.toLowerCase().includes('test12') &&
         !k.nama_kk.toLowerCase().includes('test 12') &&
-        !isDeleted(k.id, k.nama_kk)
+        !isDeleted(k.id, k.nama_kk, k.alamat)
       ) {
         combinedMap.set(k.id, k)
       }

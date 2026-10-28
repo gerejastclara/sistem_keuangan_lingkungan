@@ -6,7 +6,7 @@ import { KepalaKeluarga, JurnalTransaksi } from '@/lib/types'
 import { formatRupiah, MONTH_NAMES } from '@/lib/utils'
 import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getLingkunganDbUuid } from '@/lib/constants'
 import { reconcileJournals } from '@/lib/journalSync'
-import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
+import { ensureDummyKksForLingkungan, getDummyKkListForLingkungan } from '@/lib/dummyData'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
@@ -237,10 +237,14 @@ export default function KartuSetoranPage() {
               }
               setSourceOverrides(parsed)
             }
-            const rawStatus = localStorage.getItem(`kartu_setoran_umat_status_${targetLingkunganId}`)
-            if (rawStatus) {
-              setUmatStatusOverrides(JSON.parse(rawStatus))
+            const dbUuidForStatus = getLingkunganDbUuid(targetLingkunganId)
+            const rawStatus1 = localStorage.getItem(`kartu_setoran_umat_status_${targetLingkunganId}`)
+            const rawStatus2 = dbUuidForStatus ? localStorage.getItem(`kartu_setoran_umat_status_${dbUuidForStatus}`) : null
+            const mergedStatus = {
+              ...(rawStatus2 ? JSON.parse(rawStatus2) : {}),
+              ...(rawStatus1 ? JSON.parse(rawStatus1) : {})
             }
+            setUmatStatusOverrides(mergedStatus)
           } catch (e) {}
 
           // Load deletedSet
@@ -293,9 +297,27 @@ export default function KartuSetoranPage() {
             } catch (e) {}
           }
 
-          setAllDbKks(dbKks)
           const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, targetLingkunganNama || 'Lingkungan', dbKks)
           setKkList(finalKks)
+
+          // Gabungkan seluruh KK yang pernah ada (DB + CSV baseline) agar KK yang dihapus dari DAFU tetap muncul di Kartu Setoran dengan status Pindah
+          const baselineKks = getDummyKkListForLingkungan(targetLingkunganId, targetLingkunganNama || 'Lingkungan')
+          const activeNames = new Set(finalKks.map(k => (k.nama_kk || '').toLowerCase().trim()))
+          const allKnownMap = new Map<string, KepalaKeluarga>()
+          dbKks.forEach((k: KepalaKeluarga) => allKnownMap.set(k.id, k))
+          baselineKks.forEach((bk: KepalaKeluarga) => {
+            const bNorm = (bk.nama_kk || '').toLowerCase().trim()
+            const existsInDb = Array.from(allKnownMap.values()).some(x => (x.nama_kk || '').toLowerCase().trim() === bNorm)
+            if (!existsInDb) {
+              const isDeletedFromDafu = !activeNames.has(bNorm) || deletedSet.has(bNorm) || deletedSet.has((bk.id || '').toLowerCase().trim())
+              allKnownMap.set(bk.id, {
+                ...bk,
+                alamat: isDeletedFromDafu ? `${bk.alamat || ''} [PINDAH]`.trim() : bk.alamat
+              })
+            }
+          })
+          const allKnownKks = Array.from(allKnownMap.values())
+          setAllDbKks(allKnownKks)
 
           // Load Journals for this lingkungan
           let list: JurnalTransaksi[] = []
@@ -329,7 +351,8 @@ export default function KartuSetoranPage() {
                 const kkMatch = j.keterangan.match(/\[KK:\s*([^\]]+)\]/i)
                 if (kkMatch) {
                   const nameFromKet = kkMatch[1].trim()
-                  const found = finalKks.find(k => k.nama_kk.toLowerCase().trim() === nameFromKet.toLowerCase())
+                  const found = finalKks.find(k => k.nama_kk.toLowerCase().trim() === nameFromKet.toLowerCase()) ||
+                    allKnownKks.find(k => k.nama_kk.toLowerCase().trim() === nameFromKet.toLowerCase())
                   if (found) {
                     j.kepala_keluarga = found as any
                     j.kk_id = found.id
@@ -400,13 +423,14 @@ export default function KartuSetoranPage() {
       if (j.kepala_keluarga?.id && j.kepala_keluarga.id !== 'umum') {
         effectiveKkId = j.kepala_keluarga.id
       } else if (j.kepala_keluarga?.nama_kk) {
-        const found = kkList.find(k => k.nama_kk.toLowerCase().trim() === j.kepala_keluarga!.nama_kk.toLowerCase().trim())
+        const targetN = j.kepala_keluarga.nama_kk.toLowerCase().trim()
+        const found = kkList.find(k => k.nama_kk.toLowerCase().trim() === targetN) || allDbKks.find(k => k.nama_kk.toLowerCase().trim() === targetN)
         if (found) effectiveKkId = found.id
       } else if (j.keterangan) {
         const kkMatch = j.keterangan.match(/\[KK:\s*([^\]]+)\]/i)
         if (kkMatch) {
-          const nameFromKet = kkMatch[1].trim()
-          const found = kkList.find(k => k.nama_kk.toLowerCase().trim() === nameFromKet.toLowerCase())
+          const nameFromKet = kkMatch[1].trim().toLowerCase()
+          const found = kkList.find(k => k.nama_kk.toLowerCase().trim() === nameFromKet) || allDbKks.find(k => k.nama_kk.toLowerCase().trim() === nameFromKet)
           if (found) effectiveKkId = found.id
         }
       }
@@ -418,7 +442,8 @@ export default function KartuSetoranPage() {
             const parsed = JSON.parse(cached)
             if (parsed.id) effectiveKkId = parsed.id
             else if (parsed.nama_kk) {
-              const found = kkList.find(k => k.nama_kk.toLowerCase().trim() === parsed.nama_kk.toLowerCase().trim())
+              const targetN = parsed.nama_kk.toLowerCase().trim()
+              const found = kkList.find(k => k.nama_kk.toLowerCase().trim() === targetN) || allDbKks.find(k => k.nama_kk.toLowerCase().trim() === targetN)
               if (found) effectiveKkId = found.id
             }
           } catch (e) {}
@@ -564,6 +589,7 @@ export default function KartuSetoranPage() {
 
   const allPindahKeluarList: Array<{ kk: KepalaKeluarga; status: 'PINDAH' | 'KELUAR'; paidMonthsCount: number; isLunas: boolean }> = []
   const displayedKkList: DisplayKkItem[] = []
+  const activeDafuNameSet = new Set(kkList.map(k => (k.nama_kk || '').toLowerCase().trim()))
 
   Array.from(allCombinedKksMap.values()).forEach(k => {
     const cleanId = (k.id || '').toLowerCase().trim()
@@ -579,7 +605,7 @@ export default function KartuSetoranPage() {
       status = 'PINDAH'
     } else if (combinedText.includes('keluar')) {
       status = 'KELUAR'
-    } else if (deletedKkSet.has(cleanId) || deletedKkSet.has(cleanName)) {
+    } else if (deletedKkSet.has(cleanId) || deletedKkSet.has(cleanName) || !activeDafuNameSet.has(cleanName)) {
       status = 'PINDAH'
     }
 
@@ -598,11 +624,9 @@ export default function KartuSetoranPage() {
 
     // Syarat tampil:
     // 1. Umat aktif selalu tampil.
-    // 2. Umat pindah/keluar tampil jika setorannya di tengah (>0 dan <12) atau lunas (>=12)
-    // 3. ATAU jika toggle showAllStatus aktif
-    // 4. ATAU jika nama sedang dicari di kotak pencarian
+    // 2. Umat yang dihapus dari DAFU / berstatus Pindah atau Keluar tetap tampil di Kartu Setoran dengan notif Pindah.
     const isSearchingThis = searchQuery.trim().length > 0 && k.nama_kk.toLowerCase().includes(searchQuery.toLowerCase().trim())
-    if (status === 'AKTIF' || paidMonthsCount > 0 || showAllStatus || isSearchingThis) {
+    if (status === 'AKTIF' || status === 'PINDAH' || status === 'KELUAR' || paidMonthsCount > 0 || showAllStatus || isSearchingThis) {
       displayedKkList.push({
         ...k,
         statusUmat: status,
@@ -614,7 +638,7 @@ export default function KartuSetoranPage() {
 
   displayedKkList.sort((a, b) => a.nama_kk.localeCompare(b.nama_kk))
 
-  const handleRestoreUmat = (kkId: string, namaKk: string) => {
+  const handleRestoreUmat = async (kkId: string, namaKk: string) => {
     if (!lingkunganId) return
     const cleanId = (kkId || '').trim()
     const cleanName = (namaKk || '').toLowerCase().trim()
@@ -658,6 +682,24 @@ export default function KartuSetoranPage() {
       pruneList(`custom_kks_deleted_${lingkunganId}`)
       if (dbUuid) pruneList(`custom_kks_deleted_${dbUuid}`)
     } catch (e) {}
+
+    // 3. Bersihkan tag [PINDAH] / [KELUAR] di Supabase kepala_keluarga
+    try {
+      const targetKk = allDbKks.find(k => k.id === cleanId || (k.nama_kk || '').toLowerCase().trim() === cleanName)
+      const cleanedAlamat = (targetKk?.alamat || '')
+        .replace(/\[pindah\]/gi, '')
+        .replace(/\[keluar\]/gi, '')
+        .replace(/pindah\s*\/\s*keluar/gi, '')
+        .trim()
+      await supabase.from('kepala_keluarga').update({ alamat: cleanedAlamat }).eq('id', cleanId)
+      if (dbUuid && namaKk) {
+        await supabase.from('kepala_keluarga').update({ alamat: cleanedAlamat }).eq('lingkungan_id', dbUuid).ilike('nama_kk', namaKk.trim())
+      }
+    } catch (e) {}
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('dafuDataUpdated'))
+    }
   }
 
   const handleRestoreAllUmat = () => {

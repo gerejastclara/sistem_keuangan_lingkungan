@@ -111,6 +111,8 @@ export default function DashboardOverviewPage() {
   const [editApprovalModalItem, setEditApprovalModalItem] = useState<DafuApprovalItem | null>(null)
   const [deleteApprovalItem, setDeleteApprovalItem] = useState<DafuApprovalItem | null>(null)
   const [deletingApproval, setDeletingApproval] = useState(false)
+  const [deleteKkModalItem, setDeleteKkModalItem] = useState<{ id: string; nama: string; alamat?: string | null } | null>(null)
+  const [deletingKk, setDeletingKk] = useState(false)
 
 
   // Edit Pengurus Modal State (Khusus Sekretaris & Paroki)
@@ -599,48 +601,90 @@ export default function DashboardOverviewPage() {
     setGolonganMap(newGolonganMap)
   }
 
-  const handleDeleteKk = async (id: string, nama: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus data Kepala Keluarga "${nama}"?`)) return
+  const handleDeleteKk = (id: string, nama: string) => {
+    const found = kkList.find(k => k.id === id || (k.nama_kk || '').toLowerCase().trim() === (nama || '').toLowerCase().trim())
+    setDeleteKkModalItem({
+      id,
+      nama,
+      alamat: found?.alamat || null
+    })
+  }
+
+  const handleConfirmDeleteKk = async () => {
+    if (!deleteKkModalItem) return
+    setDeletingKk(true)
+
+    const cleanId = (deleteKkModalItem.id || '').trim()
+    const cleanName = (deleteKkModalItem.nama || '').trim()
+    const existingAlamat = (deleteKkModalItem.alamat || '').trim()
+    const dbUuid = getLingkunganDbUuid(lingkunganId)
+
+    if (typeof window !== 'undefined') {
+      try {
+        const rawAll = localStorage.getItem('custom_kks_deleted_store')
+        const list: string[] = rawAll ? JSON.parse(rawAll) : []
+        const toAdd = [
+          cleanId,
+          cleanId.toLowerCase(),
+          cleanName,
+          cleanName.toLowerCase(),
+          cleanId.replace('kk-appr-', ''),
+          `kk-appr-${cleanId}`
+        ]
+        toAdd.forEach(item => {
+          if (item && !list.includes(item)) list.push(item)
+        })
+        localStorage.setItem('custom_kks_deleted_store', JSON.stringify(list))
+        if (lingkunganId) localStorage.setItem(`custom_kks_deleted_${lingkunganId}`, JSON.stringify(list))
+        if (dbUuid) localStorage.setItem(`custom_kks_deleted_${dbUuid}`, JSON.stringify(list))
+
+        const markStatus = (key: string) => {
+          const rawS = localStorage.getItem(key)
+          const mapS = rawS ? JSON.parse(rawS) : {}
+          mapS[cleanId] = 'PINDAH'
+          mapS[cleanName.toLowerCase()] = 'PINDAH'
+          localStorage.setItem(key, JSON.stringify(mapS))
+        }
+        if (lingkunganId) markStatus(`kartu_setoran_umat_status_${lingkunganId}`)
+        if (dbUuid) markStatus(`kartu_setoran_umat_status_${dbUuid}`)
+      } catch (e) {}
+    }
+
+    await removeDafuApproval(cleanId, cleanName)
 
     try {
-      await supabase.from('anggota_keluarga').delete().eq('kk_id', id)
-      await supabase.from('golongan_keluarga').delete().eq('kk_id', id)
-      await supabase.from('kepala_keluarga').delete().eq('id', id)
+      const stripped = cleanId.replace('kk-appr-', '')
+      const newAlamat = existingAlamat.toLowerCase().includes('[pindah]')
+        ? existingAlamat
+        : `${existingAlamat} [PINDAH]`.trim()
+
+      await supabase.from('kepala_keluarga').update({ alamat: newAlamat }).eq('id', cleanId)
+      if (stripped !== cleanId) {
+        await supabase.from('kepala_keluarga').update({ alamat: newAlamat }).eq('id', stripped)
+      }
+      if (cleanName && dbUuid) {
+        await supabase.from('kepala_keluarga').update({ alamat: newAlamat }).eq('lingkungan_id', dbUuid).ilike('nama_kk', cleanName)
+      }
     } catch (err) {}
 
     setKkList(prev => {
-      const updated = prev.filter(k => k.id !== id)
+      const updated = prev.filter(k =>
+        k.id !== cleanId &&
+        k.id !== `kk-appr-${cleanId}` &&
+        (k.nama_kk || '').toLowerCase().trim() !== cleanName.toLowerCase()
+      )
       if (lingkunganId) localStorage.setItem(`custom_kks_${lingkunganId}`, JSON.stringify(updated))
+      if (dbUuid) localStorage.setItem(`custom_kks_${dbUuid}`, JSON.stringify(updated))
       return updated
     })
 
-    setAnggotaMap(prev => {
-      const next = { ...prev }
-      delete next[id]
-      try {
-        const rawA = localStorage.getItem('custom_anggota_all_store')
-        if (rawA) {
-          const store = JSON.parse(rawA)
-          delete store[id]
-          localStorage.setItem('custom_anggota_all_store', JSON.stringify(store))
-        }
-      } catch (e) {}
-      return next
-    })
+    setDeletingKk(false)
+    setDeleteKkModalItem(null)
 
-    setGolonganMap(prev => {
-      const next = { ...prev }
-      delete next[id]
-      try {
-        const rawG = localStorage.getItem('custom_golongan_all_store')
-        if (rawG) {
-          const store = JSON.parse(rawG)
-          delete store[id]
-          localStorage.setItem('custom_golongan_all_store', JSON.stringify(store))
-        }
-      } catch (e) {}
-      return next
-    })
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('dafuDataUpdated'))
+      window.dispatchEvent(new Event('storage'))
+    }
   }
 
   // Approval count & sets for indicators
@@ -2692,6 +2736,49 @@ export default function DashboardOverviewPage() {
               className="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl cursor-pointer"
             >
               {deletingApproval ? 'Menghapus...' : 'Ya, Hapus Pengajuan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Konfirmasi Hapus Anggota / Kepala Keluarga */}
+      <Dialog open={!!deleteKkModalItem} onOpenChange={(o) => !o && !deletingKk && setDeleteKkModalItem(null)}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900 border-slate-200 rounded-2xl p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#F6F2F2] border border-[#E3D8D8] flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4 text-[#6B5353]" />
+              </div>
+              Hapus Anggota / Kepala Keluarga
+            </DialogTitle>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Apakah Anda yakin ingin menghapus anggota / Kepala Keluarga{' '}
+              <strong className="text-slate-900">{deleteKkModalItem?.nama}</strong>?
+            </p>
+            <div className="mt-2.5 p-3 rounded-xl bg-[#F6F2F2] border border-[#E3D8D8] text-[11px] text-[#6B5353] leading-relaxed">
+              Data ini akan langsung terhapus dari <strong>DAFU Sekretaris</strong> dan <strong>DAFU Bendahara</strong>, namun riwayatnya tetap tersimpan di <strong>Kartu Setoran</strong> dengan tanda status <strong>Pindah</strong>.
+            </div>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteKkModalItem(null)}
+              disabled={deletingKk}
+              className="text-xs font-semibold text-slate-700 border-slate-300 rounded-xl cursor-pointer px-4"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleConfirmDeleteKk}
+              disabled={deletingKk}
+              className="bg-[#7A5C5C] hover:bg-[#6B5353] text-white font-semibold text-xs rounded-xl cursor-pointer px-4"
+            >
+              {deletingKk ? 'Menghapus...' : 'Ya, Hapus Anggota'}
             </Button>
           </DialogFooter>
         </DialogContent>

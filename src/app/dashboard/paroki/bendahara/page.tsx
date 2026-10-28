@@ -402,7 +402,11 @@ export default function ParokiBendaharaPage() {
     let countTertib = 0
 
     const list = allLingkungan.map(ling => {
-      const kks = dafuByLingkungan[ling.id] || []
+      const rawKks = dafuByLingkungan[ling.id] || []
+      const kks = rawKks.filter(k => {
+        const al = (k.alamat || '').toLowerCase()
+        return !al.includes('[pindah]') && !al.includes('[keluar]') && al !== 'pindah / keluar'
+      })
       const stats = getLingkunganStats(ling.id, ling.nama_lingkungan)
       const jumlahKkTotal = kks.length > 0 ? kks.length : (stats.kkCount > 0 ? stats.kkCount : 0)
       grandTotalKk += jumlahKkTotal
@@ -622,11 +626,6 @@ export default function ParokiBendaharaPage() {
     })
 
     return rows.filter(item => {
-      const isSearching = searchKk.trim().length > 0
-      if (item.statusUmat !== 'AKTIF' && item.totalBayar === 0 && !showAllStatus && !isSearching) {
-        return false
-      }
-
       if (searchKk) {
         const q = searchKk.toLowerCase()
         const matchName = item.kk.nama_kk.toLowerCase().includes(q)

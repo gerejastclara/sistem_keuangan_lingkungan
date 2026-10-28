@@ -654,22 +654,22 @@ export async function removeDafuApproval(identifier: string, namaKk?: string | n
   const cleanName = (namaKk || '').trim()
 
   try {
-    const filters: string[] = []
+    const isUuidStr = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
     if (cleanId) {
-      filters.push(`id.eq.${cleanId}`)
-      filters.push(`kk_id.eq.${cleanId}`)
       const stripped = cleanId.replace('kk-appr-', '')
+      if (isUuidStr(cleanId)) {
+        await supabase.from('dafu_approvals').delete().eq('id', cleanId)
+      }
+      await supabase.from('dafu_approvals').delete().eq('kk_id', cleanId)
       if (stripped && stripped !== cleanId) {
-        filters.push(`id.eq.${stripped}`)
-        filters.push(`kk_id.eq.${stripped}`)
+        if (isUuidStr(stripped)) {
+          await supabase.from('dafu_approvals').delete().eq('id', stripped)
+        }
+        await supabase.from('dafu_approvals').delete().eq('kk_id', stripped)
       }
     }
     if (cleanName) {
-      filters.push(`nama_kk.eq.${cleanName}`)
-    }
-
-    if (filters.length > 0) {
-      await supabase.from('dafu_approvals').delete().or(filters.join(','))
+      await supabase.from('dafu_approvals').delete().eq('nama_kk', cleanName)
     }
   } catch (err) {
     console.warn('Notice removing dafu approval from Supabase:', err)
