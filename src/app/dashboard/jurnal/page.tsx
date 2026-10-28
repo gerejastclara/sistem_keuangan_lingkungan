@@ -301,6 +301,51 @@ export default function JurnalPage() {
       })
     } catch (e) {}
 
+    // Pastikan nomor urut dokumen (001, 002, 003...) unik dan berurutan di setiap bulan (tanpa menghitung Saldo Awal)
+    try {
+      const byMonth = new Map<string, JurnalTransaksi[]>()
+      list.forEach(j => {
+        if (j.no_bukti?.startsWith('[SA/') || (j.keterangan || '').includes('[SALDO_AWAL]')) return
+        const d = new Date(j.tanggal)
+        const m = String(isNaN(d.getMonth()) ? 9 : d.getMonth() + 1).padStart(2, '0')
+        const y = isNaN(d.getFullYear()) ? '2026' : String(d.getFullYear())
+        const key = `${y}-${m}`
+        if (!byMonth.has(key)) byMonth.set(key, [])
+        byMonth.get(key)!.push(j)
+      })
+
+      byMonth.forEach((monthItems, key) => {
+        const [y, m] = key.split('-')
+        monthItems.sort((a, b) => {
+          const tA = new Date(a.tanggal).getTime() || 0
+          const tB = new Date(b.tanggal).getTime() || 0
+          if (tA !== tB) return tA - tB
+          const nA = parseInt((a.no_bukti || '').split('/')[1] || '0', 10) || 0
+          const nB = parseInt((b.no_bukti || '').split('/')[1] || '0', 10) || 0
+          if (nA !== nB) return nA - nB
+          return (a.id || '').localeCompare(b.id || '')
+        })
+
+        const seqNumbers = monthItems.map(j => parseInt((j.no_bukti || '').split('/')[1] || '0', 10) || 0)
+        const hasDuplicateOrGap = seqNumbers.some((n, idx) => n !== idx + 1)
+
+        if (hasDuplicateOrGap) {
+          monthItems.forEach((j, idx) => {
+            const isMasuk = j.tipe_arus === 'MASUK'
+            const isKas = j.sumber_kas === 'KAS' || j.coa_debit === '1200' || j.coa_kredit === '1200'
+            const prefix = (j.no_bukti && /^(BKM|BBM|BKK|BBK)\//.test(j.no_bukti))
+              ? j.no_bukti.split('/')[0]
+              : (isMasuk ? (isKas ? 'BKM' : 'BBM') : (isKas ? 'BKK' : 'BBK'))
+            const expectedNoBukti = `${prefix}/${String(idx + 1).padStart(3, '0')}/${m}/${y}`
+            if (j.no_bukti !== expectedNoBukti) {
+              j.no_bukti = expectedNoBukti
+              supabase.from('jurnal_transaksi').update({ no_bukti: expectedNoBukti }).eq('id', j.id).then(() => {})
+            }
+          })
+        }
+      })
+    } catch (e) {}
+
     setJurnalList(list)
     return list
   }
@@ -472,14 +517,19 @@ export default function JurnalPage() {
     const m = String(isNaN(d.getMonth()) ? 9 : d.getMonth() + 1).padStart(2, '0')
     const y = isNaN(d.getFullYear()) ? '2026' : String(d.getFullYear())
 
-    // Hitung seluruh transaksi di bulan & tahun ini agar nomor urut selalu naik berurutan (001, 002, 003...)
+    // Hitung seluruh transaksi di bulan & tahun ini (selain Saldo Awal) agar nomor urut selalu naik berurutan & unik (001, 002, 003...)
     const monthTransactions = jurnalList.filter(j => {
+      if (j.no_bukti?.startsWith('[SA/') || (j.keterangan || '').includes('[SALDO_AWAL]')) return false
       const jd = new Date(j.tanggal)
       const jm = String(isNaN(jd.getMonth()) ? 9 : jd.getMonth() + 1).padStart(2, '0')
       const jy = isNaN(jd.getFullYear()) ? '2026' : String(jd.getFullYear())
       return jm === m && jy === y
     })
-    const matchCount = monthTransactions.length + 1
+    const maxExistingSeq = monthTransactions.reduce((max, j) => {
+      const seq = parseInt((j.no_bukti || '').split('/')[1] || '0', 10) || 0
+      return seq > max ? seq : max
+    }, 0)
+    const matchCount = Math.max(monthTransactions.length, maxExistingSeq) + 1
 
     return `${prefix}/${String(matchCount).padStart(3, '0')}/${m}/${y}`
   }
