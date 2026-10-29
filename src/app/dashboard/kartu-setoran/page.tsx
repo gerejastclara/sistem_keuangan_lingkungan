@@ -39,6 +39,101 @@ const JENIS_KARTU_OPTIONS = [
   { code: '4501', name: 'Iuran Celengan CYTM — COA 4501', labelShort: 'CYTM' }
 ]
 
+interface KartuMappingConfig {
+  masukCodes: string[]
+  keluarCodes: string[]
+  keywords: string[]
+}
+
+const KARTU_CONFIGS: Record<string, KartuMappingConfig> = {
+  '4100': {
+    masukCodes: ['4100'],
+    keluarCodes: ['5100', '5900'],
+    keywords: ['kas lingkungan', 'iuran kas']
+  },
+  '4200': {
+    masukCodes: ['4200'],
+    keluarCodes: ['5290'],
+    keywords: ['asak', 'beasiswa']
+  },
+  '4120': {
+    masukCodes: ['4120'],
+    keluarCodes: ['5300', '5270', '1300'],
+    keywords: ['dahar', 'romo', 'pastoran']
+  },
+  '4300': {
+    masukCodes: ['4300'],
+    keluarCodes: ['5280', '1400'],
+    keywords: ['yusuf', 'kematian']
+  },
+  '5340': {
+    masukCodes: ['4400', '4500'],
+    keluarCodes: ['5340'],
+    keywords: ['ppg', 'pembangunan']
+  },
+  '4501': {
+    masukCodes: ['4501'],
+    keluarCodes: ['5360'],
+    keywords: ['cytm', 'celengan']
+  }
+}
+
+function parseAllocatedMonths(keterangan: string, fallbackMonth?: number): number[] {
+  if (!keterangan) return fallbackMonth ? [fallbackMonth] : []
+  const bulanMatch = keterangan.match(/\[Bulan:\s*([^\]]+)\]/i)
+  if (!bulanMatch) return fallbackMonth ? [fallbackMonth] : []
+
+  const rawContent = bulanMatch[1].trim()
+  const monthMapLookup: Record<string, number> = {
+    '1': 1, '01': 1, 'jan': 1, 'januari': 1,
+    '2': 2, '02': 2, 'feb': 2, 'februari': 2,
+    '3': 3, '03': 3, 'mar': 3, 'maret': 3,
+    '4': 4, '04': 4, 'apr': 4, 'april': 4,
+    '5': 5, '05': 5, 'mei': 5,
+    '6': 6, '06': 6, 'jun': 6, 'juni': 6,
+    '7': 7, '07': 7, 'jul': 7, 'juli': 7,
+    '8': 8, '08': 8, 'ags': 8, 'agustus': 8,
+    '9': 9, '09': 9, 'sep': 9, 'september': 9,
+    '10': 10, 'okt': 10, 'oktober': 10,
+    '11': 11, 'nov': 11, 'november': 11,
+    '12': 12, 'des': 12, 'desember': 12
+  }
+
+  const results: number[] = []
+  const rangeMatch = rawContent.match(/^([a-z0-9]+)\s*[-–—]\s*([a-z0-9]+)$/i)
+  if (rangeMatch) {
+    const startM = monthMapLookup[rangeMatch[1].toLowerCase()]
+    const endM = monthMapLookup[rangeMatch[2].toLowerCase()]
+    if (startM && endM && startM <= endM) {
+      for (let m = startM; m <= endM; m++) {
+        results.push(m)
+      }
+      return results
+    }
+  }
+
+  const parts = rawContent.split(/[,;\s]+/).map(s => s.trim().toLowerCase())
+  parts.forEach(p => {
+    const subRange = p.match(/^([a-z0-9]+)[-–—]([a-z0-9]+)$/i)
+    if (subRange) {
+      const sM = monthMapLookup[subRange[1].toLowerCase()]
+      const eM = monthMapLookup[subRange[2].toLowerCase()]
+      if (sM && eM && sM <= eM) {
+        for (let m = sM; m <= eM; m++) {
+          if (!results.includes(m)) results.push(m)
+        }
+        return
+      }
+    }
+    const mNum = monthMapLookup[p]
+    if (mNum && !results.includes(mNum)) {
+      results.push(mNum)
+    }
+  })
+
+  return results.length > 0 ? results : (fallbackMonth ? [fallbackMonth] : [])
+}
+
 function getDynamicJenisKartuOptions(): Array<{ code: string; name: string; labelShort: string }> {
   return JENIS_KARTU_OPTIONS
 }
@@ -57,6 +152,7 @@ interface SetoranDetail {
   nominal: number
   sumber: SumberSetoranType
   penalangNama?: string
+  disetorParoki?: boolean
 }
 
 function parseOverride(raw: any): SetoranOverrideData {
@@ -379,22 +475,50 @@ export default function KartuSetoranPage() {
     }
   }, [supabase])
 
-  // Filter journals for selected COA and Year
+  // Filter journals for selected COA (uang masuk penerimaan umat & uang keluar penyetoran ke paroki) and Year
+  const cfg = KARTU_CONFIGS[selectedCoa] || {
+    masukCodes: [selectedCoa],
+    keluarCodes: [],
+    keywords: []
+  }
+  const allTargetCodes = [...cfg.masukCodes, ...cfg.keluarCodes]
+
   const yearJournals = jurnalList.filter((j) => {
     const d = new Date(j.tanggal)
     const matchesYear = d.getFullYear() === selectedYear
-    const matchesCoa = j.coa_kredit === selectedCoa || j.coa_debit === selectedCoa
-    return matchesYear && matchesCoa
+    if (!matchesYear) return false
+
+    const matchesCoa = allTargetCodes.some(c => c === j.coa_debit || c === j.coa_kredit)
+    const desc = (j.keterangan || '').toLowerCase()
+    const matchesKeyword = cfg.keywords.some(kw => desc.includes(kw))
+
+    return matchesCoa || matchesKeyword
   })
 
   // Calculate setoran detail map: KK_ID -> Month (1..12) -> SetoranDetail
   const setoranMap = new Map<string, Record<number, SetoranDetail>>()
   const uniqueKkIdsWithSetoran = new Set<string>()
   let grandTotalSetoran = 0
+  let grandTotalDisetorParoki = 0
 
   yearJournals.forEach((j) => {
     const d = new Date(j.tanggal)
     const month = d.getMonth() + 1 // 1..12
+    const rawNom = Number(j.nominal) || 0
+
+    // Deteksi apakah transaksi ini adalah Uang Keluar (Disetor ke Paroki / Kas Keluar Lingkungan)
+    const isUangKeluar = 
+      j.tipe_arus === 'KELUAR' || 
+      cfg.keluarCodes.includes(j.coa_debit) || 
+      j.no_bukti?.startsWith('BBK') || 
+      j.no_bukti?.startsWith('BKK') || 
+      (j.coa_debit && j.coa_debit.startsWith('5'))
+
+    if (isUangKeluar) {
+      grandTotalDisetorParoki += rawNom
+    } else {
+      grandTotalSetoran += rawNom
+    }
     
     // Tentukan ID KK yang sebenarnya:
     let effectiveKkId = j.kk_id
@@ -436,72 +560,15 @@ export default function KartuSetoranPage() {
     }
 
     const kkId = effectiveKkId || 'umum'
-    const rawNom = Number(j.nominal) || 0
-    const isPengurangan = j.tipe_arus === 'KELUAR' || (j.coa_debit === selectedCoa && j.coa_kredit !== selectedCoa)
-    const nom = isPengurangan ? -Math.abs(rawNom) : Math.abs(rawNom)
 
     if (!setoranMap.has(kkId)) {
       setoranMap.set(kkId, {})
     }
     const kkMonths = setoranMap.get(kkId)!
 
-    // Cek apakah transaksi memiliki alokasi multi-bulan
-    // Contoh: [Bulan: 1, 2, 3] atau [Bulan: Jan, Feb, Mar] atau [Bulan: Jan-Jun]
-    const bulanMatch = (j.keterangan || '').match(/\[Bulan:\s*([^\]]+)\]/i)
-    let targetMonths: number[] = [month]
-    if (bulanMatch) {
-      const parsedMonths: number[] = []
-      const monthMapLookup: Record<string, number> = {
-        '1': 1, '01': 1, 'jan': 1, 'januari': 1,
-        '2': 2, '02': 2, 'feb': 2, 'februari': 2,
-        '3': 3, '03': 3, 'mar': 3, 'maret': 3,
-        '4': 4, '04': 4, 'apr': 4, 'april': 4,
-        '5': 5, '05': 5, 'mei': 5,
-        '6': 6, '06': 6, 'jun': 6, 'juni': 6,
-        '7': 7, '07': 7, 'jul': 7, 'juli': 7,
-        '8': 8, '08': 8, 'ags': 8, 'agustus': 8,
-        '9': 9, '09': 9, 'sep': 9, 'september': 9,
-        '10': 10, 'okt': 10, 'oktober': 10,
-        '11': 11, 'nov': 11, 'november': 11,
-        '12': 12, 'des': 12, 'desember': 12
-      }
-
-      const rawContent = bulanMatch[1].trim()
-      const rangeMatch = rawContent.match(/^([a-z0-9]+)\s*[-–—]\s*([a-z0-9]+)$/i)
-      if (rangeMatch) {
-        const startM = monthMapLookup[rangeMatch[1].toLowerCase()]
-        const endM = monthMapLookup[rangeMatch[2].toLowerCase()]
-        if (startM && endM && startM <= endM) {
-          for (let m = startM; m <= endM; m++) {
-            parsedMonths.push(m)
-          }
-        }
-      } else {
-        const monthParts = rawContent.split(/[,;\s]+/).map(s => s.trim().toLowerCase())
-        monthParts.forEach(p => {
-          const subRange = p.match(/^([a-z0-9]+)[-–—]([a-z0-9]+)$/i)
-          if (subRange) {
-            const sM = monthMapLookup[subRange[1].toLowerCase()]
-            const eM = monthMapLookup[subRange[2].toLowerCase()]
-            if (sM && eM && sM <= eM) {
-              for (let m = sM; m <= eM; m++) {
-                if (!parsedMonths.includes(m)) parsedMonths.push(m)
-              }
-              return
-            }
-          }
-          if (monthMapLookup[p] && !parsedMonths.includes(monthMapLookup[p])) {
-            parsedMonths.push(monthMapLookup[p])
-          }
-        })
-      }
-
-      if (parsedMonths.length > 0) {
-        targetMonths = parsedMonths
-      }
-    }
-
-    const nomPerMonth = Math.round(nom / targetMonths.length)
+    // Alokasi multi-bulan dari helper parseAllocatedMonths
+    const targetMonths = parseAllocatedMonths(j.keterangan || '', month)
+    const nomPerMonth = Math.round(rawNom / (targetMonths.length || 1))
 
     targetMonths.forEach((mNum) => {
       // Tentukan sumber & penalang:
@@ -537,17 +604,32 @@ export default function KartuSetoranPage() {
       }
 
       const current = kkMonths[mNum]
-      if (current) {
-        current.nominal += nomPerMonth
-        if (sumber !== 'SENDIRI') {
-          current.sumber = sumber
-          current.penalangNama = penalangNama
+      if (isUangKeluar) {
+        // Transaksi Uang Keluar (Disetor ke Paroki)
+        if (current) {
+          current.disetorParoki = true
+        } else {
+          kkMonths[mNum] = {
+            nominal: nomPerMonth,
+            sumber: sumber,
+            penalangNama: penalangNama,
+            disetorParoki: true
+          }
         }
       } else {
-        kkMonths[mNum] = {
-          nominal: nomPerMonth,
-          sumber: sumber,
-          penalangNama: penalangNama
+        // Transaksi Uang Masuk (Iuran dari Umat)
+        if (current) {
+          current.nominal += nomPerMonth
+          if (sumber !== 'SENDIRI') {
+            current.sumber = sumber
+            current.penalangNama = penalangNama
+          }
+        } else {
+          kkMonths[mNum] = {
+            nominal: nomPerMonth,
+            sumber: sumber,
+            penalangNama: penalangNama
+          }
         }
       }
     })
@@ -555,7 +637,6 @@ export default function KartuSetoranPage() {
     if (kkId !== 'umum') {
       uniqueKkIdsWithSetoran.add(kkId)
     }
-    grandTotalSetoran += nom
   })
 
   const selectedCoaObj = kartuOptions.find(c => c.code === selectedCoa) || kartuOptions[0] || { code: selectedCoa, name: `COA ${selectedCoa}`, labelShort: `COA ${selectedCoa}` }
@@ -902,18 +983,24 @@ export default function KartuSetoranPage() {
         </div>
       </div>
 
-      {/* 2. 2 SUMMARY METRIC BOXES */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* 2. 3 SUMMARY METRIC BOXES */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Card 1: Jumlah KK yang Setor */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
           <div className="text-xs font-medium text-slate-500">Jumlah KK yang Setor</div>
           <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5 font-serif">{totalKkCount}</div>
         </div>
 
-        {/* Card 2: Total Setoran Tahun Ini */}
+        {/* Card 2: Total Setoran */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Total Setoran Tahun Ini</div>
+          <div className="text-xs font-medium text-slate-500">Total Setoran</div>
           <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5 font-serif">{formatRupiah(grandTotalSetoran)}</div>
+        </div>
+
+        {/* Card 3: Total yang Sudah Disetor ke Paroki */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+          <div className="text-xs font-medium text-slate-500">Total yang Sudah Disetor ke Paroki</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5 font-serif">{formatRupiah(grandTotalDisetorParoki)}</div>
         </div>
       </div>
 
@@ -957,6 +1044,10 @@ export default function KartuSetoranPage() {
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F6F2F2] text-[#6B5353] border border-[#DECFCF] font-medium text-[10px]">
               <span className="w-2 h-2 rounded-full bg-[#9E7B7B]"></span>
               Umat Pindah / Keluar
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#EDF4FB] text-[#2F5275] border border-[#D0E2F2] font-medium text-[10px]">
+              <span className="text-[10px] text-[#2B5D88] font-bold">✓</span>
+              Disetor ke Paroki
             </div>
           </div>
         </div>
@@ -1127,6 +1218,7 @@ export default function KartuSetoranPage() {
                                     >
                                       <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
                                       <span className="text-[10px] text-[#8C7B65] font-bold">★</span>
+                                      {item?.disetorParoki && <span className="text-[10px] text-[#2B5D88] font-bold" title="Sudah disetor ke Paroki">✓</span>}
                                     </button>
 
                                     {/* Pop up kecil / hover card note info donatur */}
@@ -1151,14 +1243,18 @@ export default function KartuSetoranPage() {
                                 ) : (
                                   <span
                                     title={
-                                      sumber === 'PAROKI'
+                                      item?.disetorParoki
+                                        ? `Sudah disetor ke Paroki (${formatRupiah(val)})`
+                                        : sumber === 'PAROKI'
                                         ? `Ditalangi Paroki (${formatRupiah(val)})`
                                         : sumber === 'DANA_LINGKUNGAN'
                                         ? `Dari Kas Lingkungan (${formatRupiah(val)})`
                                         : `Bayar Sendiri (${formatRupiah(val)})`
                                     }
                                     className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${
-                                      sumber === 'PAROKI'
+                                      item?.disetorParoki
+                                        ? 'bg-[#EDF4FB] text-[#2F5275] border border-[#D0E2F2]'
+                                        : sumber === 'PAROKI'
                                         ? 'bg-slate-100 text-slate-700 border border-slate-200/90'
                                         : sumber === 'DANA_LINGKUNGAN'
                                         ? 'bg-[#F4F3F7] text-[#5B546E] border border-[#E0DDE8]'
@@ -1166,7 +1262,8 @@ export default function KartuSetoranPage() {
                                     }`}
                                   >
                                     <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
-                                    {sumber === 'PAROKI' && <span className="text-[10px] text-slate-600 font-bold">✝</span>}
+                                    {item?.disetorParoki && <span className="text-[10px] text-[#2B5D88] font-bold">✓</span>}
+                                    {!item?.disetorParoki && sumber === 'PAROKI' && <span className="text-[10px] text-slate-600 font-bold">✝</span>}
                                   </span>
                                 )
                               ) : val < 0 ? (
