@@ -275,8 +275,31 @@ export default function LaporanPage() {
   // Kenaikan / Penurunan Kas (B - C)
   const surplusDefisit = totalPenerimaan - totalPengeluaran
 
+  const monthNum = parseInt(selectedMonth, 10)
+
+  // Hitung Saldo Awal Bergulir (Rolling Balance):
+  // Bulan 1 (Januari) atau 1 Tahun Penuh: memakai saldo awal tahunan (saldoAwalBank).
+  // Bulan M (M > 1, misal Februari): memakai Saldo Akhir bulan sebelumnya (M-1)
+  // yaitu: saldoAwalBank + (total masuk bulan 1 s/d M-1) - (total keluar bulan 1 s/d M-1).
+  let effectiveSaldoAwal = saldoAwalBank
+  if (!isYearly && !isNaN(monthNum) && monthNum > 1) {
+    let priorNet = 0
+    jurnalList.forEach((j) => {
+      if (j.no_bukti === '[SA/1100]' || (j.keterangan || '').includes('[SALDO_AWAL]')) return
+      const d = new Date(j.tanggal)
+      const jYear = isNaN(d.getFullYear()) ? selectedYear : d.getFullYear()
+      const jMonth = d.getMonth() + 1
+      if (jYear === selectedYear && jMonth < monthNum) {
+        const nom = Number(j.nominal) || 0
+        if (j.tipe_arus === 'MASUK') priorNet += nom
+        else priorNet -= nom
+      }
+    })
+    effectiveSaldoAwal = saldoAwalBank + priorNet
+  }
+
   // Saldo Akhir Kas (A + B - C)
-  const saldoAkhir = saldoAwalBank + surplusDefisit
+  const saldoAkhir = effectiveSaldoAwal + surplusDefisit
 
   // Format report amount: if 0 display '—', if > 0 format with thousands separator
   const formatCellAmount = (amt: number): string => {
@@ -284,7 +307,6 @@ export default function LaporanPage() {
     return amt.toLocaleString('id-ID')
   }
 
-  const monthNum = parseInt(selectedMonth, 10)
   const selectedMonthName = isYearly ? 'Tahun Penuh' : (MONTH_NAMES[monthNum - 1] || '')
   const displayPeriodeTitle = isYearly 
     ? `Periode 1 Tahun Penuh (Januari - Desember ${selectedYear})` 
@@ -305,7 +327,7 @@ export default function LaporanPage() {
       ['(Disajikan dalam Rupiah kecuali dinyatakan lain)'],
       [''],
       ['COA', 'Uraian', columnLabel],
-      ['', 'Saldo Awal (A)', saldoAwalBank || 0],
+      ['', 'Saldo Awal (A)', effectiveSaldoAwal || 0],
       ['', 'Penerimaan terdiri dari :'],
       ['', '  Iuran Lingkungan']
     ]
@@ -498,7 +520,11 @@ export default function LaporanPage() {
                 <td className="py-2.5"></td>
                 <td className="py-2.5 pl-4 font-extrabold text-slate-900">Saldo Awal (A)</td>
                 <td className="py-2.5 text-right font-mono font-bold text-slate-900 pr-2">
-                  {saldoAwalBank > 0 ? saldoAwalBank.toLocaleString('id-ID') : '—'}
+                  {effectiveSaldoAwal > 0
+                    ? effectiveSaldoAwal.toLocaleString('id-ID')
+                    : effectiveSaldoAwal < 0
+                    ? `-${Math.abs(effectiveSaldoAwal).toLocaleString('id-ID')}`
+                    : '—'}
                 </td>
               </tr>
 
