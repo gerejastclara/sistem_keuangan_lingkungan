@@ -61,8 +61,8 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
     name: 'Dana Pastoran',
     formatType: 'MATRIKS',
     headerRightText: 'DANA PASTORAN',
-    coaCodes: ['5300', '4120'],
-    coaKeywords: ['pastoran']
+    coaCodes: ['5300', '5270', '4120', '1300'],
+    coaKeywords: ['pastoran', 'dahar']
   },
   {
     id: 'app',
@@ -105,6 +105,66 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
     coaKeywords: ['cytm', 'celengan', 'youth']
   }
 ]
+
+function parseAllocatedMonths(keterangan: string): number[] {
+  if (!keterangan) return []
+  const bulanMatch = keterangan.match(/\[Bulan:\s*([^\]]+)\]/i)
+  if (!bulanMatch) return []
+
+  const rawContent = bulanMatch[1].trim()
+  const monthMapLookup: Record<string, number> = {
+    '1': 1, '01': 1, 'jan': 1, 'januari': 1,
+    '2': 2, '02': 2, 'feb': 2, 'februari': 2,
+    '3': 3, '03': 3, 'mar': 3, 'maret': 3,
+    '4': 4, '04': 4, 'apr': 4, 'april': 4,
+    '5': 5, '05': 5, 'mei': 5,
+    '6': 6, '06': 6, 'jun': 6, 'juni': 6,
+    '7': 7, '07': 7, 'jul': 7, 'juli': 7,
+    '8': 8, '08': 8, 'ags': 8, 'agustus': 8,
+    '9': 9, '09': 9, 'sep': 9, 'september': 9,
+    '10': 10, 'okt': 10, 'oktober': 10,
+    '11': 11, 'nov': 11, 'november': 11,
+    '12': 12, 'des': 12, 'desember': 12
+  }
+
+  const results: number[] = []
+
+  // Check if whole content is a range like "Jan - Jun" or "1 - 6"
+  const rangeMatch = rawContent.match(/^([a-z0-9]+)\s*[-–—]\s*([a-z0-9]+)$/i)
+  if (rangeMatch) {
+    const startM = monthMapLookup[rangeMatch[1].toLowerCase()]
+    const endM = monthMapLookup[rangeMatch[2].toLowerCase()]
+    if (startM && endM && startM <= endM) {
+      for (let m = startM; m <= endM; m++) {
+        results.push(m)
+      }
+      return results
+    }
+  }
+
+  // Split by comma, semicolon, or space
+  const parts = rawContent.split(/[,;\s]+/).map(s => s.trim().toLowerCase())
+  parts.forEach(p => {
+    // Handle inline range like "Jan-Mar" or "1-4"
+    const subRange = p.match(/^([a-z0-9]+)[-–—]([a-z0-9]+)$/i)
+    if (subRange) {
+      const sM = monthMapLookup[subRange[1].toLowerCase()]
+      const eM = monthMapLookup[subRange[2].toLowerCase()]
+      if (sM && eM && sM <= eM) {
+        for (let m = sM; m <= eM; m++) {
+          if (!results.includes(m)) results.push(m)
+        }
+        return
+      }
+    }
+    const mNum = monthMapLookup[p]
+    if (mNum && !results.includes(mNum)) {
+      results.push(mNum)
+    }
+  })
+
+  return results
+}
 
 export default function FormSetoranPage() {
   const supabase = createClient()
@@ -352,10 +412,21 @@ export default function FormSetoranPage() {
     })
 
     txs.forEach(tx => {
-      const parts = tx.tanggal.split('-')
-      const month = parts.length > 1 ? parseInt(parts[1], 10) : NaN
-      if (!isNaN(month) && month >= 1 && month <= 12) {
-        monthlyStatus[month] = true
+      // Prioritaskan alokasi multi-bulan dari tag keterangan (misal: [Bulan: Jan, Feb, Mar, Apr] atau [Bulan: Jan-Jun])
+      const allocatedMonths = parseAllocatedMonths(tx.keterangan || '')
+
+      if (allocatedMonths.length > 0) {
+        allocatedMonths.forEach(m => {
+          if (m >= 1 && m <= 12) {
+            monthlyStatus[m] = true
+          }
+        })
+      } else {
+        const parts = tx.tanggal.split('-')
+        const month = parts.length > 1 ? parseInt(parts[1], 10) : NaN
+        if (!isNaN(month) && month >= 1 && month <= 12) {
+          monthlyStatus[month] = true
+        }
       }
       yearlyTotal += Number(tx.nominal)
     })

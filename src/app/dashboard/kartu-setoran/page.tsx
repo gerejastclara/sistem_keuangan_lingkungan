@@ -446,12 +446,11 @@ export default function KartuSetoranPage() {
     const kkMonths = setoranMap.get(kkId)!
 
     // Cek apakah transaksi memiliki alokasi multi-bulan
-    // Contoh: [Bulan: 1, 2, 3] atau [Bulan: Jan, Feb, Mar]
+    // Contoh: [Bulan: 1, 2, 3] atau [Bulan: Jan, Feb, Mar] atau [Bulan: Jan-Jun]
     const bulanMatch = (j.keterangan || '').match(/\[Bulan:\s*([^\]]+)\]/i)
     let targetMonths: number[] = [month]
     if (bulanMatch) {
       const parsedMonths: number[] = []
-      const monthParts = bulanMatch[1].split(/[,;\s]+/).map(s => s.trim().toLowerCase())
       const monthMapLookup: Record<string, number> = {
         '1': 1, '01': 1, 'jan': 1, 'januari': 1,
         '2': 2, '02': 2, 'feb': 2, 'februari': 2,
@@ -466,11 +465,37 @@ export default function KartuSetoranPage() {
         '11': 11, 'nov': 11, 'november': 11,
         '12': 12, 'des': 12, 'desember': 12
       }
-      monthParts.forEach(p => {
-        if (monthMapLookup[p] && !parsedMonths.includes(monthMapLookup[p])) {
-          parsedMonths.push(monthMapLookup[p])
+
+      const rawContent = bulanMatch[1].trim()
+      const rangeMatch = rawContent.match(/^([a-z0-9]+)\s*[-–—]\s*([a-z0-9]+)$/i)
+      if (rangeMatch) {
+        const startM = monthMapLookup[rangeMatch[1].toLowerCase()]
+        const endM = monthMapLookup[rangeMatch[2].toLowerCase()]
+        if (startM && endM && startM <= endM) {
+          for (let m = startM; m <= endM; m++) {
+            parsedMonths.push(m)
+          }
         }
-      })
+      } else {
+        const monthParts = rawContent.split(/[,;\s]+/).map(s => s.trim().toLowerCase())
+        monthParts.forEach(p => {
+          const subRange = p.match(/^([a-z0-9]+)[-–—]([a-z0-9]+)$/i)
+          if (subRange) {
+            const sM = monthMapLookup[subRange[1].toLowerCase()]
+            const eM = monthMapLookup[subRange[2].toLowerCase()]
+            if (sM && eM && sM <= eM) {
+              for (let m = sM; m <= eM; m++) {
+                if (!parsedMonths.includes(m)) parsedMonths.push(m)
+              }
+              return
+            }
+          }
+          if (monthMapLookup[p] && !parsedMonths.includes(monthMapLookup[p])) {
+            parsedMonths.push(monthMapLookup[p])
+          }
+        })
+      }
+
       if (parsedMonths.length > 0) {
         targetMonths = parsedMonths
       }
