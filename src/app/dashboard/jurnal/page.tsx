@@ -1539,14 +1539,9 @@ export default function JurnalPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-bold text-slate-700">
-                      No. Bukti / Dokumen
-                    </Label>
-                    <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 font-bold px-1.5 py-0.2 rounded">
-                      Otomatis Sistem
-                    </span>
-                  </div>
+                  <Label className="text-xs font-bold text-slate-700">
+                    No. Bukti / Dokumen
+                  </Label>
                   <div className="bg-slate-50 border border-slate-200 text-slate-900 font-mono font-bold rounded-xl h-11 px-3.5 flex items-center text-xs shadow-2xs">
                     {generateDocNumber(step1Arus, selectedRekening, step4Tanggal)}
                   </div>
@@ -1622,7 +1617,7 @@ export default function JurnalPage() {
                               onClick={() => toggleSelectMonth(mNum)}
                               className={`h-8 rounded-lg text-[11px] font-bold transition flex items-center justify-center cursor-pointer border ${
                                 isSelected
-                                  ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                                  ? 'bg-[#16233F] text-white border-[#16233F] shadow-xs'
                                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100/80 hover:text-slate-900'
                               }`}
                               title={`Klik untuk memilih/membatalkan bulan ${mName}`}
