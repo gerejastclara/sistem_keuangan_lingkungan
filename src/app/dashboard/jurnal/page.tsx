@@ -1495,12 +1495,6 @@ export default function JurnalPage() {
                     )}
                   </div>
 
-                  {sumberSetoran === 'PAROKI' && step1Arus === 'KELUAR' && (
-                    <div className="pt-1.5 px-3 py-2 bg-sky-50 border border-sky-200/80 rounded-xl text-[11px] text-sky-800 font-medium">
-                      * Penyetoran / pembayaran ini ditalangi oleh <strong>Dewan Paroki</strong> dan otomatis terintegrasi ke <strong>Buku Besar Dana Talangan</strong> & <strong>Kartu Setoran</strong>.
-                    </div>
-                  )}
-
                   {sumberSetoran === 'ORANG_LAIN' && (
                     <div className="pt-2 space-y-2 animate-fadeIn bg-slate-100/70 p-3 rounded-xl border border-slate-200/90">
                       <div className="flex items-center justify-between">
@@ -1574,12 +1568,6 @@ export default function JurnalPage() {
                       {sumberSetoranPenalang === 'N/N' && (
                         <p className="text-[11px] text-slate-500 italic">
                           * Dicatat sebagai <strong>N/N</strong> untuk melindungi privasi umat yang tidak ingin identitas namanya ditampilkan di laporan.
-                        </p>
-                      )}
-
-                      {step1Arus === 'KELUAR' && (
-                        <p className="text-[11px] text-amber-800 font-medium bg-amber-50/80 p-2 rounded-lg border border-amber-200/60 mt-1">
-                          * Transaksi pengeluaran ini ditalangi oleh umat/donatur dan otomatis terintegrasi ke <strong>Buku Besar Dana Talangan</strong> & <strong>Kartu Setoran</strong>.
                         </p>
                       )}
                     </div>
