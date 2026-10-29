@@ -719,6 +719,17 @@ export default function JurnalPage() {
           displayKet = `${displayKet} (Dari Kas Lingkungan)`.trim()
         }
       }
+    } else if (step1Arus === 'KELUAR') {
+      if (sumberSetoran === 'ORANG_LAIN' && sumberSetoranPenalang.trim()) {
+        const penalangTag = `(Ditalangi ${sumberSetoranPenalang.trim()})`
+        if (!displayKet.includes(penalangTag) && !displayKet.includes(`(Donasi ${sumberSetoranPenalang.trim()})`)) {
+          displayKet = `${displayKet} ${penalangTag}`.trim()
+        }
+      } else if (sumberSetoran === 'PAROKI') {
+        if (!displayKet.toLowerCase().includes('talangan paroki') && !displayKet.toLowerCase().includes('ditalangi paroki')) {
+          displayKet = `${displayKet} (Ditalangi Paroki)`.trim()
+        }
+      }
     }
 
     const dbLingkunganId = getLingkunganDbUuid(lingkunganId)
@@ -741,7 +752,7 @@ export default function JurnalPage() {
         is_posted: false,
         no_bukti: finalNoBukti,
         sumber_kas: selectedRekening,
-        sumber_setoran: step1Arus === 'MASUK' ? sumberSetoran : undefined
+        sumber_setoran: sumberSetoran
       }
 
       const { data: createdData, error: err1 } = await supabase
@@ -796,7 +807,7 @@ export default function JurnalPage() {
       is_posted: false,
       no_bukti: finalNoBukti,
       sumber_kas: selectedRekening,
-      sumber_setoran: step1Arus === 'MASUK' ? sumberSetoran : undefined,
+      sumber_setoran: sumberSetoran,
       kepala_keluarga: kkObj ? { id: kkObj.id, lingkungan_id: dbLingkunganId, nama_kk: kkObj.nama_kk, alamat: kkObj.alamat, is_biduk: kkObj.is_biduk } : undefined
     }
 
@@ -1359,77 +1370,145 @@ export default function JurnalPage() {
                 </p>
               </div>
 
-              {/* Status Sumber Setoran jika Uang Masuk & KK dipilih */}
-              {step1Arus === 'MASUK' && step3KkId && step3KkId !== 'umum' && (
+              {/* Status Sumber Penerimaan (Uang Masuk) atau Sumber Pembayaran (Uang Keluar) */}
+              {((step1Arus === 'MASUK' && step3KkId && step3KkId !== 'umum') || (step1Arus === 'KELUAR' && (step3KkId || step2Jenis))) && (
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
                   <div className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                    <span>Sumber Pembayaran Setoran:</span>
-                    <span className="text-[11px] text-slate-500 font-normal">Pilih status/sumber dana setoran</span>
+                    <span>{step1Arus === 'MASUK' ? 'Sumber Penerimaan:' : 'Sumber Pembayaran:'}</span>
+                    <span className="text-[11px] text-slate-500 font-normal">
+                      {step1Arus === 'MASUK' ? 'Pilih status / asal dana penerimaan' : 'Pilih sumber dana atau pihak yang menalangi'}
+                    </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {/* 1. Mandiri */}
-                    <button
-                      type="button"
-                      onClick={() => setSumberSetoran('SENDIRI')}
-                      className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
-                        sumberSetoran === 'SENDIRI'
-                          ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
-                          : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                      }`}
-                    >
-                      <span>Bayar Sendiri (Mandiri)</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'SENDIRI' ? 'bg-slate-100 text-slate-500 font-medium' : 'bg-slate-100/70 text-slate-400'
-                      }`}>
-                        Umat Mandiri
-                      </span>
-                    </button>
+                    {step1Arus === 'MASUK' ? (
+                      <>
+                        {/* 1. Mandiri */}
+                        <button
+                          type="button"
+                          onClick={() => setSumberSetoran('SENDIRI')}
+                          className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
+                            sumberSetoran === 'SENDIRI'
+                              ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                              : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                          }`}
+                        >
+                          <span>Bayar Sendiri (Mandiri)</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                            sumberSetoran === 'SENDIRI' ? 'bg-slate-100 text-slate-500 font-medium' : 'bg-slate-100/70 text-slate-400'
+                          }`}>
+                            Umat Mandiri
+                          </span>
+                        </button>
 
-                    {/* 2. Dari Kas Lingkungan */}
-                    <button
-                      type="button"
-                      onClick={() => setSumberSetoran('DANA_LINGKUNGAN')}
-                      className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
-                        sumberSetoran === 'DANA_LINGKUNGAN'
-                          ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
-                          : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                      }`}
-                    >
-                      <span>Dari Kas Lingkungan</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-slate-200/90 text-slate-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
-                      }`}>
-                        Kas Lingkungan
-                      </span>
-                    </button>
+                        {/* 2. Dari Kas Lingkungan */}
+                        <button
+                          type="button"
+                          onClick={() => setSumberSetoran('DANA_LINGKUNGAN')}
+                          className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
+                            sumberSetoran === 'DANA_LINGKUNGAN'
+                              ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                              : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                          }`}
+                        >
+                          <span>Dari Kas Lingkungan</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                            sumberSetoran === 'DANA_LINGKUNGAN' ? 'bg-slate-200/90 text-slate-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                          }`}>
+                            Kas Lingkungan
+                          </span>
+                        </button>
 
-                    {/* 3. Dari Donasi Umat Lain */}
-                    <button
-                      type="button"
-                      onClick={() => setSumberSetoran('ORANG_LAIN')}
-                      className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
-                        sumberSetoran === 'ORANG_LAIN'
-                          ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
-                          : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                      }`}
-                    >
-                      <span>Dari Donasi Umat Lain</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        sumberSetoran === 'ORANG_LAIN' ? 'bg-slate-200/90 text-slate-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
-                      }`}>
-                        Donasi Umat Lain
-                      </span>
-                    </button>
+                        {/* 3. Dari Donasi Umat Lain */}
+                        <button
+                          type="button"
+                          onClick={() => setSumberSetoran('ORANG_LAIN')}
+                          className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
+                            sumberSetoran === 'ORANG_LAIN'
+                              ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                              : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                          }`}
+                        >
+                          <span>Dari Donasi Umat Lain</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                            sumberSetoran === 'ORANG_LAIN' ? 'bg-slate-200/90 text-slate-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                          }`}>
+                            Donasi Umat Lain
+                          </span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* 1. Kas / Bank Lingkungan */}
+                        <button
+                          type="button"
+                          onClick={() => setSumberSetoran('SENDIRI')}
+                          className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
+                            sumberSetoran === 'SENDIRI'
+                              ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                              : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                          }`}
+                        >
+                          <span>Kas / Bank Lingkungan</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                            sumberSetoran === 'SENDIRI' ? 'bg-slate-200/90 text-slate-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                          }`}>
+                            Kas Lingkungan
+                          </span>
+                        </button>
+
+                        {/* 2. Ditalangi Paroki */}
+                        <button
+                          type="button"
+                          onClick={() => setSumberSetoran('PAROKI')}
+                          className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
+                            sumberSetoran === 'PAROKI'
+                              ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                              : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                          }`}
+                        >
+                          <span>Ditalangi Paroki</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                            sumberSetoran === 'PAROKI' ? 'bg-sky-100 text-sky-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                          }`}>
+                            Talangan Paroki
+                          </span>
+                        </button>
+
+                        {/* 3. Ditalangi Donatur / Pihak Lain */}
+                        <button
+                          type="button"
+                          onClick={() => setSumberSetoran('ORANG_LAIN')}
+                          className={`p-2.5 rounded-xl text-xs text-left transition flex items-center justify-between border cursor-pointer ${
+                            sumberSetoran === 'ORANG_LAIN'
+                              ? 'border-slate-400 bg-slate-100 text-slate-900 font-bold shadow-2xs'
+                              : 'border-slate-200/80 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                          }`}
+                        >
+                          <span>Ditalangi Donatur / Lainnya</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                            sumberSetoran === 'ORANG_LAIN' ? 'bg-amber-100 text-amber-800 font-semibold' : 'bg-slate-100/70 text-slate-400'
+                          }`}>
+                            Talangan Umat
+                          </span>
+                        </button>
+                      </>
+                    )}
                   </div>
+
+                  {sumberSetoran === 'PAROKI' && step1Arus === 'KELUAR' && (
+                    <div className="pt-1.5 px-3 py-2 bg-sky-50 border border-sky-200/80 rounded-xl text-[11px] text-sky-800 font-medium">
+                      * Penyetoran / pembayaran ini ditalangi oleh <strong>Dewan Paroki</strong> dan otomatis terintegrasi ke <strong>Buku Besar Dana Talangan</strong> & <strong>Kartu Setoran</strong>.
+                    </div>
+                  )}
 
                   {sumberSetoran === 'ORANG_LAIN' && (
                     <div className="pt-2 space-y-2 animate-fadeIn bg-slate-100/70 p-3 rounded-xl border border-slate-200/90">
                       <div className="flex items-center justify-between">
                         <label className="block text-[11px] font-bold text-slate-800">
-                          Nama Donatur / Yang Menalangi:
+                          {step1Arus === 'KELUAR' ? 'Nama Umat yang Menalangi:' : 'Nama Donatur / Yang Menalangi:'}
                         </label>
                         <span className="text-[10px] text-slate-600 bg-slate-200/80 px-1.5 py-0.5 rounded font-medium">
-                          Pilih Donatur / N/N
+                          Pilih Umat / N/N
                         </span>
                       </div>
                       <Select
@@ -1447,7 +1526,7 @@ export default function JurnalPage() {
                         }}
                       >
                         <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-10 text-xs font-medium w-full">
-                          <SelectValue placeholder="-- Pilih Umat Donatur atau N/N --" />
+                          <SelectValue placeholder="-- Pilih Umat / Penalang atau N/N --" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border-slate-200 text-slate-900 max-h-64">
                           <SelectItem value="NN">
@@ -1474,7 +1553,7 @@ export default function JurnalPage() {
                           <div className="border-t border-slate-100 my-1" />
                           <SelectItem value="MANUAL">
                             <span className="font-medium text-slate-600 italic">
-                              + Donatur Lainnya (Ketik Manual)
+                              + Penalang / Donatur Lainnya (Ketik Manual)
                             </span>
                           </SelectItem>
                         </SelectContent>
@@ -1486,7 +1565,7 @@ export default function JurnalPage() {
                             type="text"
                             value={sumberSetoranPenalang}
                             onChange={(e) => setSumberSetoranPenalang(e.target.value)}
-                            placeholder="Tuliskan nama donatur lainnya..."
+                            placeholder="Tuliskan nama donatur/penalang lainnya..."
                             className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white font-medium"
                           />
                         </div>
@@ -1494,7 +1573,13 @@ export default function JurnalPage() {
 
                       {sumberSetoranPenalang === 'N/N' && (
                         <p className="text-[11px] text-slate-500 italic">
-                          * Donasi dicatat sebagai <strong>N/N</strong> untuk melindungi privasi umat yang tidak ingin identitas namanya ditampilkan di laporan.
+                          * Dicatat sebagai <strong>N/N</strong> untuk melindungi privasi umat yang tidak ingin identitas namanya ditampilkan di laporan.
+                        </p>
+                      )}
+
+                      {step1Arus === 'KELUAR' && (
+                        <p className="text-[11px] text-amber-800 font-medium bg-amber-50/80 p-2 rounded-lg border border-amber-200/60 mt-1">
+                          * Transaksi pengeluaran ini ditalangi oleh umat/donatur dan otomatis terintegrasi ke <strong>Buku Besar Dana Talangan</strong> & <strong>Kartu Setoran</strong>.
                         </p>
                       )}
                     </div>
@@ -1890,13 +1975,21 @@ export default function JurnalPage() {
                                   : 'bg-slate-50/50 text-slate-500 border-slate-200/50'
                               }`}
                             >
-                              {j.sumber_setoran === 'DANA_LINGKUNGAN'
-                                ? 'Dari Kas Lingkungan'
-                                : j.sumber_setoran === 'PAROKI'
-                                ? 'Ditalangi Paroki'
-                                : j.sumber_setoran === 'ORANG_LAIN'
-                                ? 'Donasi Umat Lain'
-                                : 'Bayar Mandiri'}
+                              {j.tipe_arus === 'KELUAR' ? (
+                                j.sumber_setoran === 'PAROKI'
+                                  ? 'Ditalangi Paroki'
+                                  : j.sumber_setoran === 'ORANG_LAIN'
+                                  ? 'Ditalangi Donatur'
+                                  : 'Kas Lingkungan'
+                              ) : (
+                                j.sumber_setoran === 'DANA_LINGKUNGAN'
+                                  ? 'Dari Kas Lingkungan'
+                                  : j.sumber_setoran === 'PAROKI'
+                                  ? 'Ditalangi Paroki'
+                                  : j.sumber_setoran === 'ORANG_LAIN'
+                                  ? 'Donasi Umat Lain'
+                                  : 'Bayar Mandiri'
+                              )}
                             </span>
                           )}
                         </TableCell>

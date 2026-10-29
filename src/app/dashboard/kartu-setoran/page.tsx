@@ -155,6 +155,14 @@ interface SetoranDetail {
   disetorParoki?: boolean
 }
 
+function formatRibuan(val: number): string {
+  if (val === 0) return '0'
+  const abs = Math.abs(val)
+  const ribuan = abs >= 1000 ? Math.round(abs / 1000) : abs
+  const formatted = ribuan.toLocaleString('id-ID')
+  return val < 0 ? `-${formatted}` : formatted
+}
+
 function parseOverride(raw: any): SetoranOverrideData {
   if (!raw) return { sumber: 'SENDIRI' }
   if (typeof raw === 'string') {
@@ -560,12 +568,63 @@ export default function KartuSetoranPage() {
       // 1. Akumulasi total kas keluar penyetoran ke Paroki
       grandTotalDisetorParoki += rawNom
 
-      // 2. Tandai bulan-bulan yang disetor ke Paroki untuk KK ini
+      // 2. Deteksi sumber talangan penyetoran jika ada
+      let setorSumber: SumberSetoranType = 'SENDIRI'
+      let setorPenalangNama: string | undefined = undefined
+
+      if (
+        j.sumber_setoran === 'ORANG_LAIN' ||
+        (j.keterangan || '').toLowerCase().includes('donasi') ||
+        (j.keterangan || '').toLowerCase().includes('ditalangi')
+      ) {
+        setorSumber = 'ORANG_LAIN'
+        const match = (j.keterangan || '').match(/\((?:Ditalangi|Donasi)\s+([^)]+)\)/i)
+        setorPenalangNama = match ? match[1].trim() : (j.keterangan || undefined)
+      } else if (
+        j.sumber_setoran === 'PAROKI' ||
+        (j.keterangan || '').toLowerCase().includes('talangan paroki') ||
+        (j.keterangan || '').toLowerCase().includes('ditalangi paroki')
+      ) {
+        setorSumber = 'PAROKI'
+        setorPenalangNama = 'Dewan Paroki'
+      } else if (
+        j.sumber_setoran === 'DANA_LINGKUNGAN' ||
+        (j.keterangan || '').toLowerCase().includes('kas lingkungan')
+      ) {
+        setorSumber = 'DANA_LINGKUNGAN'
+      }
+
+      // 3. Tandai bulan-bulan yang disetor ke Paroki untuk KK ini
       if (!parishDisetorMap.has(kkId)) {
         parishDisetorMap.set(kkId, new Set())
       }
       const pSet = parishDisetorMap.get(kkId)!
       targetMonths.forEach(mNum => pSet.add(mNum))
+
+      // 4. Jika penyetoran ini ditalangi, sinkronkan juga tanda talangan di kartu setoran
+      if (setorSumber !== 'SENDIRI') {
+        if (!setoranMap.has(kkId)) {
+          setoranMap.set(kkId, {})
+        }
+        const kkMonths = setoranMap.get(kkId)!
+        const nomPerMonth = Math.round(rawNom / (targetMonths.length || 1))
+        targetMonths.forEach((mNum) => {
+          const current = kkMonths[mNum]
+          if (current) {
+            current.sumber = setorSumber
+            current.penalangNama = setorPenalangNama || current.penalangNama
+          } else {
+            kkMonths[mNum] = {
+              nominal: nomPerMonth,
+              sumber: setorSumber,
+              penalangNama: setorPenalangNama
+            }
+          }
+        })
+        if (kkId !== 'umum') {
+          uniqueKkIdsWithSetoran.add(kkId)
+        }
+      }
     } else {
       // Transaksi Uang Masuk (Iuran dari Umat)
       grandTotalSetoran += rawNom
@@ -1015,8 +1074,8 @@ export default function KartuSetoranPage() {
               <h3 className="text-sm font-bold text-slate-900 font-serif">
                 Rekap Setoran {selectedCoaObj.labelShort}
               </h3>
-              <p className="text-xs text-slate-400">
-                {grandTotalSetoran === 0
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                <span className="italic text-slate-700 font-semibold">(Disajikan dalam ribuan rupiah)</span> • {grandTotalSetoran === 0
                   ? `Belum ada setoran di tahun ${selectedYear}`
                   : `${totalKkCount} KK telah menyetor di tahun ${selectedYear}`}
               </p>
@@ -1038,7 +1097,7 @@ export default function KartuSetoranPage() {
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F6F4F0] text-[#6B5F4E] border border-[#E5DFD5] font-medium text-[10px]">
               <span className="w-2 h-2 rounded-full bg-[#8C7B65]"></span>
-              Dari Donasi Umat Lain
+              <span>★ Ditalangi / Donasi</span>
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F6F2F2] text-[#6B5353] border border-[#DECFCF] font-medium text-[10px]">
               <span className="w-2 h-2 rounded-full bg-[#9E7B7B]"></span>
@@ -1120,7 +1179,10 @@ export default function KartuSetoranPage() {
                       style={{ top: 'var(--sticky-top, 0px)' }}
                       className="sticky left-12 z-40 bg-slate-100 min-w-[200px] font-bold text-slate-800 p-2.5 border-b-2 border-r border-slate-300 shadow-xs"
                     >
-                      Kepala Keluarga
+                      <div className="flex items-center justify-between gap-1">
+                        <span>Kepala Keluarga</span>
+                        <span className="text-[10px] font-normal text-slate-500 italic font-mono">(Rp &apos;000)</span>
+                      </div>
                     </th>
                     {SHORT_MONTHS.map((m) => (
                       <th
@@ -1216,7 +1278,7 @@ export default function KartuSetoranPage() {
                                       })}
                                       className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none cursor-pointer bg-[#F6F4F0] text-[#6B5F4E] border border-[#E5DFD5] hover:bg-[#EFECE6] transition shadow-2xs"
                                     >
-                                      <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
+                                      <span>{formatRibuan(val)}</span>
                                       <span className="text-[10px] text-[#8C7B65] font-bold">★</span>
                                       {isDisetorParoki && <span className="text-[10px] text-[#2B5D88] font-bold" title="Sudah disetor ke Paroki">✓</span>}
                                     </button>
@@ -1261,7 +1323,7 @@ export default function KartuSetoranPage() {
                                         : 'bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF]'
                                     }`}
                                   >
-                                    <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
+                                    <span>{formatRibuan(val)}</span>
                                     {isDisetorParoki && <span className="text-[10px] text-[#2B5D88] font-bold">✓</span>}
                                     {!isDisetorParoki && sumber === 'PAROKI' && <span className="text-[10px] text-slate-600 font-bold">✝</span>}
                                   </span>
@@ -1278,7 +1340,7 @@ export default function KartuSetoranPage() {
                                   title={`Pengurangan / Pengembalian Setoran (${formatRupiah(Math.abs(val))})`}
                                   className="inline-flex items-center justify-center gap-0.5 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none bg-[#F6F3F3] text-[#6B5353] border border-[#E4DCDC]"
                                 >
-                                  <span>-{Math.abs(val) >= 1000 ? `${Math.abs(val) / 1000}k` : Math.abs(val)}</span>
+                                  <span>{formatRibuan(val)}</span>
                                 </span>
                               ) : (
                                 <span className="text-slate-300 font-light select-none">—</span>
@@ -1338,7 +1400,7 @@ export default function KartuSetoranPage() {
                                     : 'bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF]'
                                 }`}
                               >
-                                <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
+                                <span>{formatRibuan(val)}</span>
                               </span>
                             ) : (
                               <span className="text-slate-300 font-extralight select-none">—</span>

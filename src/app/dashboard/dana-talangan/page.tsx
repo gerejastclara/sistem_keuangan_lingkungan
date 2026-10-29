@@ -167,7 +167,11 @@ export default function BukuBesarDanaTalanganPage() {
   const talanganRawJournals = jurnalList.filter((j) => {
     const touches1300 = j.coa_debit === '1300' || j.coa_kredit === '1300'
     const touches1400 = j.coa_debit === '1400' || j.coa_kredit === '1400'
-    const touchesTalanganInDesc = (j.keterangan || '').toLowerCase().includes('talangan')
+    const touchesTalanganInDesc =
+      (j.keterangan || '').toLowerCase().includes('talangan') ||
+      (j.keterangan || '').toLowerCase().includes('ditalangi') ||
+      j.sumber_setoran === 'ORANG_LAIN' ||
+      j.sumber_setoran === 'PAROKI'
 
     return touches1300 || touches1400 || touchesTalanganInDesc
   })
