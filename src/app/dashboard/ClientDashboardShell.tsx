@@ -91,6 +91,26 @@ export function ClientDashboardShell({
   })
 
   useEffect(() => {
+    // Validasi session: jika tab ditutup dan dibuka lagi (tanpa login di sesi tab ini), wajib login kembali
+    if (typeof window !== 'undefined') {
+      const isSessionActive = sessionStorage.getItem('app_session_active')
+      if (!isSessionActive) {
+        const cookiesToClear = [
+          'demo_user_id',
+          'demo_user_username',
+          'demo_user_email',
+          'demo_user_role',
+          'demo_user_lingkungan_id',
+          'demo_user_lingkungan_nama'
+        ]
+        cookiesToClear.forEach(c => {
+          document.cookie = `${c}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0`
+        })
+        window.location.replace('/login')
+        return
+      }
+    }
+
     // Purge obsolete local storage caches so financial & profile data are 100% database-driven
     purgeAllObsoleteLocalStorageCache()
 
@@ -123,9 +143,22 @@ export function ClientDashboardShell({
   }
 
   const handleLogout = async () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('app_session_active')
+      const cookiesToClear = [
+        'demo_user_id',
+        'demo_user_username',
+        'demo_user_email',
+        'demo_user_role',
+        'demo_user_lingkungan_id',
+        'demo_user_lingkungan_nama'
+      ]
+      cookiesToClear.forEach(c => {
+        document.cookie = `${c}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0`
+      })
+    }
     await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    window.location.replace('/login')
   }
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)

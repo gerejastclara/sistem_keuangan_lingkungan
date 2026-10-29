@@ -26,6 +26,7 @@ export default function LoginPage() {
   // Read URL query param message if present on client
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('app_session_active')
       const params = new URLSearchParams(window.location.search)
       const msg = params.get('message')
       if (msg) setMessage(msg)
@@ -191,6 +192,7 @@ export default function LoginPage() {
               action={login}
               onSubmit={() => {
                 if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('app_session_active', 'true')
                   if (username.includes('paroki')) {
                     localStorage.setItem('selected_lingkungan_id', 'all')
                     localStorage.setItem('last_user_role', username.includes('sekretaris') ? 'SEKRETARIS_PAROKI' : 'PAROKI')

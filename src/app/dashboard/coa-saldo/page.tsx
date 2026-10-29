@@ -15,8 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import {
   CheckCircle2,
-  Lock,
-  Unlock,
   Plus,
   Search,
   BookOpen,
@@ -58,7 +56,6 @@ export default function CoaSaldoPage() {
   const [bulanSaldo, setBulanSaldo] = useState<string>('')
   const [saldoAwalInput, setSaldoAwalInput] = useState<string>('Rp 0')
   const [saldoAwalNumeric, setSaldoAwalNumeric] = useState<number>(0)
-  const [isLocked, setIsLocked] = useState(false)
   const [saving, setSaving] = useState(false)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
@@ -177,18 +174,6 @@ export default function CoaSaldoPage() {
             setTahunBuku('2026')
             setBulanSaldo('1')
           }
-
-          // Check if any journal is posted
-          const { data: postedJurnals } = await supabase
-            .from('jurnal_transaksi')
-            .select('is_posted')
-            .eq('lingkungan_id', dbUuid)
-            .eq('is_posted', true)
-            .limit(1)
-
-          if (postedJurnals && postedJurnals.length > 0) {
-            setIsLocked(true)
-          }
         }
       } catch (err) {
         console.error('Error loading COA & Saldo:', err)
@@ -202,7 +187,7 @@ export default function CoaSaldoPage() {
 
   const handleSaveSaldoAwal = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!lingkunganId || isLocked) return
+    if (!lingkunganId) return
 
     setSaving(true)
     setSuccessMsg(null)
@@ -419,36 +404,6 @@ export default function CoaSaldoPage() {
               </p>
             </div>
           </div>
-
-          {isLocked ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs bg-amber-100 text-amber-800 border border-amber-200 px-3 py-1 rounded-full font-bold flex items-center gap-1.5 shrink-0">
-                <Lock className="w-3.5 h-3.5 text-amber-600" /> Terkunci (Posted)
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsLocked(false)}
-                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-1 rounded-full font-semibold flex items-center gap-1.5 transition cursor-pointer"
-                title="Buka kunci jika Anda ingin mengubah saldo awal"
-              >
-                <Unlock className="w-3.5 h-3.5 text-slate-600" /> Buka Kunci
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 px-3 py-1 rounded-full font-bold flex items-center gap-1.5 shrink-0">
-                <Unlock className="w-3.5 h-3.5 text-emerald-600" /> Form Terbuka (Dapat Diedit)
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsLocked(true)}
-                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-300 px-3 py-1 rounded-full font-medium flex items-center gap-1.5 transition cursor-pointer"
-                title="Kunci kembali form saldo awal"
-              >
-                <Lock className="w-3.5 h-3.5 text-slate-500" /> Kunci Kembali
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="p-6 space-y-5">
@@ -462,7 +417,6 @@ export default function CoaSaldoPage() {
                   id="tahun"
                   value={tahunBuku}
                   onChange={(e) => setTahunBuku(e.target.value)}
-                  disabled={isLocked}
                   className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium focus:ring-slate-400"
                 />
               </div>
@@ -474,7 +428,6 @@ export default function CoaSaldoPage() {
                 <Select
                   value={bulanSaldo}
                   onValueChange={(val) => setBulanSaldo(val || '')}
-                  disabled={isLocked}
                 >
                   <SelectTrigger id="bulan" className="w-full bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm font-medium">
                     <span>
@@ -512,7 +465,6 @@ export default function CoaSaldoPage() {
                   id="saldoBank"
                   value={saldoAwalInput}
                   onChange={handleSaldoChange}
-                  disabled={isLocked}
                   className="bg-white border-slate-300 text-slate-900 font-bold text-base rounded-xl h-11 focus:ring-slate-400"
                 />
                 <p className="text-[11px] text-slate-500 italic mt-1">
@@ -522,18 +474,16 @@ export default function CoaSaldoPage() {
             </div>
 
             {/* Tombol Simpan Saldo Awal (Di Pojok Kanan) */}
-            {!isLocked && (
-              <div className="flex justify-end pt-2">
-                <Button
-                  type="submit"
-                  disabled={saving}
-                  className="bg-slate-700 hover:bg-slate-800 text-white font-bold h-11 px-6 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
-                >
-                  <span>✓</span>
-                  {saving ? 'Menyimpan Saldo Awal...' : 'Simpan Saldo Awal'}
-                </Button>
-              </div>
-            )}
+            <div className="flex justify-end pt-2">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-slate-700 hover:bg-slate-800 text-white font-bold h-11 px-6 rounded-xl text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
+              >
+                <span>✓</span>
+                {saving ? 'Menyimpan Saldo Awal...' : 'Simpan Saldo Awal'}
+              </Button>
+            </div>
           </form>
         </div>
       </div>

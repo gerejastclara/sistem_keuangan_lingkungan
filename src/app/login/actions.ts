@@ -38,7 +38,8 @@ export async function login(formData: FormData) {
 
   const formLingkunganId = (formData.get('lingkungan_id') as string || '').trim()
 
-  const cookieOptions = { httpOnly: false, path: '/', maxAge: 60 * 60 * 24 * 7 }
+  // Session cookie tanpa maxAge: otomatis dibersihkan saat browser/sesi ditutup
+  const cookieOptions = { httpOnly: false, path: '/' }
 
   try {
     const supabase = await createClient()
