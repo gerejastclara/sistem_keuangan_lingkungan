@@ -48,7 +48,7 @@ interface KartuMappingConfig {
 const KARTU_CONFIGS: Record<string, KartuMappingConfig> = {
   '4100': {
     masukCodes: ['4100'],
-    keluarCodes: ['5100', '5900'],
+    keluarCodes: [],
     keywords: ['kas lingkungan', 'iuran kas']
   },
   '4200': {
@@ -58,12 +58,12 @@ const KARTU_CONFIGS: Record<string, KartuMappingConfig> = {
   },
   '4120': {
     masukCodes: ['4120'],
-    keluarCodes: ['5300', '5270', '1300'],
+    keluarCodes: ['5300', '5270'],
     keywords: ['dahar', 'romo', 'pastoran']
   },
   '4300': {
     masukCodes: ['4300'],
-    keluarCodes: ['5280', '1400'],
+    keluarCodes: ['5280'],
     keywords: ['yusuf', 'kematian']
   },
   '5340': {
@@ -497,6 +497,7 @@ export default function KartuSetoranPage() {
 
   // Calculate setoran detail map: KK_ID -> Month (1..12) -> SetoranDetail
   const setoranMap = new Map<string, Record<number, SetoranDetail>>()
+  const parishDisetorMap = new Map<string, Set<number>>()
   const uniqueKkIdsWithSetoran = new Set<string>()
   let grandTotalSetoran = 0
   let grandTotalDisetorParoki = 0
@@ -506,20 +507,13 @@ export default function KartuSetoranPage() {
     const month = d.getMonth() + 1 // 1..12
     const rawNom = Number(j.nominal) || 0
 
-    // Deteksi apakah transaksi ini adalah Uang Keluar (Disetor ke Paroki / Kas Keluar Lingkungan)
-    const isUangKeluar = 
-      j.tipe_arus === 'KELUAR' || 
+    // Deteksi apakah transaksi ini adalah Uang Keluar Penyetoran ke Paroki
+    // Hanya jika akun beban setor paroki resmi (5280, 5290, 5300, 5270, 5340, 5360) cocok
+    const isSetorParokiTx = 
       cfg.keluarCodes.includes(j.coa_debit) || 
-      j.no_bukti?.startsWith('BBK') || 
-      j.no_bukti?.startsWith('BKK') || 
-      (j.coa_debit && j.coa_debit.startsWith('5'))
+      cfg.keluarCodes.includes(j.coa_kredit) || 
+      (j.tipe_arus === 'KELUAR' && cfg.keywords.some(kw => (j.keterangan || '').toLowerCase().includes(kw)))
 
-    if (isUangKeluar) {
-      grandTotalDisetorParoki += rawNom
-    } else {
-      grandTotalSetoran += rawNom
-    }
-    
     // Tentukan ID KK yang sebenarnya:
     let effectiveKkId = j.kk_id
     if (effectiveKkId === 'kk-padre-pio-1-1856' || (j.kepala_keluarga?.nama_kk && j.kepala_keluarga.nama_kk.toLowerCase().includes('jemiyo'))) {
@@ -560,64 +554,61 @@ export default function KartuSetoranPage() {
     }
 
     const kkId = effectiveKkId || 'umum'
-
-    if (!setoranMap.has(kkId)) {
-      setoranMap.set(kkId, {})
-    }
-    const kkMonths = setoranMap.get(kkId)!
-
-    // Alokasi multi-bulan dari helper parseAllocatedMonths
     const targetMonths = parseAllocatedMonths(j.keterangan || '', month)
-    const nomPerMonth = Math.round(rawNom / (targetMonths.length || 1))
 
-    targetMonths.forEach((mNum) => {
-      // Tentukan sumber & penalang:
-      const overrideKey = `${kkId}_${mNum}`
-      const override = parseOverride(sourceOverrides[overrideKey])
-      let sumber: SumberSetoranType = 'SENDIRI'
-      let penalangNama: string | undefined = undefined
+    if (isSetorParokiTx) {
+      // 1. Akumulasi total kas keluar penyetoran ke Paroki
+      grandTotalDisetorParoki += rawNom
 
-      if (sourceOverrides[overrideKey]) {
-        sumber = override.sumber
-        penalangNama = override.penalangNama
-      } else if (
-        j.sumber_setoran === 'DANA_LINGKUNGAN' ||
-        (j.keterangan || '').toLowerCase().includes('kas lingkungan') ||
-        (j.keterangan || '').toLowerCase().includes('dana lingkungan') ||
-        (j.keterangan || '').toLowerCase().includes('subsidi')
-      ) {
-        sumber = 'DANA_LINGKUNGAN'
-      } else if (
-        j.sumber_setoran === 'PAROKI' ||
-        (j.keterangan || '').toLowerCase().includes('talangan paroki') ||
-        (j.keterangan || '').toLowerCase().includes('ditalangi paroki')
-      ) {
-        sumber = 'PAROKI'
-      } else if (
-        j.sumber_setoran === 'ORANG_LAIN' ||
-        (j.keterangan || '').toLowerCase().includes('donasi') ||
-        (j.keterangan || '').toLowerCase().includes('ditalangi')
-      ) {
-        sumber = 'ORANG_LAIN'
-        const match = (j.keterangan || '').match(/\((?:Ditalangi|Donasi)\s+([^)]+)\)/i)
-        penalangNama = match ? match[1].trim() : (j.keterangan || undefined)
+      // 2. Tandai bulan-bulan yang disetor ke Paroki untuk KK ini
+      if (!parishDisetorMap.has(kkId)) {
+        parishDisetorMap.set(kkId, new Set())
       }
+      const pSet = parishDisetorMap.get(kkId)!
+      targetMonths.forEach(mNum => pSet.add(mNum))
+    } else {
+      // Transaksi Uang Masuk (Iuran dari Umat)
+      grandTotalSetoran += rawNom
 
-      const current = kkMonths[mNum]
-      if (isUangKeluar) {
-        // Transaksi Uang Keluar (Disetor ke Paroki)
-        if (current) {
-          current.disetorParoki = true
-        } else {
-          kkMonths[mNum] = {
-            nominal: nomPerMonth,
-            sumber: sumber,
-            penalangNama: penalangNama,
-            disetorParoki: true
-          }
+      if (!setoranMap.has(kkId)) {
+        setoranMap.set(kkId, {})
+      }
+      const kkMonths = setoranMap.get(kkId)!
+      const nomPerMonth = Math.round(rawNom / (targetMonths.length || 1))
+
+      targetMonths.forEach((mNum) => {
+        const overrideKey = `${kkId}_${mNum}`
+        const override = parseOverride(sourceOverrides[overrideKey])
+        let sumber: SumberSetoranType = 'SENDIRI'
+        let penalangNama: string | undefined = undefined
+
+        if (sourceOverrides[overrideKey]) {
+          sumber = override.sumber
+          penalangNama = override.penalangNama
+        } else if (
+          j.sumber_setoran === 'DANA_LINGKUNGAN' ||
+          (j.keterangan || '').toLowerCase().includes('kas lingkungan') ||
+          (j.keterangan || '').toLowerCase().includes('dana lingkungan') ||
+          (j.keterangan || '').toLowerCase().includes('subsidi')
+        ) {
+          sumber = 'DANA_LINGKUNGAN'
+        } else if (
+          j.sumber_setoran === 'PAROKI' ||
+          (j.keterangan || '').toLowerCase().includes('talangan paroki') ||
+          (j.keterangan || '').toLowerCase().includes('ditalangi paroki')
+        ) {
+          sumber = 'PAROKI'
+        } else if (
+          j.sumber_setoran === 'ORANG_LAIN' ||
+          (j.keterangan || '').toLowerCase().includes('donasi') ||
+          (j.keterangan || '').toLowerCase().includes('ditalangi')
+        ) {
+          sumber = 'ORANG_LAIN'
+          const match = (j.keterangan || '').match(/\((?:Ditalangi|Donasi)\s+([^)]+)\)/i)
+          penalangNama = match ? match[1].trim() : (j.keterangan || undefined)
         }
-      } else {
-        // Transaksi Uang Masuk (Iuran dari Umat)
+
+        const current = kkMonths[mNum]
         if (current) {
           current.nominal += nomPerMonth
           if (sumber !== 'SENDIRI') {
@@ -631,11 +622,11 @@ export default function KartuSetoranPage() {
             penalangNama: penalangNama
           }
         }
-      }
-    })
+      })
 
-    if (kkId !== 'umum') {
-      uniqueKkIdsWithSetoran.add(kkId)
+      if (kkId !== 'umum') {
+        uniqueKkIdsWithSetoran.add(kkId)
+      }
     }
   })
 
@@ -678,6 +669,14 @@ export default function KartuSetoranPage() {
             }
           })
           setoranMap.delete(k.id)
+        }
+
+        const secondaryParish = parishDisetorMap.get(k.id)
+        if (secondaryParish) {
+          if (!parishDisetorMap.has(primaryId)) parishDisetorMap.set(primaryId, new Set())
+          const primaryParish = parishDisetorMap.get(primaryId)!
+          secondaryParish.forEach(m => primaryParish.add(m))
+          parishDisetorMap.delete(k.id)
         }
       }
     }
@@ -1199,6 +1198,7 @@ export default function KartuSetoranPage() {
                           const val = item ? item.nominal : 0
                           const sumber = item ? item.sumber : 'SENDIRI'
                           const penalang = item?.penalangNama
+                          const isDisetorParoki = Boolean(parishDisetorMap.get(kk.id)?.has(mNum))
                           totalKk += val
 
                           return (
@@ -1218,7 +1218,7 @@ export default function KartuSetoranPage() {
                                     >
                                       <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
                                       <span className="text-[10px] text-[#8C7B65] font-bold">★</span>
-                                      {item?.disetorParoki && <span className="text-[10px] text-[#2B5D88] font-bold" title="Sudah disetor ke Paroki">✓</span>}
+                                      {isDisetorParoki && <span className="text-[10px] text-[#2B5D88] font-bold" title="Sudah disetor ke Paroki">✓</span>}
                                     </button>
 
                                     {/* Pop up kecil / hover card note info donatur */}
@@ -1243,7 +1243,7 @@ export default function KartuSetoranPage() {
                                 ) : (
                                   <span
                                     title={
-                                      item?.disetorParoki
+                                      isDisetorParoki
                                         ? `Sudah disetor ke Paroki (${formatRupiah(val)})`
                                         : sumber === 'PAROKI'
                                         ? `Ditalangi Paroki (${formatRupiah(val)})`
@@ -1252,7 +1252,7 @@ export default function KartuSetoranPage() {
                                         : `Bayar Sendiri (${formatRupiah(val)})`
                                     }
                                     className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${
-                                      item?.disetorParoki
+                                      isDisetorParoki
                                         ? 'bg-[#EDF4FB] text-[#2F5275] border border-[#D0E2F2]'
                                         : sumber === 'PAROKI'
                                         ? 'bg-slate-100 text-slate-700 border border-slate-200/90'
@@ -1262,10 +1262,17 @@ export default function KartuSetoranPage() {
                                     }`}
                                   >
                                     <span>{val >= 1000 ? `${val / 1000}k` : val}</span>
-                                    {item?.disetorParoki && <span className="text-[10px] text-[#2B5D88] font-bold">✓</span>}
-                                    {!item?.disetorParoki && sumber === 'PAROKI' && <span className="text-[10px] text-slate-600 font-bold">✝</span>}
+                                    {isDisetorParoki && <span className="text-[10px] text-[#2B5D88] font-bold">✓</span>}
+                                    {!isDisetorParoki && sumber === 'PAROKI' && <span className="text-[10px] text-slate-600 font-bold">✝</span>}
                                   </span>
                                 )
+                              ) : isDisetorParoki ? (
+                                <span
+                                  title="Sudah disetor ke Paroki"
+                                  className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none bg-[#EDF4FB] text-[#2F5275] border border-[#D0E2F2]"
+                                >
+                                  <span className="text-[10px] text-[#2B5D88] font-bold">✓</span>
+                                </span>
                               ) : val < 0 ? (
                                 <span
                                   title={`Pengurangan / Pengembalian Setoran (${formatRupiah(Math.abs(val))})`}
