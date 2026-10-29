@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import {
   CheckCircle2,
   Lock,
+  Unlock,
   Plus,
   Search,
   BookOpen,
@@ -161,13 +162,21 @@ export default function CoaSaldoPage() {
 
           if (saTx) {
             setSaldoAwalTxId(saTx.id)
+            const nom = Number(saTx.nominal) || 0
+            setSaldoAwalNumeric(nom)
+            setSaldoAwalInput(formatRupiah(nom))
+            if (saTx.tanggal) {
+              const [y, m] = saTx.tanggal.split('-')
+              if (y) setTahunBuku(y)
+              if (m) setBulanSaldo(String(parseInt(m, 10)))
+            }
           } else {
             setSaldoAwalTxId(null)
+            setSaldoAwalNumeric(0)
+            setSaldoAwalInput('Rp 0')
+            setTahunBuku('2026')
+            setBulanSaldo('1')
           }
-          setSaldoAwalNumeric(0)
-          setSaldoAwalInput('Rp 0')
-          setTahunBuku('2026')
-          setBulanSaldo('1')
 
           // Check if any journal is posted
           const { data: postedJurnals } = await supabase
@@ -249,8 +258,7 @@ export default function CoaSaldoPage() {
     }
 
     setSaving(false)
-    setSaldoAwalNumeric(0)
-    setSaldoAwalInput('Rp 0')
+    setSaldoAwalInput(formatRupiah(saldoAwalNumeric))
     setSuccessMsg('Saldo awal berhasil disimpan ke Jurnal Transaksi di database!')
     setTimeout(() => setSuccessMsg(null), 3500)
   }
@@ -412,10 +420,34 @@ export default function CoaSaldoPage() {
             </div>
           </div>
 
-          {isLocked && (
-            <span className="text-xs bg-amber-100 text-amber-800 border border-amber-200 px-3 py-1 rounded-full font-bold flex items-center gap-1.5 shrink-0">
-              <Lock className="w-3.5 h-3.5 text-amber-600" /> Terkunci (Posted)
-            </span>
+          {isLocked ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-amber-100 text-amber-800 border border-amber-200 px-3 py-1 rounded-full font-bold flex items-center gap-1.5 shrink-0">
+                <Lock className="w-3.5 h-3.5 text-amber-600" /> Terkunci (Posted)
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsLocked(false)}
+                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-1 rounded-full font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                title="Buka kunci jika Anda ingin mengubah saldo awal"
+              >
+                <Unlock className="w-3.5 h-3.5 text-slate-600" /> Buka Kunci
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 px-3 py-1 rounded-full font-bold flex items-center gap-1.5 shrink-0">
+                <Unlock className="w-3.5 h-3.5 text-emerald-600" /> Form Terbuka (Dapat Diedit)
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsLocked(true)}
+                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-300 px-3 py-1 rounded-full font-medium flex items-center gap-1.5 transition cursor-pointer"
+                title="Kunci kembali form saldo awal"
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-500" /> Kunci Kembali
+              </button>
+            </div>
           )}
         </div>
 
