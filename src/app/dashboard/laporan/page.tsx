@@ -140,7 +140,7 @@ export default function LaporanPage() {
         try {
           rawDemoEmail = decodeURIComponent(rawDemoEmail)
           rawDemoUsername = decodeURIComponent(rawDemoUsername)
-        } catch (e) {}
+        } catch (e) { }
         const effectiveEmail = user?.email || rawDemoEmail || rawDemoUsername || ''
         const effectiveRole = (typeof document !== 'undefined' ? (`; ${document.cookie}`).split('; demo_user_role=').pop()?.split(';').shift() : '') || ''
 
@@ -205,7 +205,7 @@ export default function LaporanPage() {
               supabaseSuccess = true
               journals = dbJournals
             }
-          } catch (e) {}
+          } catch (e) { }
 
           journals = reconcileJournals(journals, dbUuid, targetLingkunganId, supabaseSuccess)
           setJurnalList(journals)
@@ -308,8 +308,8 @@ export default function LaporanPage() {
   }
 
   const selectedMonthName = isYearly ? 'Tahun Penuh' : (MONTH_NAMES[monthNum - 1] || '')
-  const displayPeriodeTitle = isYearly 
-    ? `Periode 1 Tahun Penuh (Januari - Desember ${selectedYear})` 
+  const displayPeriodeTitle = isYearly
+    ? `Periode 1 Tahun Penuh (Januari - Desember ${selectedYear})`
     : `Periode ${selectedMonthName} ${selectedYear}`
   const tablePeriodHeader = isYearly ? `Tahun ${selectedYear} (Rp)` : `${selectedMonthName} (Rp)`
 
@@ -523,8 +523,8 @@ export default function LaporanPage() {
                   {effectiveSaldoAwal > 0
                     ? effectiveSaldoAwal.toLocaleString('id-ID')
                     : effectiveSaldoAwal < 0
-                    ? `-${Math.abs(effectiveSaldoAwal).toLocaleString('id-ID')}`
-                    : '—'}
+                      ? `-${Math.abs(effectiveSaldoAwal).toLocaleString('id-ID')}`
+                      : '—'}
                 </td>
               </tr>
 
@@ -639,11 +639,10 @@ export default function LaporanPage() {
         <div className="pt-10 grid grid-cols-3 gap-4 text-center text-xs text-slate-700">
           <div className="space-y-16">
             <div>Ketua Lingkungan</div>
-            <div className={`border-t border-slate-300 pt-1 font-bold ${
-              !pengurus?.ketua_nama || pengurus.ketua_nama === 'Susunan pengurus belum ditentukan'
+            <div className={`border-t border-slate-300 pt-1 font-bold ${!pengurus?.ketua_nama || pengurus.ketua_nama === 'Susunan pengurus belum ditentukan'
                 ? 'text-slate-400 italic text-[11px]'
                 : 'text-slate-900'
-            }`}>
+              }`}>
               {pengurus?.ketua_nama && pengurus.ketua_nama !== 'Susunan pengurus belum ditentukan'
                 ? pengurus.ketua_nama
                 : 'Susunan pengurus belum ditentukan'}
@@ -652,11 +651,10 @@ export default function LaporanPage() {
 
           <div className="space-y-16">
             <div>Sekretaris Lingkungan</div>
-            <div className={`border-t border-slate-300 pt-1 font-bold ${
-              !pengurus?.sekretaris_nama || pengurus.sekretaris_nama === 'Susunan pengurus belum ditentukan'
+            <div className={`border-t border-slate-300 pt-1 font-bold ${!pengurus?.sekretaris_nama || pengurus.sekretaris_nama === 'Susunan pengurus belum ditentukan'
                 ? 'text-slate-400 italic text-[11px]'
                 : 'text-slate-900'
-            }`}>
+              }`}>
               {pengurus?.sekretaris_nama && pengurus.sekretaris_nama !== 'Susunan pengurus belum ditentukan'
                 ? pengurus.sekretaris_nama
                 : 'Susunan pengurus belum ditentukan'}
@@ -665,11 +663,10 @@ export default function LaporanPage() {
 
           <div className="space-y-16">
             <div>Bendahara Lingkungan</div>
-            <div className={`border-t border-slate-300 pt-1 font-bold ${
-              !pengurus?.bendahara_nama || pengurus.bendahara_nama === 'Susunan pengurus belum ditentukan'
+            <div className={`border-t border-slate-300 pt-1 font-bold ${!pengurus?.bendahara_nama || pengurus.bendahara_nama === 'Susunan pengurus belum ditentukan'
                 ? 'text-slate-400 italic text-[11px]'
                 : 'text-slate-900'
-            }`}>
+              }`}>
               {pengurus?.bendahara_nama && pengurus.bendahara_nama !== 'Susunan pengurus belum ditentukan'
                 ? pengurus.bendahara_nama
                 : 'Susunan pengurus belum ditentukan'}
