@@ -98,11 +98,11 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
   },
   {
     id: 'cytm',
-    name: 'Dana CYTM',
+    name: 'Dana CYTM (Celengan)',
     formatType: 'MATRIKS',
-    headerRightText: 'DANA CYTM',
-    coaCodes: [],
-    coaKeywords: ['cytm', 'youth']
+    headerRightText: 'DANA CYTM (CELENGAN)',
+    coaCodes: ['5360', '4501'],
+    coaKeywords: ['cytm', 'celengan', 'youth']
   }
 ]
 

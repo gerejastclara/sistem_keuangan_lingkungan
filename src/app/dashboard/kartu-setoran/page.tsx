@@ -31,31 +31,15 @@ import {
 } from 'lucide-react'
 
 const JENIS_KARTU_OPTIONS = [
-  { code: '4100', name: 'Kas Lingkungan (KL) — COA 4100', labelShort: 'Kas Lingkungan' },
-  { code: '4110', name: 'Kolekte Ibadat Sabda — COA 4110', labelShort: 'Kolekte Ibadat Sabda' },
-  { code: '4120', name: 'Sumbangan Dahar Romo — COA 4120', labelShort: 'Dahar Romo' },
+  { code: '4100', name: 'Iuran Kas Lingkungan — COA 4100', labelShort: 'Kas Lingkungan' },
   { code: '4200', name: 'Sumbangan ASAK — COA 4200', labelShort: 'ASAK' },
-  { code: '4300', name: 'Iuran Dana Kematian / St. Yusuf — COA 4300', labelShort: 'Dana Kematian / St. Yusuf' },
-  { code: '4400', name: 'Kolekte Misa Lingkungan — COA 4400', labelShort: 'Kolekte Misa Lingkungan' },
-  { code: '4500', name: 'Sumbangan Umat — COA 4500', labelShort: 'Sumbangan Umat' },
-  { code: '4600', name: 'Bantuan dari Paroki — COA 4600', labelShort: 'Bantuan dari Paroki' },
-  { code: '4700', name: 'Dana APP — COA 4700', labelShort: 'Dana APP' },
-  { code: '4800', name: 'Dana Aksi Natal — COA 4800', labelShort: 'Aksi Natal' },
-  { code: '4900', name: 'Penerimaan Lainnya — COA 4900', labelShort: 'Penerimaan Lainnya' }
+  { code: '4120', name: 'Sumbangan Dahar Romo — COA 4120', labelShort: 'Dahar Romo' },
+  { code: '4300', name: 'Iuran Dana Kematian / St. Yusuf — COA 4300', labelShort: 'St. Yusuf' },
+  { code: '5340', name: 'Sumbangan Dana PPG — COA 5340', labelShort: 'PPG' },
+  { code: '4501', name: 'Iuran Celengan CYTM — COA 4501', labelShort: 'CYTM' }
 ]
 
 function getDynamicJenisKartuOptions(): Array<{ code: string; name: string; labelShort: string }> {
-  try {
-    const master = getAllMasterCOA()
-    const penerimaanList = master.filter(c => c.kategori === 'PENERIMAAN')
-    if (penerimaanList.length > 0) {
-      return penerimaanList.map(c => ({
-        code: c.id,
-        name: `${c.nama_akun} — COA ${c.id}`,
-        labelShort: c.nama_akun
-      }))
-    }
-  } catch (e) {}
   return JENIS_KARTU_OPTIONS
 }
 
@@ -461,52 +445,87 @@ export default function KartuSetoranPage() {
     }
     const kkMonths = setoranMap.get(kkId)!
 
-    // Tentukan sumber & penalang:
-    const overrideKey = `${kkId}_${month}`
-    const override = parseOverride(sourceOverrides[overrideKey])
-    let sumber: SumberSetoranType = 'SENDIRI'
-    let penalangNama: string | undefined = undefined
-
-    if (sourceOverrides[overrideKey]) {
-      sumber = override.sumber
-      penalangNama = override.penalangNama
-    } else if (
-      j.sumber_setoran === 'DANA_LINGKUNGAN' ||
-      (j.keterangan || '').toLowerCase().includes('kas lingkungan') ||
-      (j.keterangan || '').toLowerCase().includes('dana lingkungan') ||
-      (j.keterangan || '').toLowerCase().includes('subsidi')
-    ) {
-      sumber = 'DANA_LINGKUNGAN'
-    } else if (
-      j.sumber_setoran === 'PAROKI' ||
-      (j.keterangan || '').toLowerCase().includes('talangan paroki') ||
-      (j.keterangan || '').toLowerCase().includes('ditalangi paroki')
-    ) {
-      sumber = 'PAROKI'
-    } else if (
-      j.sumber_setoran === 'ORANG_LAIN' ||
-      (j.keterangan || '').toLowerCase().includes('donasi') ||
-      (j.keterangan || '').toLowerCase().includes('ditalangi')
-    ) {
-      sumber = 'ORANG_LAIN'
-      const match = (j.keterangan || '').match(/\((?:Ditalangi|Donasi)\s+([^)]+)\)/i)
-      penalangNama = match ? match[1].trim() : (j.keterangan || undefined)
-    }
-
-    const current = kkMonths[month]
-    if (current) {
-      current.nominal += nom
-      if (sumber !== 'SENDIRI') {
-        current.sumber = sumber
-        current.penalangNama = penalangNama
+    // Cek apakah transaksi memiliki alokasi multi-bulan
+    // Contoh: [Bulan: 1, 2, 3] atau [Bulan: Jan, Feb, Mar]
+    const bulanMatch = (j.keterangan || '').match(/\[Bulan:\s*([^\]]+)\]/i)
+    let targetMonths: number[] = [month]
+    if (bulanMatch) {
+      const parsedMonths: number[] = []
+      const monthParts = bulanMatch[1].split(/[,;\s]+/).map(s => s.trim().toLowerCase())
+      const monthMapLookup: Record<string, number> = {
+        '1': 1, '01': 1, 'jan': 1, 'januari': 1,
+        '2': 2, '02': 2, 'feb': 2, 'februari': 2,
+        '3': 3, '03': 3, 'mar': 3, 'maret': 3,
+        '4': 4, '04': 4, 'apr': 4, 'april': 4,
+        '5': 5, '05': 5, 'mei': 5,
+        '6': 6, '06': 6, 'jun': 6, 'juni': 6,
+        '7': 7, '07': 7, 'jul': 7, 'juli': 7,
+        '8': 8, '08': 8, 'ags': 8, 'agustus': 8,
+        '9': 9, '09': 9, 'sep': 9, 'september': 9,
+        '10': 10, 'okt': 10, 'oktober': 10,
+        '11': 11, 'nov': 11, 'november': 11,
+        '12': 12, 'des': 12, 'desember': 12
       }
-    } else {
-      kkMonths[month] = {
-        nominal: nom,
-        sumber: sumber,
-        penalangNama: penalangNama
+      monthParts.forEach(p => {
+        if (monthMapLookup[p] && !parsedMonths.includes(monthMapLookup[p])) {
+          parsedMonths.push(monthMapLookup[p])
+        }
+      })
+      if (parsedMonths.length > 0) {
+        targetMonths = parsedMonths
       }
     }
+
+    const nomPerMonth = Math.round(nom / targetMonths.length)
+
+    targetMonths.forEach((mNum) => {
+      // Tentukan sumber & penalang:
+      const overrideKey = `${kkId}_${mNum}`
+      const override = parseOverride(sourceOverrides[overrideKey])
+      let sumber: SumberSetoranType = 'SENDIRI'
+      let penalangNama: string | undefined = undefined
+
+      if (sourceOverrides[overrideKey]) {
+        sumber = override.sumber
+        penalangNama = override.penalangNama
+      } else if (
+        j.sumber_setoran === 'DANA_LINGKUNGAN' ||
+        (j.keterangan || '').toLowerCase().includes('kas lingkungan') ||
+        (j.keterangan || '').toLowerCase().includes('dana lingkungan') ||
+        (j.keterangan || '').toLowerCase().includes('subsidi')
+      ) {
+        sumber = 'DANA_LINGKUNGAN'
+      } else if (
+        j.sumber_setoran === 'PAROKI' ||
+        (j.keterangan || '').toLowerCase().includes('talangan paroki') ||
+        (j.keterangan || '').toLowerCase().includes('ditalangi paroki')
+      ) {
+        sumber = 'PAROKI'
+      } else if (
+        j.sumber_setoran === 'ORANG_LAIN' ||
+        (j.keterangan || '').toLowerCase().includes('donasi') ||
+        (j.keterangan || '').toLowerCase().includes('ditalangi')
+      ) {
+        sumber = 'ORANG_LAIN'
+        const match = (j.keterangan || '').match(/\((?:Ditalangi|Donasi)\s+([^)]+)\)/i)
+        penalangNama = match ? match[1].trim() : (j.keterangan || undefined)
+      }
+
+      const current = kkMonths[mNum]
+      if (current) {
+        current.nominal += nomPerMonth
+        if (sumber !== 'SENDIRI') {
+          current.sumber = sumber
+          current.penalangNama = penalangNama
+        }
+      } else {
+        kkMonths[mNum] = {
+          nominal: nomPerMonth,
+          sumber: sumber,
+          penalangNama: penalangNama
+        }
+      }
+    })
 
     if (kkId !== 'umum') {
       uniqueKkIdsWithSetoran.add(kkId)

@@ -23,6 +23,7 @@ export const DEFAULT_MASTER_COA_LIST: MasterCOAItem[] = [
   { id: '4300', nama_akun: 'Iuran Dana Kematian/St. Yusuf', tipe: 'KREDIT', kategori: 'PENERIMAAN', keterangan: 'Dana santunan kematian' },
   { id: '4400', nama_akun: 'Kolekte Misa Lingkungan', tipe: 'KREDIT', kategori: 'PENERIMAAN', keterangan: 'Persembahan misa di lingkungan' },
   { id: '4500', nama_akun: 'Sumbangan Umat', tipe: 'KREDIT', kategori: 'PENERIMAAN', keterangan: 'Donasi sukarela warga umat' },
+  { id: '4501', nama_akun: 'Iuran Celengan CYTM', tipe: 'KREDIT', kategori: 'PENERIMAAN', keterangan: 'Nature dana CYTM (Celengan)' },
   { id: '4600', nama_akun: 'Bantuan dari Paroki', tipe: 'KREDIT', kategori: 'PENERIMAAN', keterangan: 'Subsidi/dana dari Dewan Paroki' },
   { id: '4700', nama_akun: 'Dana APP', tipe: 'KREDIT', kategori: 'PENERIMAAN', keterangan: 'Aksi Puasa Pembangunan' },
   { id: '4800', nama_akun: 'Dana Aksi Natal', tipe: 'KREDIT', kategori: 'PENERIMAAN', keterangan: 'Aksi sosial perayaan Natal' },
@@ -54,6 +55,7 @@ export const DEFAULT_MASTER_COA_LIST: MasterCOAItem[] = [
   { id: '5320', nama_akun: 'Sumbangan Dana Aksi Natal', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Penyetoran aksi Natal ke paroki' },
   { id: '5340', nama_akun: 'Sumbangan Dana PPG', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Panitia Pembangunan Gereja' },
   { id: '5350', nama_akun: 'Kolekte yg disetor ke Paroki', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Penyetoran kolekte misa / ibadat ke paroki' },
+  { id: '5360', nama_akun: 'Sumbangan Celengan (Celengan)', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Penyetoran/sumbangan celengan CYTM ke Paroki' },
   { id: '5900', nama_akun: 'Pengeluaran lainnya', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Pengeluaran operasional lain-lain' }
 ]
 

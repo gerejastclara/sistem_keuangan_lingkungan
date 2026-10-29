@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 import { UserProfile, JurnalTransaksi, KepalaKeluarga, COA } from '@/lib/types'
@@ -104,6 +104,11 @@ export default function JurnalPage() {
   const [step4NominalNumeric, setStep4NominalNumeric] = useState<number>(0)
   const [step4NominalInput, setStep4NominalInput] = useState<string>('Rp 0')
 
+  // Multi-Bulan & Nominal Per Bulan State (Poin 1)
+  const [nominalPerBulanNumeric, setNominalPerBulanNumeric] = useState<number>(0)
+  const [nominalPerBulanInput, setNominalPerBulanInput] = useState<string>('Rp 0')
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([])
+
   // Step 5: Keterangan
   const [step5Keterangan, setStep5Keterangan] = useState<string>('')
 
@@ -133,11 +138,83 @@ export default function JurnalPage() {
     return ket.replace(/^(\[[^\]]+\]\s*)+/g, '').replace(/\[KK:\s*[^\]]+\]/gi, '').trim()
   }
 
+  const SHORT_MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
+
   const handleNominalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9]/g, '')
     const num = parseInt(raw, 10) || 0
     setStep4NominalNumeric(num)
     setStep4NominalInput(formatCurrency(num))
+  }
+
+  const handleNominalPerBulanChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^0-9]/g, '')
+    const num = parseInt(raw, 10) || 0
+    setNominalPerBulanNumeric(num)
+    setNominalPerBulanInput(formatCurrency(num))
+    if (selectedMonths.length > 0 && num > 0) {
+      const calculated = num * selectedMonths.length
+      setStep4NominalNumeric(calculated)
+      setStep4NominalInput(formatCurrency(calculated))
+    }
+  }
+
+  const toggleSelectMonth = (mNum: number) => {
+    setSelectedMonths((prev) => {
+      const next = prev.includes(mNum) ? prev.filter((m) => m !== mNum) : [...prev, mNum].sort((a, b) => a - b)
+      if (nominalPerBulanNumeric > 0) {
+        const calculated = nominalPerBulanNumeric * next.length
+        setStep4NominalNumeric(calculated)
+        setStep4NominalInput(formatCurrency(calculated))
+      }
+      return next
+    })
+  }
+
+  const selectAllMonths = () => {
+    const allM = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    setSelectedMonths(allM)
+    if (nominalPerBulanNumeric > 0) {
+      const calculated = nominalPerBulanNumeric * 12
+      setStep4NominalNumeric(calculated)
+      setStep4NominalInput(formatCurrency(calculated))
+    }
+  }
+
+  const clearSelectedMonths = () => {
+    setSelectedMonths([])
+  }
+
+  // Cek apakah jenis COA yang dipilih adalah iuran/setoran per-KK
+  const isSetoranRutinCoa = useMemo(() => {
+    if (!step2Jenis) return false
+    const codes = ['4100', '4200', '4120', '4300', '5340', '4501', '5100', '5270', '5280', '5290', '5360']
+    if (codes.includes(step2Jenis)) return true
+    const matched = coaList.find(c => c.id === step2Jenis)
+    const name = (matched?.nama_akun || '').toLowerCase()
+    return (
+      name.includes('iuran') ||
+      name.includes('kas lingkungan') ||
+      name.includes('dahar romo') ||
+      name.includes('yusuf') ||
+      name.includes('kematian') ||
+      name.includes('asak') ||
+      name.includes('ppg') ||
+      name.includes('celengan') ||
+      name.includes('cytm')
+    )
+  }, [step2Jenis, coaList])
+
+  const calculatedTargetTotal = nominalPerBulanNumeric * selectedMonths.length
+  const hasNominalMismatch =
+    isSetoranRutinCoa &&
+    selectedMonths.length > 0 &&
+    nominalPerBulanNumeric > 0 &&
+    step4NominalNumeric !== calculatedTargetTotal
+
+  const applyCalculatedTotal = () => {
+    setStep4NominalNumeric(calculatedTargetTotal)
+    setStep4NominalInput(formatCurrency(calculatedTargetTotal))
   }
 
   useEffect(() => {
@@ -508,7 +585,28 @@ export default function JurnalPage() {
     if (j.tipe_arus === 'MASUK') totalBulanMasuk += nom
     else totalBulanKeluar += nom
   })
-  const saldoBulanAkhir = saldoAwalBank + totalBulanMasuk - totalBulanKeluar
+
+  // Hitung Saldo Awal Bergulir (Rolling Balance):
+  // Bulan 1 (Januari) memakai saldo awal tahunan (saldoAwalBank).
+  // Bulan M (M > 1) memakai: Saldo Awal Jan + Seluruh Masuk (bulan 1 s/d M-1) - Seluruh Keluar (bulan 1 s/d M-1).
+  let effectiveSaldoAwal = saldoAwalBank
+  if (typeof selectedMonth === 'number' && selectedMonth > 1) {
+    let priorNet = 0
+    jurnalList.forEach((j) => {
+      if (j.no_bukti === '[SA/1100]' || (j.keterangan || '').includes('[SALDO_AWAL]')) return
+      const d = new Date(j.tanggal)
+      const jYear = isNaN(d.getFullYear()) ? selectedYear : d.getFullYear()
+      const jMonth = d.getMonth() + 1
+      if (jYear === selectedYear && jMonth < selectedMonth) {
+        const nom = Number(j.nominal) || 0
+        if (j.tipe_arus === 'MASUK') priorNet += nom
+        else priorNet -= nom
+      }
+    })
+    effectiveSaldoAwal = saldoAwalBank + priorNet
+  }
+
+  const saldoBulanAkhir = effectiveSaldoAwal + totalBulanMasuk - totalBulanKeluar
 
   // Check if current month is posted
   const isMonthPosted = selectedMonth !== 'ALL' && filteredJournals.length > 0 && filteredJournals.every(j => j.is_posted)
@@ -600,6 +698,11 @@ export default function JurnalPage() {
     let displayKet = rawKet
     if (kkObj && !displayKet.includes('[KK:')) {
       displayKet = `${displayKet} [KK: ${kkObj.nama_kk}]`.trim()
+    }
+    if (selectedMonths.length > 0 && !displayKet.includes('[Bulan:')) {
+      const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
+      const monthTag = `[Bulan: ${selectedMonths.map(m => monthNamesShort[m - 1]).join(', ')}]`
+      displayKet = `${displayKet} ${monthTag}`.trim()
     }
     if (step1Arus === 'MASUK') {
       if (sumberSetoran === 'ORANG_LAIN' && sumberSetoranPenalang.trim()) {
@@ -718,6 +821,9 @@ export default function JurnalPage() {
     setSumberSetoranPenalang('')
     setStep4NominalNumeric(0)
     setStep4NominalInput('Rp 0')
+    setNominalPerBulanNumeric(0)
+    setNominalPerBulanInput('Rp 0')
+    setSelectedMonths([])
     setStep5Keterangan('')
     setNoBuktiCustom('')
 
@@ -840,9 +946,9 @@ export default function JurnalPage() {
         {/* Box 1: Saldo Awal (A) */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
           <div className="text-xs font-medium text-slate-500">
-            {selectedMonth === 'ALL' ? 'Saldo Awal Tahun (A)' : 'Saldo Awal (A)'}
+            {selectedMonth === 'ALL' ? 'Saldo Awal Tahun (A)' : `Saldo Awal ${MONTH_NAMES[selectedMonth - 1] || 'Bulan'} (A)`}
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{formatRupiah(saldoAwalBank)}</div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{formatRupiah(effectiveSaldoAwal)}</div>
         </div>
 
         {/* Box 2: Total Uang Masuk (B) */}
@@ -1446,6 +1552,111 @@ export default function JurnalPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Box Tambahan: Input Nominal Per Bulan & Pilihan Bulan untuk Iuran Rutin (Poin 1) */}
+              {isSetoranRutinCoa && (
+                <div className="p-4 bg-slate-50/80 border border-slate-200/90 rounded-2xl space-y-3 animate-fadeIn">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-1 border-b border-slate-200/80">
+                    <div>
+                      <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                        <span>Pilihan Bulan &amp; Nominal Per Bulan (Multi-Bulan)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Klik bulan yang dibayar untuk perhitungan otomatis atau alokasi ke kartu setoran
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={selectAllMonths}
+                        className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg transition cursor-pointer"
+                      >
+                        Pilih 12 Bulan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearSelectedMonths}
+                        className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg transition cursor-pointer"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Input Nominal Per Bulan & Selector Bulan */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                    <div className="space-y-1">
+                      <Label htmlFor="nomBulan" className="text-xs font-bold text-slate-700">
+                        Nominal Per Bulan (Rp)
+                      </Label>
+                      <Input
+                        id="nomBulan"
+                        value={nominalPerBulanInput}
+                        onChange={handleNominalPerBulanChange}
+                        placeholder="Rp 10.000"
+                        className="bg-white border-slate-300 text-slate-900 font-semibold text-xs rounded-xl h-10"
+                      />
+                    </div>
+
+                    {/* Selector 12 Bulan Interaktif (Klik Toggle) */}
+                    <div className="sm:col-span-2 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-bold text-slate-700">
+                          Bulan Pembayaran ({selectedMonths.length} bulan terpilih)
+                        </Label>
+                        {selectedMonths.length > 0 && (
+                          <span className="text-[11px] font-mono font-semibold text-slate-600">
+                            {selectedMonths.map(m => SHORT_MONTH_NAMES[m - 1]).join(', ')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-6 sm:grid-cols-12 gap-1 pt-0.5">
+                        {SHORT_MONTH_NAMES.map((mName, idx) => {
+                          const mNum = idx + 1
+                          const isSelected = selectedMonths.includes(mNum)
+                          return (
+                            <button
+                              key={mNum}
+                              type="button"
+                              onClick={() => toggleSelectMonth(mNum)}
+                              className={`h-8 rounded-lg text-[11px] font-bold transition flex items-center justify-center cursor-pointer border ${
+                                isSelected
+                                  ? 'bg-slate-800 text-white border-slate-800 shadow-2xs'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100/80 hover:text-slate-900'
+                              }`}
+                              title={`Klik untuk memilih/membatalkan bulan ${mName}`}
+                            >
+                              {mName}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Alert Peringatan jika Total yang diinput tidak sama dengan (nominal/bulan * bulan dipilih) */}
+                  {hasNominalMismatch && (
+                    <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-900 animate-fadeIn mt-2">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Perhatian:</strong> Jumlah nominal yang diinput (<strong>{formatCurrency(step4NominalNumeric)}</strong>) tidak sama dengan perkalian nominal per bulan (<strong>{formatCurrency(nominalPerBulanNumeric)} × {selectedMonths.length} bulan = {formatCurrency(calculatedTargetTotal)}</strong>).
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={applyCalculatedTotal}
+                        className="h-8 px-2.5 text-xs font-semibold bg-white border-amber-300 text-amber-900 hover:bg-amber-100 shrink-0 cursor-pointer"
+                      >
+                        Sesuaikan ke {formatCurrency(calculatedTargetTotal)}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
               <p className="text-[11px] text-slate-500 italic">
                 * Kode unik otomatis dari sistem: <strong className="font-mono text-slate-700">{generateDocNumber(step1Arus, selectedRekening, step4Tanggal)}</strong> ({step1Arus === 'MASUK' ? (selectedRekening === 'KAS' ? 'BKM: Buku Kas Masuk' : 'BBM: Buku Bank Masuk') : (selectedRekening === 'KAS' ? 'BKK: Buku Kas Keluar' : 'BBK: Buku Bank Keluar')}), nomor urut berlanjut otomatis memudahkan pembedaan tiap transaksi.
               </p>
