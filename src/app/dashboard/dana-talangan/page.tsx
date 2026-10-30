@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { UserProfile, JurnalTransaksi, KepalaKeluarga } from '@/lib/types'
+import { ensureDummyKksForLingkungan } from '@/lib/dummyData'
 import { formatRupiah, formatDateIndo, MONTH_NAMES } from '@/lib/utils'
 import { formatNamaLingkungan, getAllMasterLingkungan, findLingkunganByQuery, getLingkunganDbUuid } from '@/lib/constants'
 import { reconcileJournals } from '@/lib/journalSync'
@@ -51,6 +52,7 @@ export default function BukuBesarDanaTalanganPage() {
   const [pengurus, setPengurus] = useState<PengurusLingkungan | null>(null)
 
   const [jurnalList, setJurnalList] = useState<JurnalTransaksi[]>([])
+  const [kkList, setKkList] = useState<KepalaKeluarga[]>([])
   const [searchQuery, setSearchQuery] = useState('')
 
   // Filter State
@@ -116,6 +118,18 @@ export default function BukuBesarDanaTalanganPage() {
           const pengurusInfo = getPengurusForLingkungan(targetLingkunganId, targetLingkunganNama, profil)
           setPengurus(pengurusInfo)
 
+          // Load KKs for lingkungan
+          let dbKks: KepalaKeluarga[] = []
+          try {
+            const { data: kks } = await supabase
+              .from('kepala_keluarga')
+              .select('*')
+              .or(`lingkungan_id.eq.${dbUuid},lingkungan_id.eq.${targetLingkunganId}`)
+            if (Array.isArray(kks)) dbKks = kks
+          } catch (e) {}
+          const finalKks = ensureDummyKksForLingkungan(targetLingkunganId, targetLingkunganNama || 'Lingkungan', dbKks)
+          setKkList(finalKks)
+
           // Load Journals
           let list: JurnalTransaksi[] = []
           let supabaseSuccess = false
@@ -161,17 +175,23 @@ export default function BukuBesarDanaTalanganPage() {
     }
   }, [supabase])
 
-  // Filter journals that touch Dana Talangan accounts (1300 and 1400)
+  // Filter journals that touch Dana Talangan accounts (1300 and 1400) or are advanced/subsidized
   // Akun 1300: Dana talangan Dahar Romo
   // Akun 1400: Dana talangan Santo Yusuf
   const talanganRawJournals = jurnalList.filter((j) => {
     const touches1300 = j.coa_debit === '1300' || j.coa_kredit === '1300'
     const touches1400 = j.coa_debit === '1400' || j.coa_kredit === '1400'
+    const isKasLingkungan =
+      j.sumber_setoran === 'DANA_LINGKUNGAN' ||
+      (j.keterangan || '').toLowerCase().includes('kas lingkungan') ||
+      (j.keterangan || '').toLowerCase().includes('dana lingkungan')
     const touchesTalanganInDesc =
       (j.keterangan || '').toLowerCase().includes('talangan') ||
       (j.keterangan || '').toLowerCase().includes('ditalangi') ||
+      (j.keterangan || '').toLowerCase().includes('donasi') ||
       j.sumber_setoran === 'ORANG_LAIN' ||
-      j.sumber_setoran === 'PAROKI'
+      j.sumber_setoran === 'PAROKI' ||
+      isKasLingkungan
 
     return touches1300 || touches1400 || touchesTalanganInDesc
   })
@@ -181,25 +201,40 @@ export default function BukuBesarDanaTalanganPage() {
   const allMutasiItems: TalanganMutasiItem[] = []
 
   talanganRawJournals.forEach((j, idx) => {
-    const is1300 = j.coa_debit === '1300' || j.coa_kredit === '1300' || (j.keterangan || '').toLowerCase().includes('dahar romo')
+    const is1300 =
+      j.coa_debit === '1300' ||
+      j.coa_kredit === '1300' ||
+      j.coa_debit === '4120' ||
+      j.coa_kredit === '4120' ||
+      j.coa_debit === '5300' ||
+      j.coa_debit === '5270' ||
+      (j.keterangan || '').toLowerCase().includes('dahar romo') ||
+      (j.keterangan || '').toLowerCase().includes('pastoran')
     const akunId = is1300 ? '1300' : '1400'
     const namaAkun = is1300 ? 'Dana talangan Dahar Romo' : 'Dana talangan Santo Yusuf'
 
-    // Debit pada akun talangan = uang keluar dari kas lingkungan untuk menalangi (saldo talangan bertambah)
-    // Kredit pada akun talangan = uang masuk ke kas lingkungan mengganti talangan (saldo talangan berkurang)
+    // Debit pada akun talangan = dana ditalangkan (talangan yang diberikan oleh kas lingkungan/donatur untuk menalangi)
+    // Kredit pada akun talangan = pelunasan / penggantian dana talangan oleh umat
     let debit = 0
     let kredit = 0
 
-    if (j.coa_debit === akunId || j.tipe_arus === 'KELUAR') {
-      debit = Number(j.nominal) || 0
-      runningBalance += debit
-    } else if (j.coa_kredit === akunId || j.tipe_arus === 'MASUK') {
+    const isPelunasan =
+      (j.keterangan || '').toLowerCase().includes('pelunasan') ||
+      (j.keterangan || '').toLowerCase().includes('penggantian talangan') ||
+      (j.keterangan || '').toLowerCase().includes('lunas talangan') ||
+      (j.keterangan || '').toLowerCase().includes('bayar talangan') ||
+      (j.coa_kredit === akunId && !j.sumber_setoran && !(j.keterangan || '').toLowerCase().includes('ditalangi') && !(j.keterangan || '').toLowerCase().includes('kas lingkungan'))
+
+    if (isPelunasan) {
       kredit = Number(j.nominal) || 0
       runningBalance -= kredit
+    } else {
+      debit = Number(j.nominal) || 0
+      runningBalance += debit
     }
 
     // Format No Bukti
-    const isKas = j.sumber_kas === 'KAS' || j.coa_debit === '1200' || j.coa_kredit === '1200'
+    const isKas = j.sumber_kas === 'KAS' || j.coa_debit === '1000' || j.coa_kredit === '1000' || j.coa_debit === '1200' || j.coa_kredit === '1200'
     const prefix = debit > 0 ? (isKas ? 'BKK' : 'BBK') : (isKas ? 'BKM' : 'BBM')
     const d = new Date(j.tanggal)
     const mStr = String(isNaN(d.getMonth()) ? 9 : d.getMonth() + 1).padStart(2, '0')
@@ -212,12 +247,40 @@ export default function BukuBesarDanaTalanganPage() {
     const match = (j.keterangan || '').match(/\((?:Ditalangi|Donasi)\s+([^)]+)\)/i)
     if (match) {
       penalangNama = match[1].trim()
+    } else if (
+      j.sumber_setoran === 'DANA_LINGKUNGAN' ||
+      (j.keterangan || '').toLowerCase().includes('kas lingkungan') ||
+      (j.keterangan || '').toLowerCase().includes('dana lingkungan')
+    ) {
+      penalangNama = 'Kas Lingkungan'
+    } else if (
+      j.sumber_setoran === 'PAROKI' ||
+      (j.keterangan || '').toLowerCase().includes('talangan paroki') ||
+      (j.keterangan || '').toLowerCase().includes('ditalangi paroki')
+    ) {
+      penalangNama = 'Dewan Paroki'
     } else if (j.sumber_setoran === 'ORANG_LAIN') {
       penalangNama = 'Donatur Umat Lain'
-    } else if (j.sumber_setoran === 'PAROKI' || (j.keterangan || '').toLowerCase().includes('talangan paroki') || (j.keterangan || '').toLowerCase().includes('ditalangi paroki')) {
-      penalangNama = 'Dewan Paroki'
-    } else if (j.sumber_setoran === 'DANA_LINGKUNGAN' || (j.keterangan || '').toLowerCase().includes('kas lingkungan')) {
-      penalangNama = 'Kas Lingkungan'
+    }
+
+    // Resolusi nama KK
+    let kkNama = j.kepala_keluarga?.nama_kk
+    if (!kkNama && typeof window !== 'undefined') {
+      const cached = localStorage.getItem(`tx_kk_${j.id}`)
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached)
+          if (parsed.nama_kk) kkNama = parsed.nama_kk
+        } catch (e) {}
+      }
+    }
+    if (!kkNama && j.keterangan) {
+      const kkMatch = j.keterangan.match(/\[KK:\s*([^\]]+)\]/i)
+      if (kkMatch) kkNama = kkMatch[1].trim()
+    }
+    if (!kkNama && j.kk_id) {
+      const found = kkList.find(k => k.id === j.kk_id)
+      if (found) kkNama = found.nama_kk
     }
 
     allMutasiItems.push({
@@ -227,7 +290,7 @@ export default function BukuBesarDanaTalanganPage() {
       akun_id: akunId,
       nama_akun: namaAkun,
       keterangan: j.keterangan || (debit > 0 ? 'Penyaluran Dana Talangan' : 'Pelunasan Dana Talangan'),
-      nama_kk: j.kepala_keluarga?.nama_kk,
+      nama_kk: kkNama,
       penalang: penalangNama,
       sumber_kas: isKas ? 'KAS' : 'BANK',
       debit: debit,
@@ -537,8 +600,14 @@ export default function BukuBesarDanaTalanganPage() {
                           </span>
                         )}
                         {item.penalang && (
-                          <span className="text-[10px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-medium flex items-center gap-1">
-                            <span>★ Ditalangi:</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium flex items-center gap-1 ${
+                            item.penalang === 'Kas Lingkungan'
+                              ? 'bg-[#F4F3F7] text-[#5B546E] border-[#E0DDE8]'
+                              : item.penalang === 'Dewan Paroki'
+                              ? 'bg-slate-100 text-slate-700 border-slate-200'
+                              : 'bg-[#F6F4F0] text-[#6B5F4E] border-[#E5DFD5]'
+                          }`}>
+                            <span>{item.penalang === 'Kas Lingkungan' ? '🏛️' : item.penalang === 'Dewan Paroki' ? '✝' : '★'} Ditalangi:</span>
                             <span className="font-bold">{item.penalang === 'N/N' ? 'N/N (Umat Anonim)' : item.penalang}</span>
                           </span>
                         )}
