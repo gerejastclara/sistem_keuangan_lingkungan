@@ -6,6 +6,7 @@ export interface MasterCOAItem {
   tipe: 'DEBIT' | 'KREDIT'
   kategori: 'KAS' | 'PENERIMAAN' | 'PENGELUARAN'
   keterangan?: string
+  nature?: string
 }
 
 export const DEFAULT_MASTER_COA_LIST: MasterCOAItem[] = [
@@ -55,7 +56,7 @@ export const DEFAULT_MASTER_COA_LIST: MasterCOAItem[] = [
   { id: '5320', nama_akun: 'Sumbangan Dana Aksi Natal', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Penyetoran aksi Natal ke paroki' },
   { id: '5340', nama_akun: 'Sumbangan Dana PPG', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Panitia Pembangunan Gereja' },
   { id: '5350', nama_akun: 'Kolekte yg disetor ke Paroki', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Penyetoran kolekte misa / ibadat ke paroki' },
-  { id: '5360', nama_akun: 'Sumbangan Celengan (Celengan)', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Penyetoran/sumbangan celengan CYTM ke Paroki' },
+  { id: '5360', nama_akun: 'Sumbangan Celengan CYTM', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Penyetoran/sumbangan celengan CYTM ke Paroki', nature: 'Penyetoran/sumbangan celengan CYTM ke Paroki' },
   { id: '5900', nama_akun: 'Pengeluaran lainnya', tipe: 'DEBIT', kategori: 'PENGELUARAN', keterangan: 'Pengeluaran operasional lain-lain' }
 ]
 
@@ -185,7 +186,8 @@ export async function fetchMasterCoaFromDb(supabase: any): Promise<MasterCOAItem
         nama_akun: String(item.nama_akun),
         tipe: item.tipe as 'DEBIT' | 'KREDIT',
         kategori: (item.kategori || (item.id.startsWith('1') ? 'KAS' : item.id.startsWith('4') ? 'PENERIMAAN' : 'PENGELUARAN')) as any,
-        keterangan: item.keterangan || undefined
+        keterangan: item.nature || item.keterangan || undefined,
+        nature: item.nature || item.keterangan || undefined
       }))
 
       if (typeof window !== 'undefined') {
@@ -215,7 +217,8 @@ export async function syncAllCoaToDatabase(supabase: any): Promise<{ success: bo
       nama_akun: item.nama_akun,
       tipe: item.tipe,
       kategori: item.kategori,
-      keterangan: item.keterangan || null,
+      keterangan: item.nature || item.keterangan || null,
+      nature: item.nature || item.keterangan || null,
       urutan: idx + 1
     }))
 

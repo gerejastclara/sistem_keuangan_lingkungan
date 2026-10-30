@@ -26,6 +26,7 @@ export interface KepalaKeluarga {
   nama_lingkungan?: string;
   telepon?: string;
   jumlah_anggota?: number;
+  statusUmat?: 'AKTIF' | 'PINDAH' | 'KELUAR';
 }
 
 export type PeranKeluarga = 'Kepala Keluarga' | 'Suami' | 'Istri' | 'Anak' | 'Orang Tua' | 'Famili Lain';
@@ -87,6 +88,7 @@ export interface COA {
   id: string;
   nama_akun: string;
   tipe: 'DEBIT' | 'KREDIT';
+  nature?: string;
 }
 
 export interface JurnalTransaksi {

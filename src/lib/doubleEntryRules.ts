@@ -16,6 +16,7 @@ export const TRANSACTION_TYPES: TransactionTypeOption[] = [
   { code: '4300', name: 'Iuran Dana Kematian / St. Yusuf', category: 'MASUK', defaultCoaDebit: '1100', defaultCoaKredit: '4300', requiresKK: true },
   { code: '4400', name: 'Kolekte Misa Lingkungan', category: 'MASUK', defaultCoaDebit: '1100', defaultCoaKredit: '4400', requiresKK: false },
   { code: '4500', name: 'Sumbangan Umat', category: 'MASUK', defaultCoaDebit: '1100', defaultCoaKredit: '4500', requiresKK: true },
+  { code: '4501', name: 'Iuran Celengan CYTM', category: 'MASUK', defaultCoaDebit: '1100', defaultCoaKredit: '4501', requiresKK: true },
   { code: '4600', name: 'Bantuan Paroki', category: 'MASUK', defaultCoaDebit: '1100', defaultCoaKredit: '4600', requiresKK: false },
   { code: '4700', name: 'Dana APP', category: 'MASUK', defaultCoaDebit: '1100', defaultCoaKredit: '4700', requiresKK: false },
   { code: '4800', name: 'Dana Aksi Natal', category: 'MASUK', defaultCoaDebit: '1100', defaultCoaKredit: '4800', requiresKK: false },
@@ -47,6 +48,7 @@ export const TRANSACTION_TYPES: TransactionTypeOption[] = [
   { code: '5320', name: 'Sumbangan Dana Aksi Natal', category: 'KELUAR', defaultCoaDebit: '5320', defaultCoaKredit: '1100' },
   { code: '5340', name: 'Sumbangan Dana PPG', category: 'KELUAR', defaultCoaDebit: '5340', defaultCoaKredit: '1100' },
   { code: '5350', name: 'Kolekte yg disetor ke Paroki', category: 'KELUAR', defaultCoaDebit: '5350', defaultCoaKredit: '1100' },
+  { code: '5360', name: 'Sumbangan Celengan CYTM', category: 'KELUAR', defaultCoaDebit: '5360', defaultCoaKredit: '1100' },
   { code: '5900', name: 'Pengeluaran Lainnya', category: 'KELUAR', defaultCoaDebit: '5900', defaultCoaKredit: '1100' }
 ];
 

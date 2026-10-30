@@ -35,8 +35,65 @@ import {
   ChevronRight,
   RefreshCw,
   Cloud,
-  Search
+  Search,
+  Info
 } from 'lucide-react'
+
+function parseAllocatedMonths(keterangan: string, fallbackMonth?: number): number[] {
+  if (!keterangan) return fallbackMonth ? [fallbackMonth] : []
+  const bulanMatch = keterangan.match(/\[Bulan:\s*([^\]]+)\]/i)
+  if (!bulanMatch) return fallbackMonth ? [fallbackMonth] : []
+
+  const rawContent = bulanMatch[1].trim()
+  const monthMapLookup: Record<string, number> = {
+    '1': 1, '01': 1, 'jan': 1, 'januari': 1,
+    '2': 2, '02': 2, 'feb': 2, 'februari': 2,
+    '3': 3, '03': 3, 'mar': 3, 'maret': 3,
+    '4': 4, '04': 4, 'apr': 4, 'april': 4,
+    '5': 5, '05': 5, 'mei': 5,
+    '6': 6, '06': 6, 'jun': 6, 'juni': 6,
+    '7': 7, '07': 7, 'jul': 7, 'juli': 7,
+    '8': 8, '08': 8, 'ags': 8, 'agustus': 8,
+    '9': 9, '09': 9, 'sep': 9, 'september': 9,
+    '10': 10, 'okt': 10, 'oktober': 10,
+    '11': 11, 'nov': 11, 'november': 11,
+    '12': 12, 'des': 12, 'desember': 12
+  }
+
+  const results: number[] = []
+  const rangeMatch = rawContent.match(/^([a-z0-9]+)\s*[-–—]\s*([a-z0-9]+)$/i)
+  if (rangeMatch) {
+    const startM = monthMapLookup[rangeMatch[1].toLowerCase()]
+    const endM = monthMapLookup[rangeMatch[2].toLowerCase()]
+    if (startM && endM && startM <= endM) {
+      for (let m = startM; m <= endM; m++) {
+        results.push(m)
+      }
+      return results
+    }
+  }
+
+  const parts = rawContent.split(/[,;\s]+/).map(s => s.trim().toLowerCase())
+  parts.forEach(p => {
+    const subRange = p.match(/^([a-z0-9]+)[-–—]([a-z0-9]+)$/i)
+    if (subRange) {
+      const sM = monthMapLookup[subRange[1].toLowerCase()]
+      const eM = monthMapLookup[subRange[2].toLowerCase()]
+      if (sM && eM && sM <= eM) {
+        for (let m = sM; m <= eM; m++) {
+          if (!results.includes(m)) results.push(m)
+        }
+        return
+      }
+    }
+    const mNum = monthMapLookup[p]
+    if (mNum && !results.includes(mNum)) {
+      results.push(mNum)
+    }
+  })
+
+  return results.length > 0 ? results : (fallbackMonth ? [fallbackMonth] : [])
+}
 
 
 export default function JurnalPage() {
@@ -159,13 +216,29 @@ export default function JurnalPage() {
     }
   }
 
+  const standardMonthlyTariff = useMemo(() => {
+    if (['4200', '5290'].includes(step2Jenis)) return 15000 // ASAK
+    return 10000 // St. Yusuf, Dahar Romo, CYTM, PPG, dll
+  }, [step2Jenis])
+
+  const isCollectiveParish = step1Arus === 'KELUAR' && step3KkId === 'umum'
+  const activeCount = isCollectiveParish ? (kkList.filter(k => !k.statusUmat || k.statusUmat === 'AKTIF').length || 1) : 1
+
   const toggleSelectMonth = (mNum: number) => {
     setSelectedMonths((prev) => {
       const next = prev.includes(mNum) ? prev.filter((m) => m !== mNum) : [...prev, mNum].sort((a, b) => a - b)
-      if (nominalPerBulanNumeric > 0) {
-        const calculated = nominalPerBulanNumeric * next.length
+      const baseFee = nominalPerBulanNumeric > 0 ? nominalPerBulanNumeric : standardMonthlyTariff
+      if (nominalPerBulanNumeric === 0 && (isCollectiveParish || isSetoranRutinCoa)) {
+        setNominalPerBulanNumeric(baseFee)
+        setNominalPerBulanInput(formatCurrency(baseFee))
+      }
+      if (next.length > 0) {
+        const calculated = baseFee * activeCount * next.length
         setStep4NominalNumeric(calculated)
         setStep4NominalInput(formatCurrency(calculated))
+      } else {
+        setStep4NominalNumeric(0)
+        setStep4NominalInput('Rp 0')
       }
       return next
     })
@@ -174,11 +247,14 @@ export default function JurnalPage() {
   const selectAllMonths = () => {
     const allM = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     setSelectedMonths(allM)
-    if (nominalPerBulanNumeric > 0) {
-      const calculated = nominalPerBulanNumeric * 12
-      setStep4NominalNumeric(calculated)
-      setStep4NominalInput(formatCurrency(calculated))
+    const baseFee = nominalPerBulanNumeric > 0 ? nominalPerBulanNumeric : standardMonthlyTariff
+    if (nominalPerBulanNumeric === 0 && (isCollectiveParish || isSetoranRutinCoa)) {
+      setNominalPerBulanNumeric(baseFee)
+      setNominalPerBulanInput(formatCurrency(baseFee))
     }
+    const calculated = baseFee * activeCount * 12
+    setStep4NominalNumeric(calculated)
+    setStep4NominalInput(formatCurrency(calculated))
   }
 
   const clearSelectedMonths = () => {
@@ -205,7 +281,76 @@ export default function JurnalPage() {
     )
   }, [step2Jenis, coaList])
 
-  const calculatedTargetTotal = nominalPerBulanNumeric * selectedMonths.length
+  const parishCollectiveStatus = useMemo(() => {
+    if (step1Arus !== 'KELUAR' || step3KkId !== 'umum' || !isSetoranRutinCoa || selectedMonths.length === 0) {
+      return null
+    }
+
+    const activeKks = kkList.filter(k => !k.statusUmat || k.statusUmat === 'AKTIF')
+    const totalActiveKk = activeKks.length
+    const fee = nominalPerBulanNumeric > 0 ? nominalPerBulanNumeric : standardMonthlyTariff
+
+    const fundCodes = (() => {
+      if (['4300', '5280'].includes(step2Jenis)) return ['4300', '5280', '1400']
+      if (['4200', '5290'].includes(step2Jenis)) return ['4200', '5290']
+      if (['4120', '5300', '5270'].includes(step2Jenis)) return ['4120', '5300', '5270', '1300']
+      if (['4501', '5360'].includes(step2Jenis)) return ['4501', '5360']
+      if (['4400', '4500', '5340'].includes(step2Jenis)) return ['4400', '4500', '5340']
+      return [step2Jenis]
+    })()
+
+    let collectedNominal = 0
+    let unpaidKkCount = 0
+    let talanganKkCount = 0
+
+    activeKks.forEach((kk) => {
+      const rowKkNama = (kk.nama_kk || '').trim().toLowerCase()
+      let hasPaidAllSelected = true
+      let hasTalangan = false
+
+      selectedMonths.forEach((mNum) => {
+        const foundTx = jurnalList.find((j) => {
+          if (!j.tanggal || !j.tanggal.startsWith(step4Tanggal.slice(0, 4))) return false
+          const matchCode = fundCodes.some(c => c === j.coa_debit || c === j.coa_kredit)
+          if (!matchCode) return false
+          const allocated = parseAllocatedMonths(j.keterangan || '', parseInt(j.tanggal.split('-')[1] || '1', 10))
+          if (!allocated.includes(mNum)) return false
+
+          if (j.kk_id === kk.id || j.kepala_keluarga?.id === kk.id) return true
+          const txKkNama = (j.kepala_keluarga?.nama_kk || '').trim().toLowerCase()
+          if (txKkNama && (txKkNama === rowKkNama || txKkNama.includes(rowKkNama) || rowKkNama.includes(txKkNama))) return true
+          if (rowKkNama && (j.keterangan || '').toLowerCase().includes(rowKkNama)) return true
+          return false
+        })
+
+        if (foundTx) {
+          collectedNominal += Number(foundTx.nominal || fee)
+          if (foundTx.sumber_setoran === 'ORANG_LAIN' || foundTx.sumber_setoran === 'DANA_LINGKUNGAN' || (foundTx.keterangan || '').toLowerCase().includes('ditalangi') || (foundTx.keterangan || '').toLowerCase().includes('donasi')) {
+            hasTalangan = true
+          }
+        } else {
+          hasPaidAllSelected = false
+        }
+      })
+
+      if (!hasPaidAllSelected) unpaidKkCount++
+      if (hasTalangan) talanganKkCount++
+    })
+
+    const calculatedFull = fee * totalActiveKk * selectedMonths.length
+
+    return {
+      totalActiveKk,
+      fee,
+      calculatedFull,
+      collectedNominal,
+      unpaidKkCount,
+      talanganKkCount,
+      hasIssue: unpaidKkCount > 0 || talanganKkCount > 0
+    }
+  }, [step1Arus, step3KkId, isSetoranRutinCoa, selectedMonths, kkList, step2Jenis, nominalPerBulanNumeric, standardMonthlyTariff, jurnalList, step4Tanggal])
+
+  const calculatedTargetTotal = nominalPerBulanNumeric * activeCount * selectedMonths.length
   const hasNominalMismatch =
     isSetoranRutinCoa &&
     selectedMonths.length > 0 &&
@@ -1326,7 +1471,24 @@ export default function JurnalPage() {
                 <div className="text-xs font-bold text-slate-700">
                   LANGKAH 3 - Nama Kepala Keluarga (KK) <span className="text-rose-500">*</span>
                 </div>
-                <Select value={step3KkId} onValueChange={(val) => setStep3KkId(val || '')}>
+                <Select
+                  value={step3KkId}
+                  onValueChange={(val) => {
+                    const newVal = val || ''
+                    setStep3KkId(newVal)
+                    if (newVal === 'umum' && step1Arus === 'KELUAR' && isSetoranRutinCoa) {
+                      const fee = nominalPerBulanNumeric > 0 ? nominalPerBulanNumeric : standardMonthlyTariff
+                      setNominalPerBulanNumeric(fee)
+                      setNominalPerBulanInput(formatCurrency(fee))
+                      const actKk = kkList.filter(k => !k.statusUmat || k.statusUmat === 'AKTIF').length || 1
+                      if (selectedMonths.length > 0) {
+                        const calculated = fee * actKk * selectedMonths.length
+                        setStep4NominalNumeric(calculated)
+                        setStep4NominalInput(formatCurrency(calculated))
+                      }
+                    }
+                  }}
+                >
                   <SelectTrigger className="bg-white border-slate-300 text-slate-900 rounded-xl h-11 text-sm w-full">
                     <span className="truncate text-left block w-full">
                       {step3KkId === 'umum'
@@ -1642,6 +1804,39 @@ export default function JurnalPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Alert Informasi Setoran Kolektif ke Paroki jika ada Umat Belum Bayar atau Ditalangi */}
+                  {parishCollectiveStatus && parishCollectiveStatus.hasIssue && (
+                    <div className="bg-slate-50 border border-slate-300 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-slate-800 animate-fadeIn mt-2">
+                      <div className="flex items-start gap-2">
+                        <Info className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
+                        <div className="space-y-0.5">
+                          <div className="font-bold text-slate-900">
+                            Informasi Setoran Kolektif ke Paroki:
+                          </div>
+                          <div className="text-slate-600 leading-relaxed">
+                            Terdapat <strong className="text-slate-900">{parishCollectiveStatus.unpaidKkCount} KK</strong> belum membayar
+                            {parishCollectiveStatus.talanganKkCount > 0 && <span> dan <strong className="text-slate-900">{parishCollectiveStatus.talanganKkCount} KK</strong> ditalangi</span>} dari total {parishCollectiveStatus.totalActiveKk} KK aktif.
+                            Sistem otomatis menghitung perkalian penuh (<strong>{parishCollectiveStatus.totalActiveKk} KK × {formatCurrency(parishCollectiveStatus.fee)} × {selectedMonths.length} bln = {formatCurrency(parishCollectiveStatus.calculatedFull)}</strong>). Bendahara tetap dapat melanjutkan atau menyesuaikan nominal ke jumlah terkumpul.
+                          </div>
+                        </div>
+                      </div>
+                      {parishCollectiveStatus.collectedNominal > 0 && parishCollectiveStatus.collectedNominal !== step4NominalNumeric && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setStep4NominalNumeric(parishCollectiveStatus.collectedNominal)
+                            setStep4NominalInput(formatCurrency(parishCollectiveStatus.collectedNominal))
+                          }}
+                          className="h-8 px-2.5 text-xs font-semibold bg-white border-slate-300 text-slate-800 hover:bg-slate-100 shrink-0 cursor-pointer shadow-2xs"
+                        >
+                          Gunakan Terkumpul: {formatCurrency(parishCollectiveStatus.collectedNominal)}
+                        </Button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Alert Peringatan jika Total yang diinput tidak sama dengan (nominal/bulan * bulan dipilih) */}
                   {hasNominalMismatch && (

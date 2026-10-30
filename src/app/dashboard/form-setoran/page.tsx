@@ -106,10 +106,10 @@ const DAFTAR_FORM_TERSEDIA: FormConfigItem[] = [
   }
 ]
 
-function parseAllocatedMonths(keterangan: string): number[] {
-  if (!keterangan) return []
+function parseAllocatedMonths(keterangan: string, fallbackMonth?: number): number[] {
+  if (!keterangan) return fallbackMonth ? [fallbackMonth] : []
   const bulanMatch = keterangan.match(/\[Bulan:\s*([^\]]+)\]/i)
-  if (!bulanMatch) return []
+  if (!bulanMatch) return fallbackMonth ? [fallbackMonth] : []
 
   const rawContent = bulanMatch[1].trim()
   const monthMapLookup: Record<string, number> = {
@@ -163,7 +163,45 @@ function parseAllocatedMonths(keterangan: string): number[] {
     }
   })
 
-  return results
+  return results.length > 0 ? results : (fallbackMonth ? [fallbackMonth] : [])
+}
+
+function matchKkIdentity(j: JurnalTransaksi, kk: KepalaKeluarga): boolean {
+  if (j.kk_id && (j.kk_id === kk.id || j.kk_id.toLowerCase() === kk.id.toLowerCase())) return true
+  if (j.kepala_keluarga?.id && (j.kepala_keluarga.id === kk.id || j.kepala_keluarga.id.toLowerCase() === kk.id.toLowerCase())) return true
+
+  const rowKkNama = (kk.nama_kk || '').trim().toLowerCase()
+  const txKkNama = (j.kepala_keluarga?.nama_kk || '').trim().toLowerCase()
+  if (txKkNama && rowKkNama && (txKkNama === rowKkNama || txKkNama.includes(rowKkNama) || rowKkNama.includes(txKkNama))) {
+    return true
+  }
+
+  const desc = (j.keterangan || '').toLowerCase()
+  if (rowKkNama && desc.includes(rowKkNama)) {
+    return true
+  }
+
+  const kkMatch = desc.match(/\[KK:\s*([^\]]+)\]/i)
+  if (kkMatch && rowKkNama) {
+    const ketName = kkMatch[1].trim().toLowerCase()
+    if (ketName === rowKkNama || ketName.includes(rowKkNama) || rowKkNama.includes(ketName)) return true
+  }
+
+  if (typeof window !== 'undefined') {
+    const cached = localStorage.getItem(`tx_kk_${j.id}`)
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached)
+        if (parsed.id === kk.id) return true
+        const parsedNama = (parsed.nama_kk || '').trim().toLowerCase()
+        if (parsedNama && rowKkNama && (parsedNama === rowKkNama || parsedNama.includes(rowKkNama) || rowKkNama.includes(parsedNama))) {
+          return true
+        }
+      } catch (e) {}
+    }
+  }
+
+  return false
 }
 
 export default function FormSetoranPage() {
@@ -351,85 +389,105 @@ export default function FormSetoranPage() {
   const selectedForm = DAFTAR_FORM_TERSEDIA.find(f => f.id === selectedFormId) || DAFTAR_FORM_TERSEDIA[0]
   const isAmplopFormat = selectedForm.formatType === 'AMPLOP'
 
-  // Prepare table data matching the selected fund
+  // 1. Akumulasi setoran iuran umat (Uang Masuk / Talangan) per KK per bulan
+  const kkContributionMap = new Map<string, Record<number, number>>()
+  jurnalList.forEach((j) => {
+    if (!j.tanggal || !j.tanggal.startsWith(selectedYear)) return
+    const isMasuk = j.tipe_arus === 'MASUK' || (j.coa_kredit && (selectedForm.coaCodes.includes(j.coa_kredit) || j.coa_kredit.startsWith('4')))
+    if (!isMasuk) return
+
+    const matchCode = selectedForm.coaCodes.some(c => c === j.coa_debit || c === j.coa_kredit)
+    const desc = (j.keterangan || '').toLowerCase()
+    const matchKeyword = selectedForm.coaKeywords.some(kw => desc.includes(kw))
+    if (!matchCode && !matchKeyword) return
+
+    const matchedKk = kkList.find(k => matchKkIdentity(j, k))
+    if (!matchedKk) return
+
+    if (!kkContributionMap.has(matchedKk.id)) {
+      kkContributionMap.set(matchedKk.id, {})
+    }
+    const kkMonths = kkContributionMap.get(matchedKk.id)!
+    const parts = j.tanggal.split('-')
+    const fallbackMonth = parts.length > 1 ? parseInt(parts[1], 10) : 1
+    const allocatedMonths = parseAllocatedMonths(j.keterangan || '', fallbackMonth)
+    const nomPerMonth = Math.round(Number(j.nominal || 0) / (allocatedMonths.length || 1))
+    allocatedMonths.forEach((m) => {
+      if (m >= 1 && m <= 12) {
+        kkMonths[m] = (kkMonths[m] || 0) + nomPerMonth
+      }
+    })
+  })
+
+  // 2. Transaksi Uang Keluar (Penyetoran ke Paroki) untuk dana ini di tahun terpilih
+  const collectiveParishMonths = new Set<number>()
+  let collectiveNominalTotal = 0
+  const individualParishMap = new Map<string, Set<number>>()
+  const individualNominalMap = new Map<string, number>()
+
+  const parishDischargeTxs = jurnalList.filter((j) => {
+    if (!j.tanggal || !j.tanggal.startsWith(selectedYear)) return false
+    const isUangKeluar = j.tipe_arus === 'KELUAR' ||
+      j.no_bukti?.startsWith('BBK') ||
+      j.no_bukti?.startsWith('BKK') ||
+      (j.coa_debit && (j.coa_debit.startsWith('5') || selectedForm.coaCodes.includes(j.coa_debit)))
+    if (!isUangKeluar) return false
+
+    const matchCode = selectedForm.coaCodes.some(c => c === j.coa_debit || c === j.coa_kredit)
+    const desc = (j.keterangan || '').toLowerCase()
+    const matchKeyword = selectedForm.coaKeywords.some(kw => desc.includes(kw))
+    return matchCode || matchKeyword
+  })
+
+  parishDischargeTxs.forEach((tx) => {
+    const parts = tx.tanggal.split('-')
+    const fallbackMonth = parts.length > 1 ? parseInt(parts[1], 10) : 1
+    const allocatedMonths = parseAllocatedMonths(tx.keterangan || '', fallbackMonth)
+    const rawNom = Number(tx.nominal || 0)
+
+    const isUmum = !tx.kk_id || tx.kk_id === 'umum' || tx.kk_id === 'kolektif' || (tx.keterangan || '').toLowerCase().includes('kolektif') || (tx.keterangan || '').toLowerCase().includes('alokasi')
+
+    if (isUmum) {
+      allocatedMonths.forEach(m => collectiveParishMonths.add(m))
+      collectiveNominalTotal += rawNom
+    } else {
+      const matchedKk = kkList.find(k => matchKkIdentity(tx, k))
+      const effectiveId = matchedKk ? matchedKk.id : tx.kk_id!
+      if (!individualParishMap.has(effectiveId)) {
+        individualParishMap.set(effectiveId, new Set())
+      }
+      const mSet = individualParishMap.get(effectiveId)!
+      allocatedMonths.forEach(m => mSet.add(m))
+      individualNominalMap.set(effectiveId, (individualNominalMap.get(effectiveId) || 0) + rawNom)
+    }
+  })
+
+  // 3. Susun data matriks tiap KK
   const matrixData = kkList.map((kk, idx) => {
     let yearlyTotal = 0
     const monthlyStatus: Record<number, boolean> = {}
-    const rowKkNama = kk.nama_kk.trim().toLowerCase()
+    const kkMonths = kkContributionMap.get(kk.id) || {}
+    const indSet = individualParishMap.get(kk.id)
 
-    // Find transactions for this KK in the selected year and matched COA
-    const txs = jurnalList.filter(j => {
-      if (!j.tanggal || !j.tanggal.startsWith(selectedYear)) return false
-      
-      // Logika Form Setoran Paroki: Tercatat 'Sudah Bayar' ketika ada UANG KELUAR
-      // yaitu uang kas yang sudah disetorkan oleh Bendahara Lingkungan ke Paroki
-      const isUangKeluar = j.tipe_arus === 'KELUAR' || 
-        j.no_bukti?.startsWith('BBK') || 
-        j.no_bukti?.startsWith('BKK') || 
-        (j.coa_debit && j.coa_debit.startsWith('5'))
+    // Tarif acuan per bulan
+    const standardFee = selectedForm.id === 'asak' ? 15000 : 10000
 
-      // Jika transaksi eksplisit Uang Masuk (iuran umat di lingkungan), abaikan dari form setoran ke paroki
-      if (j.tipe_arus === 'MASUK' && !j.no_bukti?.startsWith('BBK') && !j.no_bukti?.startsWith('BKK')) {
-        return false
-      }
+    for (let m = 1; m <= 12; m++) {
+      const isIndividuallyDischarged = Boolean(indSet?.has(m))
+      const isCollectivelyDischarged = collectiveParishMonths.has(m)
 
-      if (!isUangKeluar) return false
-
-      // Match by exact COA codes or keywords
-      const matchCode = selectedForm.coaCodes.some(c => c === j.coa_debit || c === j.coa_kredit)
-      const desc = (j.keterangan || '').toLowerCase()
-      const matchKeyword = selectedForm.coaKeywords.some(kw => desc.includes(kw))
-      if (!matchCode && !matchKeyword) return false
-
-      // Match KK identity (ID, Nama di kepala_keluarga, tx_kk cache, atau keterangan)
-      if (j.kk_id && (j.kk_id === kk.id || j.kk_id.toLowerCase() === kk.id.toLowerCase())) return true
-      if (j.kepala_keluarga?.id && (j.kepala_keluarga.id === kk.id || j.kepala_keluarga.id.toLowerCase() === kk.id.toLowerCase())) return true
-
-      const txKkNama = (j.kepala_keluarga?.nama_kk || '').trim().toLowerCase()
-      if (txKkNama && (txKkNama === rowKkNama || txKkNama.includes(rowKkNama) || rowKkNama.includes(txKkNama))) {
-        return true
-      }
-
-      if (typeof window !== 'undefined') {
-        const cached = localStorage.getItem(`tx_kk_${j.id}`)
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached)
-            if (parsed.id === kk.id) return true
-            const parsedNama = (parsed.nama_kk || '').trim().toLowerCase()
-            if (parsedNama && (parsedNama === rowKkNama || parsedNama.includes(rowKkNama) || rowKkNama.includes(parsedNama))) {
-              return true
-            }
-          } catch (e) {}
+      if (isIndividuallyDischarged || isCollectivelyDischarged) {
+        const contributedNom = kkMonths[m] || 0
+        if (isIndividuallyDischarged || contributedNom > 0 || isCollectivelyDischarged) {
+          monthlyStatus[m] = true
+          yearlyTotal += contributedNom > 0 ? contributedNom : standardFee
         }
       }
+    }
 
-      if (rowKkNama && desc.includes(rowKkNama)) {
-        return true
-      }
-
-      return false
-    })
-
-    txs.forEach(tx => {
-      // Prioritaskan alokasi multi-bulan dari tag keterangan (misal: [Bulan: Jan, Feb, Mar, Apr] atau [Bulan: Jan-Jun])
-      const allocatedMonths = parseAllocatedMonths(tx.keterangan || '')
-
-      if (allocatedMonths.length > 0) {
-        allocatedMonths.forEach(m => {
-          if (m >= 1 && m <= 12) {
-            monthlyStatus[m] = true
-          }
-        })
-      } else {
-        const parts = tx.tanggal.split('-')
-        const month = parts.length > 1 ? parseInt(parts[1], 10) : NaN
-        if (!isNaN(month) && month >= 1 && month <= 12) {
-          monthlyStatus[month] = true
-        }
-      }
-      yearlyTotal += Number(tx.nominal)
-    })
+    if (individualNominalMap.has(kk.id) && yearlyTotal === 0) {
+      yearlyTotal = individualNominalMap.get(kk.id)!
+    }
 
     return {
       kk,
@@ -440,7 +498,8 @@ export default function FormSetoranPage() {
   })
 
   // Calculate total across all KKs
-  const grandTotal = matrixData.reduce((sum, row) => sum + row.yearlyTotal, 0)
+  const computedSum = matrixData.reduce((sum, row) => sum + row.yearlyTotal, 0)
+  const grandTotal = computedSum > 0 ? computedSum : collectiveNominalTotal
 
   return (
     <div className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 relative min-h-screen pb-20 font-sans">

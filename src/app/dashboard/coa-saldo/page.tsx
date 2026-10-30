@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { UserProfile, COA } from '@/lib/types'
-import { getAllMasterCOA, saveCustomCOA, deleteCustomCOA, syncAllCoaToDatabase, MasterCOAItem, DEFAULT_MASTER_COA_LIST } from '@/lib/masterCoa'
+import { getAllMasterCOA, fetchMasterCoaFromDb, saveCustomCOA, deleteCustomCOA, syncAllCoaToDatabase, MasterCOAItem, DEFAULT_MASTER_COA_LIST } from '@/lib/masterCoa'
 import { formatRupiah } from '@/lib/utils'
 import { findLingkunganByQuery, getLingkunganDbUuid } from '@/lib/constants'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -137,11 +137,11 @@ export default function CoaSaldoPage() {
 
         setLingkunganId(targetLingkunganId)
 
-        // Load master COA (Default + Custom localStorage + Supabase)
-        const masterList = getAllMasterCOA()
+        // Load master COA dengan field nature langsung dari database Supabase
+        const masterList = await fetchMasterCoaFromDb(supabase)
         setCoaList(masterList)
 
-        // Auto-sync COA ke database Supabase agar akun seperti 1200, 1300, 1400 selalu ada di DB
+        // Auto-sync COA ke database Supabase agar akun dan nature selalu tersimpan di DB
         syncAllCoaToDatabase(supabase).catch(() => {})
 
         if (targetLingkunganId) {
@@ -272,7 +272,8 @@ export default function CoaSaldoPage() {
       await supabase.from('coa').upsert({
         id: newCoa.id,
         nama_akun: newCoa.nama_akun,
-        tipe: newCoa.tipe
+        tipe: newCoa.tipe,
+        nature: newCoa.keterangan || null
       }, { onConflict: 'id' })
     } catch (e) {}
 
@@ -317,7 +318,8 @@ export default function CoaSaldoPage() {
       await supabase.from('coa').upsert({
         id: updatedItem.id,
         nama_akun: updatedItem.nama_akun,
-        tipe: updatedItem.tipe
+        tipe: updatedItem.tipe,
+        nature: updatedItem.keterangan || null
       }, { onConflict: 'id' })
     } catch (err) {}
 
@@ -600,7 +602,7 @@ export default function CoaSaldoPage() {
                     <TableCell className="font-mono font-bold text-slate-800 text-sm">{c.id}</TableCell>
                     <TableCell>
                       <div className="font-bold text-slate-900">{c.nama_akun}</div>
-                      {c.keterangan && <div className="text-[11px] text-slate-500 mt-0.5">{c.keterangan}</div>}
+                      {(c.nature || c.keterangan) && <div className="text-[11px] text-slate-500 mt-0.5">{c.nature || c.keterangan}</div>}
                     </TableCell>
                     <TableCell>
                       {c.kategori === 'KAS' && (

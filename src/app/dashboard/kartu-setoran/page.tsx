@@ -978,6 +978,20 @@ export default function KartuSetoranPage() {
     (k.alamat && k.alamat.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
+  // Calculate monthly totals for bottom footer
+  const monthlyTotals: number[] = Array.from({ length: 12 }, (_, i) => {
+    const mNum = i + 1
+    let sum = 0
+    filteredKkList.forEach((kk) => {
+      const item = setoranMap.get(kk.id)?.[mNum]
+      if (item && item.nominal) sum += item.nominal
+    })
+    const umumItem = setoranMap.get('umum')?.[mNum]
+    if (umumItem && umumItem.nominal) sum += umumItem.nominal
+    return sum
+  })
+  const allGrandTotal = monthlyTotals.reduce((a, b) => a + b, 0)
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -1103,8 +1117,8 @@ export default function KartuSetoranPage() {
               <span className="w-2 h-2 rounded-full bg-[#9E7B7B]"></span>
               Umat Pindah / Keluar
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#EDF4FB] text-[#2F5275] border border-[#D0E2F2] font-medium text-[10px]">
-              <span className="text-[10px] text-[#2B5D88] font-bold">✓</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 text-[#2B5D88] border border-slate-200 font-medium text-[10px]">
+              <span className="text-[11px] text-[#2B5D88] font-bold">✓</span>
               Disetor ke Paroki
             </div>
           </div>
@@ -1170,35 +1184,47 @@ export default function KartuSetoranPage() {
                 <thead className="bg-slate-100 sticky z-30">
                   <tr className="bg-slate-100">
                     <th
+                      rowSpan={2}
                       style={{ top: 'var(--sticky-top, 0px)' }}
                       className="sticky left-0 z-40 bg-slate-100 w-12 min-w-[48px] max-w-[48px] text-center font-bold text-slate-800 p-2.5 border-b-2 border-r border-slate-300 shadow-2xs"
                     >
                       No
                     </th>
                     <th
+                      rowSpan={2}
                       style={{ top: 'var(--sticky-top, 0px)' }}
                       className="sticky left-12 z-40 bg-slate-100 min-w-[200px] font-bold text-slate-800 p-2.5 border-b-2 border-r border-slate-300 shadow-xs"
                     >
-                      <div className="flex items-center justify-between gap-1">
-                        <span>Kepala Keluarga</span>
-                        <span className="text-[10px] font-normal text-slate-500 italic font-mono">(Rp &apos;000)</span>
+                      Kepala Keluarga
+                    </th>
+                    <th
+                      colSpan={12}
+                      style={{ top: 'var(--sticky-top, 0px)' }}
+                      className="sticky z-30 bg-slate-100 text-center font-bold text-slate-800 py-1.5 px-3 border-b border-slate-300 shadow-2xs text-xs"
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <span>Bulan</span>
+                        <span className="text-[11px] font-semibold text-slate-500 italic font-mono">(Disajikan dalam ribuan rupiah)</span>
                       </div>
                     </th>
-                    {SHORT_MONTHS.map((m) => (
-                      <th
-                        key={m}
-                        style={{ top: 'var(--sticky-top, 0px)' }}
-                        className="sticky z-30 bg-slate-100 w-16 min-w-[64px] text-center font-bold text-slate-800 p-2.5 border-b-2 border-slate-300 shadow-2xs"
-                      >
-                        {m}
-                      </th>
-                    ))}
                     <th
+                      rowSpan={2}
                       style={{ top: 'var(--sticky-top, 0px)' }}
                       className="sticky z-30 bg-slate-100 w-28 min-w-[100px] text-right font-bold text-slate-800 p-2.5 pr-3 border-b-2 border-slate-300 shadow-2xs"
                     >
                       Total (Rp)
                     </th>
+                  </tr>
+                  <tr className="bg-slate-100">
+                    {SHORT_MONTHS.map((m) => (
+                      <th
+                        key={m}
+                        style={{ top: 'calc(var(--sticky-top, 0px) + 33px)' }}
+                        className="sticky z-30 bg-slate-100 w-16 min-w-[64px] text-center font-bold text-slate-800 py-1.5 px-1 border-b-2 border-slate-300 shadow-2xs"
+                      >
+                        {m}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="text-xs">
@@ -1260,7 +1286,7 @@ export default function KartuSetoranPage() {
                           const val = item ? item.nominal : 0
                           const sumber = item ? item.sumber : 'SENDIRI'
                           const penalang = item?.penalangNama
-                          const isDisetorParoki = Boolean(parishDisetorMap.get(kk.id)?.has(mNum))
+                          const isDisetorParoki = Boolean(parishDisetorMap.get(kk.id)?.has(mNum) || (val > 0 && parishDisetorMap.get('umum')?.has(mNum)))
                           totalKk += val
 
                           return (
@@ -1306,7 +1332,7 @@ export default function KartuSetoranPage() {
                                   <span
                                     title={
                                       isDisetorParoki
-                                        ? `Sudah disetor ke Paroki (${formatRupiah(val)})`
+                                        ? `Sudah disetor ke Paroki (${formatRupiah(val)})${sumber === 'DANA_LINGKUNGAN' ? ' - Dari Kas Lingkungan' : sumber === 'PAROKI' ? ' - Ditalangi Paroki' : ''}`
                                         : sumber === 'PAROKI'
                                         ? `Ditalangi Paroki (${formatRupiah(val)})`
                                         : sumber === 'DANA_LINGKUNGAN'
@@ -1314,9 +1340,7 @@ export default function KartuSetoranPage() {
                                         : `Bayar Sendiri (${formatRupiah(val)})`
                                     }
                                     className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none ${
-                                      isDisetorParoki
-                                        ? 'bg-[#EDF4FB] text-[#2F5275] border border-[#D0E2F2]'
-                                        : sumber === 'PAROKI'
+                                      sumber === 'PAROKI'
                                         ? 'bg-slate-100 text-slate-700 border border-slate-200/90'
                                         : sumber === 'DANA_LINGKUNGAN'
                                         ? 'bg-[#F4F3F7] text-[#5B546E] border border-[#E0DDE8]'
@@ -1324,14 +1348,14 @@ export default function KartuSetoranPage() {
                                     }`}
                                   >
                                     <span>{formatRibuan(val)}</span>
-                                    {isDisetorParoki && <span className="text-[10px] text-[#2B5D88] font-bold">✓</span>}
+                                    {isDisetorParoki && <span className="text-[10px] text-[#2B5D88] font-bold" title="Sudah disetor ke Paroki">✓</span>}
                                     {!isDisetorParoki && sumber === 'PAROKI' && <span className="text-[10px] text-slate-600 font-bold">✝</span>}
                                   </span>
                                 )
                               ) : isDisetorParoki ? (
                                 <span
                                   title="Sudah disetor ke Paroki"
-                                  className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none bg-[#EDF4FB] text-[#2F5275] border border-[#D0E2F2]"
+                                  className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none bg-slate-50 text-[#2B5D88] border border-slate-200"
                                 >
                                   <span className="text-[10px] text-[#2B5D88] font-bold">✓</span>
                                 </span>
@@ -1376,13 +1400,16 @@ export default function KartuSetoranPage() {
                         const val = item ? item.nominal : 0
                         const sumber = item ? item.sumber : 'SENDIRI'
                         const penalang = item?.penalangNama
+                        const isDisetorParoki = Boolean(parishDisetorMap.get('umum')?.has(mNum))
 
                         return (
                           <td key={mNum} className="text-center p-1.5 font-mono text-[11px] border-b border-slate-100">
                             {val > 0 ? (
                               <span
                                 title={
-                                  sumber === 'ORANG_LAIN'
+                                  isDisetorParoki
+                                    ? `Sudah disetor ke Paroki (${formatRupiah(val)})`
+                                    : sumber === 'ORANG_LAIN'
                                     ? (penalang === 'N/N' ? `Dari Donasi Umat: N/N (${formatRupiah(val)})` : `Dari Donasi Umat: ${penalang || 'Donatur'} (${formatRupiah(val)})`)
                                     : sumber === 'PAROKI'
                                     ? `Ditalangi Paroki (${formatRupiah(val)})`
@@ -1401,6 +1428,14 @@ export default function KartuSetoranPage() {
                                 }`}
                               >
                                 <span>{formatRibuan(val)}</span>
+                                {isDisetorParoki && <span className="text-[10px] text-[#2B5D88] font-bold">✓</span>}
+                              </span>
+                            ) : isDisetorParoki ? (
+                              <span
+                                title="Sudah disetor ke Paroki"
+                                className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] select-none bg-slate-50 text-[#2B5D88] border border-slate-200"
+                              >
+                                <span className="text-[10px] text-[#2B5D88] font-bold">✓</span>
                               </span>
                             ) : (
                               <span className="text-slate-300 font-extralight select-none">—</span>
@@ -1414,6 +1449,33 @@ export default function KartuSetoranPage() {
                     </tr>
                   )}
                 </tbody>
+                <tfoot className="bg-slate-100 font-bold text-xs sticky bottom-0 z-20 border-t-2 border-slate-300">
+                  <tr className="bg-slate-100">
+                    <td
+                      colSpan={2}
+                      className="sticky left-0 z-30 bg-slate-100 p-2.5 font-bold text-slate-800 border-t-2 border-r border-slate-300 shadow-xs text-left"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>Total Nominal Per Bulan</span>
+                        <span className="text-[10px] font-normal text-slate-500 italic font-mono">(Rp &apos;000)</span>
+                      </div>
+                    </td>
+                    {monthlyTotals.map((sumMonth, idx) => (
+                      <td key={idx} className="text-center p-2 font-mono text-[11px] font-bold text-slate-800 border-t-2 border-slate-200">
+                        {sumMonth > 0 ? (
+                          <span className="inline-block px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-900">
+                            {formatRibuan(sumMonth)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-light select-none">—</span>
+                        )}
+                      </td>
+                    ))}
+                    <td className="text-right font-mono font-bold text-slate-900 pr-3 p-2.5 border-t-2 border-slate-300">
+                      {allGrandTotal > 0 ? allGrandTotal.toLocaleString('id-ID') : '0'}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
