@@ -383,14 +383,6 @@ export default function CoaSaldoPage() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
-      {/* SUCCESS NOTIFICATION (Soft & Selaras dengan Tema Web) */}
-      {successMsg && (
-        <div className="p-4 rounded-xl bg-[#F2F5F3] text-[#4E6358] border border-[#DCE5DF] text-sm font-semibold flex items-center gap-2.5 shadow-2xs transition-all">
-          <CheckCircle2 className="w-5 h-5 text-[#4E6358] shrink-0" />
-          <span>{successMsg}</span>
-        </div>
-      )}
-
       {/* SECTION 1: ISIAN SALDO AWAL */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
         {/* Header Isian Saldo Awal */}

@@ -58,3 +58,4 @@ ON CONFLICT (id) DO UPDATE SET
   nama_akun = EXCLUDED.nama_akun,
   tipe = EXCLUDED.tipe,
   nature = EXCLUDED.nature;
+
