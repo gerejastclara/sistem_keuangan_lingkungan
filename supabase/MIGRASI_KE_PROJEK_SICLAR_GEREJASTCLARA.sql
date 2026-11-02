@@ -251,10 +251,11 @@ CREATE TABLE IF NOT EXISTS public.riwayat_import_dafu (
 );
 
 -- ==============================================================================
--- 14. TABEL USERS (LOGIN TANPA EMAIL)
+-- 14. TABEL USERS (LOGIN & INTEGRASI DUA SISTEM)
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255),
     username VARCHAR(100) UNIQUE,
     password VARCHAR(100) NOT NULL,
     role VARCHAR(30) NOT NULL,
@@ -262,15 +263,27 @@ CREATE TABLE IF NOT EXISTS public.users (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Penyesuaian jika public.users sudah ada sebelumnya dari sistem budgeting
+-- Penyesuaian agar tabel public.users kompatibel antara Budgeting dan Keuangan
 ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_id_fkey;
 ALTER TABLE public.users ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS name VARCHAR(255);
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS username VARCHAR(100);
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS password VARCHAR(100);
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS role VARCHAR(30);
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS lingkungan_id UUID REFERENCES public.lingkungan(id) ON DELETE SET NULL;
 ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
 CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON public.users(username);
+
+-- Lepas batasan NOT NULL pada kolom 'name' jika ada agar kedua sistem bebas mengisi
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'name'
+  ) THEN
+    ALTER TABLE public.users ALTER COLUMN name DROP NOT NULL;
+  END IF;
+END $$;
 
 -- ==============================================================================
 -- SEED DATA 1: 69 LINGKUNGAN PAROKI SANTA CLARA
@@ -464,13 +477,13 @@ ON CONFLICT (lingkungan_id) DO NOTHING;
 -- SEED DATA 6: USER & LOGIN SYSTEM (PASSWORD: Paroki321)
 -- ==============================================================================
 -- 1. Akun Paroki & Sekretaris Paroki
-INSERT INTO public.users (id, username, password, role, lingkungan_id)
+INSERT INTO public.users (id, name, username, password, role, lingkungan_id)
 VALUES 
-  (gen_random_uuid(), 'paroki', 'Paroki321', 'PAROKI', NULL),
-  (gen_random_uuid(), 'sekretaris_paroki', 'Paroki321', 'SEKRETARIS_PAROKI', NULL),
-  (gen_random_uuid(), 'sekertaris_paroki', 'Paroki321', 'SEKRETARIS_PAROKI', NULL)
+  (gen_random_uuid(), 'Pengurus Paroki', 'paroki', 'Paroki321', 'PAROKI', NULL),
+  (gen_random_uuid(), 'Sekretaris Paroki', 'sekretaris_paroki', 'Paroki321', 'SEKRETARIS_PAROKI', NULL),
+  (gen_random_uuid(), 'Sekretaris Paroki', 'sekertaris_paroki', 'Paroki321', 'SEKRETARIS_PAROKI', NULL)
 ON CONFLICT (username) DO UPDATE 
-  SET password = EXCLUDED.password, role = EXCLUDED.role;
+  SET password = EXCLUDED.password, role = EXCLUDED.role, name = EXCLUDED.name;
 
 -- 2. Otomatisasi Akun Sekretaris & Bendahara untuk seluruh 69 Lingkungan
 DO $$
@@ -488,21 +501,21 @@ BEGIN
     clean_slug := regexp_replace(raw_name, '[^a-z0-9]', '', 'g');
 
     -- Akun Sekretaris (mendukung kedua variasi: sekretaris_ & sekertaris_)
-    INSERT INTO public.users (id, username, password, role, lingkungan_id)
-    VALUES (gen_random_uuid(), 'sekretaris_' || clean_slug, 'Paroki321', 'SEKRETARIS', ling.id)
+    INSERT INTO public.users (id, name, username, password, role, lingkungan_id)
+    VALUES (gen_random_uuid(), 'Sekretaris ' || ling.nama_lingkungan, 'sekretaris_' || clean_slug, 'Paroki321', 'SEKRETARIS', ling.id)
     ON CONFLICT (username) DO UPDATE 
-      SET password = EXCLUDED.password, role = EXCLUDED.role, lingkungan_id = EXCLUDED.lingkungan_id;
+      SET password = EXCLUDED.password, role = EXCLUDED.role, lingkungan_id = EXCLUDED.lingkungan_id, name = EXCLUDED.name;
 
-    INSERT INTO public.users (id, username, password, role, lingkungan_id)
-    VALUES (gen_random_uuid(), 'sekertaris_' || clean_slug, 'Paroki321', 'SEKRETARIS', ling.id)
+    INSERT INTO public.users (id, name, username, password, role, lingkungan_id)
+    VALUES (gen_random_uuid(), 'Sekretaris ' || ling.nama_lingkungan, 'sekertaris_' || clean_slug, 'Paroki321', 'SEKRETARIS', ling.id)
     ON CONFLICT (username) DO UPDATE 
-      SET password = EXCLUDED.password, role = EXCLUDED.role, lingkungan_id = EXCLUDED.lingkungan_id;
+      SET password = EXCLUDED.password, role = EXCLUDED.role, lingkungan_id = EXCLUDED.lingkungan_id, name = EXCLUDED.name;
 
     -- Akun Bendahara
-    INSERT INTO public.users (id, username, password, role, lingkungan_id)
-    VALUES (gen_random_uuid(), 'bendahara_' || clean_slug, 'Paroki321', 'BENDAHARA', ling.id)
+    INSERT INTO public.users (id, name, username, password, role, lingkungan_id)
+    VALUES (gen_random_uuid(), 'Bendahara ' || ling.nama_lingkungan, 'bendahara_' || clean_slug, 'Paroki321', 'BENDAHARA', ling.id)
     ON CONFLICT (username) DO UPDATE 
-      SET password = EXCLUDED.password, role = EXCLUDED.role, lingkungan_id = EXCLUDED.lingkungan_id;
+      SET password = EXCLUDED.password, role = EXCLUDED.role, lingkungan_id = EXCLUDED.lingkungan_id, name = EXCLUDED.name;
 
     total_lingkungan := total_lingkungan + 1;
   END LOOP;
