@@ -1,9 +1,15 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
+import { cookies, headers } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Home() {
+  const cookieStore = await cookies()
+  const headerList = await headers()
+  const host = headerList.get('host') || ''
+  const isProduction = host.includes('siclar.or.id')
+
   let user = null
   try {
     const supabase = await createClient()
@@ -14,11 +20,16 @@ export default async function Home() {
     console.error('Error verifying Supabase user in Home page:', err)
   }
 
-  if (user) {
+  const demoEmail = cookieStore.get('demo_user_email')?.value
+  const isAuthed = !!user || !!demoEmail
+
+  if (isAuthed) {
     redirect('/dashboard')
   } else {
-    redirect('/login')
+    if (isProduction) {
+      redirect('https://siclar.or.id')
+    } else {
+      redirect('/login')
+    }
   }
 }
-
-

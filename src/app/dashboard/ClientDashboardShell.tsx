@@ -155,6 +155,11 @@ export function ClientDashboardShell({
       ]
       cookiesToClear.forEach(c => {
         document.cookie = `${c}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0`
+        if (window.location.hostname.includes('siclar.or.id')) {
+          document.cookie = `${c}=; path=/; domain=.siclar.or.id; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0`
+        } else if (window.location.hostname.includes('siclar.id')) {
+          document.cookie = `${c}=; path=/; domain=.siclar.id; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0`
+        }
       })
     }
     await supabase.auth.signOut()

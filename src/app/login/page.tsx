@@ -26,6 +26,10 @@ export default function LoginPage() {
   // Read URL query param message if present on client
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      if (window.location.hostname.includes('siclar.or.id')) {
+        window.location.replace('https://siclar.or.id')
+        return
+      }
       sessionStorage.removeItem('app_session_active')
       const params = new URLSearchParams(window.location.search)
       const msg = params.get('message')

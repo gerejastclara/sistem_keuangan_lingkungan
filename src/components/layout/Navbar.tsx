@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserProfile, Lingkungan } from '@/lib/types'
 import { getWilayahForLingkungan, formatNamaLingkungan, getAllMasterLingkungan, getLingkunganDbUuid, getNamaLingkunganFromAnyIdentifier, findLingkunganByQuery } from '@/lib/constants'
-import { LogOut, Building2, User, ChevronDown, Menu, Bell, ShieldCheck, CheckCircle2, ArrowRight, KeyRound, Eye, EyeOff } from 'lucide-react'
+import { LogOut, Building2, User, ChevronDown, Menu, Bell, ShieldCheck, CheckCircle2, ArrowRight, KeyRound, Eye, EyeOff, LayoutGrid, ExternalLink, WalletCards } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
@@ -75,11 +75,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const router = useRouter()
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showNotifMenu, setShowNotifMenu] = useState(false)
+  const [showAppSwitcher, setShowAppSwitcher] = useState(false)
   const [approvals, setApprovals] = useState<DafuApprovalItem[]>([])
 
   // Click outside ref untuk menutup dropdown jika klik di luar mana saja
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const notifMenuRef = useRef<HTMLDivElement>(null)
+  const appSwitcherRef = useRef<HTMLDivElement>(null)
 
   // Ganti Password Modal State
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
@@ -311,6 +313,99 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-[10px] bg-[#16233F] text-[#A9834F] font-semibold px-1.5 py-0.5 rounded border border-[#2C3E66] hidden sm:inline-block">
                   {getWilayahForLingkungan(currentLingkunganName)}
                 </span>
+              </div>
+            )}
+          </div>
+
+          {/* SICLAR App Switcher (Aplikasi Terpadu Paroki) */}
+          <div className="relative" ref={appSwitcherRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAppSwitcher(!showAppSwitcher)
+                setShowProfileMenu(false)
+                setShowNotifMenu(false)
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[7px] bg-[#22335A] hover:bg-[#2C3E66] text-[#A9834F] hover:text-white border border-[#2C3E66] transition cursor-pointer text-xs font-semibold shadow-xs"
+              title="Aplikasi SICLAR"
+            >
+              <LayoutGrid className="w-4 h-4 text-[#A9834F]" />
+              <span className="hidden sm:inline text-white">SICLAR</span>
+              <ChevronDown className="w-3.5 h-3.5 text-[#8A90A3]" />
+            </button>
+
+            {showAppSwitcher && (
+              <div className="absolute right-0 mt-2 w-72 bg-[#16233F] border border-[#2C3E66] rounded-xl shadow-2xl p-3 z-50 text-xs text-slate-200 animate-in fade-in zoom-in-95 duration-100">
+                <div className="flex items-center justify-between pb-2 border-b border-[#2C3E66] mb-2.5">
+                  <span className="font-bold text-white text-xs flex items-center gap-1.5 font-serif">
+                    <LayoutGrid className="w-3.5 h-3.5 text-[#A9834F]" />
+                    Portal SICLAR
+                  </span>
+                  <span className="text-[10px] text-[#A9834F] bg-[#22335A] px-1.5 py-0.5 rounded border border-[#2C3E66] font-medium">
+                    St. Clara
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  {/* Keuangan Lingkungan (Active) */}
+                  <div className="p-2.5 rounded-lg bg-[#22335A]/90 border border-[#A9834F]/50 flex items-start gap-2.5">
+                    <div className="p-1.5 rounded-md bg-[#16233F] text-[#A9834F] shrink-0 mt-0.5 border border-[#2C3E66]">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-white text-[12px]">Keuangan Lingkungan</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                          Aktif
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#8A90A3] mt-0.5 truncate">
+                        Pembukuan kas & kartu setoran
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Budgeting Paroki */}
+                  <a
+                    href="https://siclar.or.id"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2.5 rounded-lg bg-[#16233F] hover:bg-[#22335A] border border-[#2C3E66] hover:border-[#A9834F]/40 flex items-start gap-2.5 transition group"
+                  >
+                    <div className="p-1.5 rounded-md bg-[#22335A] group-hover:bg-[#16233F] text-slate-300 group-hover:text-[#A9834F] shrink-0 mt-0.5 transition border border-[#2C3E66]">
+                      <WalletCards className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-200 group-hover:text-white flex items-center gap-1 text-[12px]">
+                          Sistem Budgeting
+                          <ExternalLink className="w-3 h-3 text-[#8A90A3] group-hover:text-[#A9834F]" />
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#8A90A3] mt-0.5 truncate">
+                        RAB, anggaran seksi & paroki
+                      </p>
+                    </div>
+                  </a>
+
+                  {/* Manajemen Gedung (Coming Soon) */}
+                  <div className="p-2.5 rounded-lg bg-[#16233F]/40 border border-[#2C3E66]/40 flex items-start gap-2.5 opacity-60">
+                    <div className="p-1.5 rounded-md bg-[#22335A]/40 text-slate-400 shrink-0 mt-0.5 border border-[#2C3E66]/50">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-300 text-[12px]">Manajemen Gedung</span>
+                        <span className="text-[9px] font-medium text-slate-400 bg-slate-800 px-1.5 py-0.2 rounded border border-slate-700">
+                          Segera Hadir
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#8A90A3] mt-0.5 truncate">
+                        Sewa aula & fasilitas paroki
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

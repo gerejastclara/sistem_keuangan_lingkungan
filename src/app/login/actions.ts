@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { findLingkunganByQuery } from '@/lib/constants'
 
 export async function login(formData: FormData) {
@@ -38,8 +38,21 @@ export async function login(formData: FormData) {
 
   const formLingkunganId = (formData.get('lingkungan_id') as string || '').trim()
 
-  // Session cookie tanpa maxAge: otomatis dibersihkan saat browser/sesi ditutup
-  const cookieOptions = { httpOnly: false, path: '/' }
+  // Deteksi domain untuk Single Sign-On (SSO) bersama siclar.or.id
+  const headerList = await headers()
+  const host = headerList.get('host') || ''
+  const isSiclarOrId = host.includes('siclar.or.id')
+  const isSiclarId = host.includes('siclar.id')
+  const cookieDomain = isSiclarOrId ? '.siclar.or.id' : (isSiclarId ? '.siclar.id' : undefined)
+
+  // Session cookie: mendukung cross-subdomain sharing di bawah domain siclar.or.id
+  const cookieOptions = { 
+    httpOnly: false, 
+    path: '/',
+    domain: cookieDomain,
+    secure: isSiclarOrId || isSiclarId,
+    sameSite: 'lax' as const
+  }
 
   try {
     const supabase = await createClient()
